@@ -2,13 +2,25 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Package } from "lucide-react";
+import {
+  LayoutDashboard,
+  Package,
+  ShoppingCart,
+  Settings,
+  Tag,
+  Truck,
+  Users,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const itens = [
   { href: "/painel", label: "Dashboard", icon: LayoutDashboard },
   { href: "/painel/produtos", label: "Produtos", icon: Package },
-  // Pedidos, Clientes, Cupons, Frete, Configurações — milestone M4
+  { href: "/painel/pedidos", label: "Pedidos", icon: ShoppingCart },
+  { href: "/painel/clientes", label: "Clientes", icon: Users },
+  { href: "/painel/cupons", label: "Cupons", icon: Tag },
+  { href: "/painel/frete", label: "Frete", icon: Truck },
+  { href: "/painel/configuracoes", label: "Configurações", icon: Settings },
 ];
 
 export function PainelNav() {
