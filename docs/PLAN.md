@@ -103,11 +103,11 @@ Todas as telas desta fase usam fixtures locais (`lib/mocks/*.ts`) — sem chamad
 - Branch: `milestone/06-admin-saas-ui`
 - Objetivo: interface do painel do dono da plataforma (camada separada dos lojistas), PRD 3.15.
 - Entregas:
-  - [ ] Listagem de lojas cadastradas com status (ativa/bloqueada/teste)
-  - [ ] Tela de planos e assinaturas
-  - [ ] Tela de métricas gerais da plataforma
-  - [ ] Ação de bloqueio/liberação de loja
-  - [ ] Listagem/gestão de usuários da plataforma
+  - [x] Listagem de lojas cadastradas com status (ativa/bloqueada/teste)
+  - [x] Tela de planos e assinaturas
+  - [x] Tela de métricas gerais da plataforma
+  - [x] Ação de bloqueio/liberação de loja
+  - [x] Listagem/gestão de usuários da plataforma
 - Commit final: `feat: UI do painel administrativo do SaaS`
 
 ---
