@@ -47,20 +47,20 @@ Todas as telas desta fase usam fixtures locais (`lib/mocks/*.ts`) — sem chamad
 - Branch: `milestone/01-design-system`
 - Objetivo: estabelecer a identidade visual (cores, tipografia, componentes compartilhados) que será reused nas 3 áreas do produto (site da loja, painel do lojista, painel do SaaS), conforme PRD seção 6 e CLAUDE.md "Identidade visual".
 - Entregas:
-  - [ ] Paleta de cores e tokens Tailwind/shadcn (tema claro, base para dark mode futuro)
-  - [ ] Componentes shadcn adicionais necessários (`form`, `tabs`, `sheet`, `avatar`, `separator`, `skeleton`, `alert`, `tooltip`, `pagination`)
-  - [ ] Layout raiz com header/nav placeholder e área de conteúdo
-  - [ ] Página de estilo/showcase interna (`/dev/ui`) para revisar componentes visualmente (remover ou proteger antes do deploy final)
+  - [x] Paleta de cores e tokens Tailwind/shadcn (tema claro, base para dark mode futuro)
+  - [x] Componentes shadcn adicionais necessários (`form`, `tabs`, `sheet`, `avatar`, `separator`, `skeleton`, `alert`, `tooltip`, `pagination`)
+  - [x] Layout raiz com header/nav placeholder e área de conteúdo
+  - [x] Página de estilo/showcase interna (`/dev/ui`) para revisar componentes visualmente (remover ou proteger antes do deploy final)
 - Commit final: `feat: design system e componentes base de UI`
 
 ### M2 — Onboarding e autenticação (telas)
 - Branch: `milestone/02-auth-ui`
 - Objetivo: telas de cadastro/login do lojista e fluxo de onboarding (criação da loja), ainda sem autenticação real.
 - Entregas:
-  - [ ] Tela de login
-  - [ ] Tela de cadastro do lojista
-  - [ ] Fluxo de onboarding: escolher modelo, logo, cores, informações da empresa (PRD 3.1)
-  - [ ] Tela de "loja criada com sucesso" com link para o painel
+  - [x] Tela de login
+  - [x] Tela de cadastro do lojista
+  - [x] Fluxo de onboarding: escolher modelo, logo, cores, informações da empresa (PRD 3.1)
+  - [x] Tela de "loja criada com sucesso" com link para o painel
 - Commit final: `feat: telas de autenticação e onboarding do lojista`
 
 ### M3 — Painel do lojista: produtos e estoque (UI)
