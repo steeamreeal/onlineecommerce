@@ -77,14 +77,14 @@ Todas as telas desta fase usam fixtures locais (`lib/mocks/*.ts`) — sem chamad
 - Branch: `milestone/04-painel-pedidos-ui`
 - Objetivo: interface das demais áreas operacionais do painel do lojista.
 - Entregas:
-  - [ ] Kanban/lista de pedidos com status (Novo → Aguardando pagamento → Pago → Em preparação → Enviado → Pronto para retirada → Entregue → Cancelado)
-  - [ ] Tela de detalhe do pedido (pagamento, produtos, cliente, endereço, entrega, rastreio)
-  - [ ] Cadastro e listagem de clientes (histórico de compras, total gasto, ticket médio, última compra)
-  - [ ] Cadastro de cupons e promoções
-  - [ ] Configuração de frete e entrega
-  - [ ] Dashboard com KPIs mockados (faturamento, nº pedidos, ticket médio, produtos mais vendidos, estoque baixo, vendas por período)
-  - [ ] Tela de personalização da loja (logo, cores, banners, redes sociais, WhatsApp, horário, políticas, domínio)
-  - [ ] Tela de usuários e permissões (papéis: Administrador, Gerente, Vendedor, Estoquista, Separador)
+  - [x] Kanban/lista de pedidos com status (Novo → Aguardando pagamento → Pago → Em preparação → Enviado → Pronto para retirada → Entregue → Cancelado)
+  - [x] Tela de detalhe do pedido (pagamento, produtos, cliente, endereço, entrega, rastreio)
+  - [x] Cadastro e listagem de clientes (histórico de compras, total gasto, ticket médio, última compra)
+  - [x] Cadastro de cupons e promoções
+  - [x] Configuração de frete e entrega
+  - [x] Dashboard com KPIs mockados (faturamento, nº pedidos, ticket médio, produtos mais vendidos, estoque baixo, vendas por período)
+  - [x] Tela de personalização da loja (logo, cores, banners, redes sociais, WhatsApp, horário, políticas, domínio)
+  - [x] Tela de usuários e permissões (papéis: Administrador, Gerente, Vendedor, Estoquista, Separador)
 - Commit final: `feat: UI de pedidos, clientes, cupons, frete, dashboard e configurações do painel`
 
 ### M5 — Site de vendas público (UI)
