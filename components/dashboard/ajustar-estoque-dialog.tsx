@@ -23,6 +23,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+const tipoSelectItems = [
+  { value: "ENTRADA", label: "Entrada" },
+  { value: "SAIDA", label: "Saída" },
+];
+
 export function AjustarEstoqueDialog({
   produtoNome,
   variacaoLabel,
@@ -61,7 +66,11 @@ export function AjustarEstoqueDialog({
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="grid gap-2">
             <Label>Tipo de movimento</Label>
-            <Select value={tipo} onValueChange={(v) => setTipo(v as "ENTRADA" | "SAIDA")}>
+            <Select
+              items={tipoSelectItems}
+              value={tipo}
+              onValueChange={(v) => setTipo(v as "ENTRADA" | "SAIDA")}
+            >
               <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>

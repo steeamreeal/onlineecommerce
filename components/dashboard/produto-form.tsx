@@ -73,6 +73,17 @@ const produtoSchema = z.object({
 
 export type ProdutoFormValues = z.infer<typeof produtoSchema>;
 
+const categoriaSelectItems = categoriasMock.map((categoria) => ({
+  value: categoria.id,
+  label: categoria.nome,
+}));
+
+const statusSelectItems = [
+  { value: "ATIVO", label: "Ativo" },
+  { value: "INATIVO", label: "Inativo" },
+  { value: "DESTAQUE", label: "Destaque" },
+];
+
 function produtoParaFormValues(produto?: Produto): ProdutoFormValues {
   if (!produto) {
     return {
@@ -186,7 +197,11 @@ export function ProdutoForm({ produto }: { produto?: Produto }) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Categoria</FormLabel>
-                  <Select value={field.value} onValueChange={field.onChange}>
+                  <Select
+                    items={categoriaSelectItems}
+                    value={field.value}
+                    onValueChange={field.onChange}
+                  >
                     <FormControl>
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Selecione uma categoria" />
@@ -245,7 +260,11 @@ export function ProdutoForm({ produto }: { produto?: Produto }) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Status</FormLabel>
-                  <Select value={field.value} onValueChange={field.onChange}>
+                  <Select
+                    items={statusSelectItems}
+                    value={field.value}
+                    onValueChange={field.onChange}
+                  >
                     <FormControl>
                       <SelectTrigger className="w-full">
                         <SelectValue />

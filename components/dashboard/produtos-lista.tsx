@@ -39,6 +39,18 @@ const formatoMoeda = new Intl.NumberFormat("pt-BR", {
 
 const TODOS = "TODOS";
 
+const categoriaSelectItems = [
+  { value: TODOS, label: "Todas as categorias" },
+  ...categoriasMock.map((categoria) => ({ value: categoria.id, label: categoria.nome })),
+];
+
+const statusSelectItems = [
+  { value: TODOS, label: "Todos os status" },
+  { value: "ATIVO", label: "Ativo" },
+  { value: "INATIVO", label: "Inativo" },
+  { value: "DESTAQUE", label: "Destaque" },
+];
+
 export function ProdutosLista() {
   const [busca, setBusca] = useState("");
   const [categoriaId, setCategoriaId] = useState<string>(TODOS);
@@ -68,11 +80,15 @@ export function ProdutosLista() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" render={<Link href="/painel/produtos/estoque" />}>
+          <Button
+            variant="outline"
+            nativeButton={false}
+            render={<Link href="/painel/produtos/estoque" />}
+          >
             <Boxes className="size-4" />
             Estoque
           </Button>
-          <Button render={<Link href="/painel/produtos/novo" />}>
+          <Button nativeButton={false} render={<Link href="/painel/produtos/novo" />}>
             <Plus className="size-4" />
             Novo produto
           </Button>
@@ -89,7 +105,11 @@ export function ProdutosLista() {
             className="pl-9"
           />
         </div>
-        <Select value={categoriaId} onValueChange={(v) => setCategoriaId(v ?? TODOS)}>
+        <Select
+          items={categoriaSelectItems}
+          value={categoriaId}
+          onValueChange={(v) => setCategoriaId(v ?? TODOS)}
+        >
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Categoria" />
           </SelectTrigger>
@@ -103,6 +123,7 @@ export function ProdutosLista() {
           </SelectContent>
         </Select>
         <Select
+          items={statusSelectItems}
           value={status}
           onValueChange={(value) => setStatus((value ?? TODOS) as StatusProduto | typeof TODOS)}
         >
@@ -176,6 +197,7 @@ export function ProdutosLista() {
                     <Button
                       variant="ghost"
                       size="sm"
+                      nativeButton={false}
                       render={<Link href={`/painel/produtos/${produto.id}/editar`} />}
                     >
                       Editar
