@@ -67,10 +67,10 @@ Todas as telas desta fase usam fixtures locais (`lib/mocks/*.ts`) — sem chamad
 - Branch: `milestone/03-painel-produtos-ui`
 - Objetivo: interface completa de cadastro/gestão de produtos e controle de estoque, com dados mockados.
 - Entregas:
-  - [ ] Listagem de produtos com busca e filtros (categoria, status)
-  - [ ] Formulário de cadastro/edição de produto (nome, descrição, fotos, preços, categoria, código, peso/dimensões, variações de cor/tamanho/modelo, status ativo/inativo/destaque)
-  - [ ] Tela de estoque por variação, com aviso de estoque baixo
-  - [ ] Histórico de entradas e saídas (mock)
+  - [x] Listagem de produtos com busca e filtros (categoria, status)
+  - [x] Formulário de cadastro/edição de produto (nome, descrição, fotos, preços, categoria, código, peso/dimensões, variações de cor/tamanho/modelo, status ativo/inativo/destaque)
+  - [x] Tela de estoque por variação, com aviso de estoque baixo
+  - [x] Histórico de entradas e saídas (mock)
 - Commit final: `feat: UI de cadastro de produtos e controle de estoque`
 
 ### M4 — Painel do lojista: pedidos, clientes, cupons e dashboard (UI)
