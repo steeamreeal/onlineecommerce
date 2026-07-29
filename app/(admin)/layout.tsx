@@ -1,3 +1,5 @@
+import { AdminNav } from "@/components/admin/admin-nav";
+
 export default function AdminLayout({
   children,
 }: {
@@ -10,8 +12,8 @@ export default function AdminLayout({
           <span className="size-6 rounded-md bg-neutral-100" />
           <span className="font-semibold">Admin da plataforma</span>
         </div>
-        <nav className="flex-1 px-3 py-4 text-sm text-neutral-400">
-          {/* Itens do menu (Lojas, Planos, Métricas, Usuários...) — milestone M6 */}
+        <nav className="flex-1 px-3 py-4 text-sm">
+          <AdminNav />
         </nav>
       </aside>
       <div className="flex flex-1 flex-col">
