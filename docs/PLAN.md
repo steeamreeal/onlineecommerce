@@ -91,12 +91,12 @@ Todas as telas desta fase usam fixtures locais (`lib/mocks/*.ts`) — sem chamad
 - Branch: `milestone/05-site-vendas-ui`
 - Objetivo: interface pública da loja onde o cliente final navega e compra, com catálogo mockado.
 - Entregas:
-  - [ ] Página inicial da loja (`/loja/[slug]`) com banners, categorias em destaque
-  - [ ] Listagem de produtos com busca e filtro por categoria/preço
-  - [ ] Página de produto com seleção de variações
-  - [ ] Carrinho (estado local, sem persistência)
-  - [ ] Checkout: resumo do pedido, cadastro do cliente, endereço, cupom, frete, retirada na loja, forma de pagamento, confirmação (fluxo completo em UI, sem processar pagamento real)
-  - [ ] Botão flutuante de WhatsApp
+  - [x] Página inicial da loja (`/loja/[slug]`) com banners, categorias em destaque
+  - [x] Listagem de produtos com busca e filtro por categoria/preço
+  - [x] Página de produto com seleção de variações
+  - [x] Carrinho (estado local, sem persistência)
+  - [x] Checkout: resumo do pedido, cadastro do cliente, endereço, cupom, frete, retirada na loja, forma de pagamento, confirmação (fluxo completo em UI, sem processar pagamento real)
+  - [x] Botão flutuante de WhatsApp
 - Commit final: `feat: UI do site de vendas público e fluxo de checkout`
 
 ### M6 — Painel administrativo do SaaS (UI)
