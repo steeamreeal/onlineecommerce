@@ -1,3 +1,5 @@
+import { PainelNav } from "@/components/dashboard/painel-nav";
+
 export default function DashboardLayout({
   children,
 }: {
@@ -11,7 +13,7 @@ export default function DashboardLayout({
           <span className="font-semibold">Painel da loja</span>
         </div>
         <nav className="text-muted-foreground flex-1 px-3 py-4 text-sm">
-          {/* Itens do menu (Dashboard, Produtos, Pedidos, Clientes...) — milestones M3-M4 */}
+          <PainelNav />
         </nav>
       </aside>
       <div className="flex flex-1 flex-col">
