@@ -17,7 +17,7 @@ export type CartItem = {
 
 export type CartItemDetalhado = CartItem & {
   produto: Produto;
-  variacao: VariacaoProduto;
+  variacao?: VariacaoProduto;
   variacaoNome: string;
   subtotal: number;
 };
@@ -77,14 +77,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const itensDetalhados = useMemo<CartItemDetalhado[]>(() => {
     return itens.flatMap((item) => {
       const produto = produtosMock.find((p) => p.id === item.produtoId);
-      const variacao = produto?.variacoes.find((v) => v.id === item.variacaoId);
-      if (!produto || !variacao) return [];
+      if (!produto) return [];
+      const variacao = produto.variacoes.find((v) => v.id === item.variacaoId);
+      if (!variacao && produto.variacoes.length > 0) return [];
       return [
         {
           ...item,
           produto,
           variacao,
-          variacaoNome: variacaoLabel(variacao),
+          variacaoNome: variacao ? variacaoLabel(variacao) : "Padrão",
           subtotal: item.precoUnitario * item.quantidade,
         },
       ];

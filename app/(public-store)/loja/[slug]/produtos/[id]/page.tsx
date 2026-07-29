@@ -12,5 +12,5 @@ export default async function ProdutoPage({
 
   if (!produto) notFound();
 
-  return <ProdutoDetalhe produto={produto} slug={slug} />;
+  return <ProdutoDetalhe key={produto.id} produto={produto} slug={slug} />;
 }

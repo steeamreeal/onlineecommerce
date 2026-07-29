@@ -35,3 +35,7 @@ export const configuracaoLojaMock: ConfiguracaoLoja = {
   horarioAtend: "Seg. a sex., 9h às 18h",
   politicas: "Trocas em até 7 dias após o recebimento, produto sem uso e com etiqueta.",
 };
+
+export function getConfiguracaoLojaPorSlug(slug: string): ConfiguracaoLoja | undefined {
+  return configuracaoLojaMock.slug === slug ? configuracaoLojaMock : undefined;
+}

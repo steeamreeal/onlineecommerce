@@ -15,6 +15,11 @@ import { categoriasMock, produtosMock } from "@/lib/mocks/produtos";
 
 const TODAS = "TODAS";
 
+const categoriaSelectItems = [
+  { value: TODAS, label: "Todas as categorias" },
+  ...categoriasMock.map((categoria) => ({ value: categoria.id, label: categoria.nome })),
+];
+
 export function ProdutosCatalogo({
   slug,
   categoriaInicial,
@@ -28,11 +33,6 @@ export function ProdutosCatalogo({
   const [categoriaId, setCategoriaId] = useState(categoriaInicial ?? TODAS);
   const [precoMin, setPrecoMin] = useState("");
   const [precoMax, setPrecoMax] = useState("");
-
-  const categoriaSelectItems = [
-    { value: TODAS, label: "Todas as categorias" },
-    ...categoriasMock.map((categoria) => ({ value: categoria.id, label: categoria.nome })),
-  ];
 
   const produtosFiltrados = useMemo(() => {
     const termo = busca.trim().toLowerCase();

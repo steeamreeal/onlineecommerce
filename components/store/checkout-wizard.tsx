@@ -18,6 +18,14 @@ const formatoMoeda = new Intl.NumberFormat("pt-BR", {
 
 const STEPS = ["Identificação", "Entrega", "Pagamento", "Confirmação"] as const;
 
+const FORMAS_PAGAMENTO = [
+  { value: "PIX", label: "Pix" },
+  { value: "CARTAO", label: "Cartão de crédito" },
+  { value: "NA_ENTREGA", label: "Pagamento na entrega/retirada" },
+] as const;
+
+const opcoesFreteAtivas = opcoesFreteMock.filter((o) => o.ativo);
+
 type Identificacao = { nome: string; telefone: string; email: string };
 type Entrega = {
   modo: "RETIRADA" | "ENTREGA";
@@ -25,6 +33,32 @@ type Entrega = {
   freteId?: string;
 };
 type Pagamento = { forma: "PIX" | "CARTAO" | "NA_ENTREGA"; cupomCodigo: string };
+
+function OpcaoSelecionavel({
+  selecionada,
+  onClick,
+  className,
+  children,
+}: {
+  selecionada: boolean;
+  onClick: () => void;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "rounded-md border px-4 py-2.5 text-left text-sm",
+        selecionada ? "border-primary bg-primary/5" : "hover:border-primary/40",
+        className,
+      )}
+    >
+      {children}
+    </button>
+  );
+}
 
 export function CheckoutWizard({ slug }: { slug: string }) {
   const { itensDetalhados, subtotal, limparCarrinho } = useCart();
@@ -40,8 +74,6 @@ export function CheckoutWizard({ slug }: { slug: string }) {
   const [pagamento, setPagamento] = useState<Pagamento>({ forma: "PIX", cupomCodigo: "" });
   const [cupomAplicado, setCupomAplicado] = useState<Cupom | null>(null);
   const [erroCupom, setErroCupom] = useState<string | null>(null);
-
-  const opcoesFreteAtivas = opcoesFreteMock.filter((o) => o.ativo);
 
   const freteEscolhido: OpcaoFrete | undefined =
     entrega.modo === "RETIRADA"
@@ -183,28 +215,22 @@ export function CheckoutWizard({ slug }: { slug: string }) {
       {step === 1 && (
         <div className="flex flex-col gap-4">
           <div className="flex gap-3">
-            <button
-              type="button"
+            <OpcaoSelecionavel
+              className="flex-1 py-3"
+              selecionada={entrega.modo === "RETIRADA"}
               onClick={() => setEntrega({ modo: "RETIRADA", endereco: "" })}
-              className={cn(
-                "flex-1 rounded-md border px-4 py-3 text-left text-sm",
-                entrega.modo === "RETIRADA" ? "border-primary bg-primary/5" : "hover:border-primary/40",
-              )}
             >
               <span className="font-medium">Retirar na loja</span>
               <p className="text-muted-foreground text-xs">Sem custo de frete</p>
-            </button>
-            <button
-              type="button"
+            </OpcaoSelecionavel>
+            <OpcaoSelecionavel
+              className="flex-1 py-3"
+              selecionada={entrega.modo === "ENTREGA"}
               onClick={() => setEntrega((v) => ({ ...v, modo: "ENTREGA" }))}
-              className={cn(
-                "flex-1 rounded-md border px-4 py-3 text-left text-sm",
-                entrega.modo === "ENTREGA" ? "border-primary bg-primary/5" : "hover:border-primary/40",
-              )}
             >
               <span className="font-medium">Entregar no meu endereço</span>
               <p className="text-muted-foreground text-xs">Escolha a forma de envio</p>
-            </button>
+            </OpcaoSelecionavel>
           </div>
 
           {entrega.modo === "ENTREGA" && (
@@ -222,22 +248,17 @@ export function CheckoutWizard({ slug }: { slug: string }) {
                 {opcoesFreteAtivas
                   .filter((o) => o.tipo !== "RETIRADA")
                   .map((opcao) => (
-                    <button
+                    <OpcaoSelecionavel
                       key={opcao.id}
-                      type="button"
+                      className="flex items-center justify-between"
+                      selecionada={entrega.freteId === opcao.id}
                       onClick={() => setEntrega((v) => ({ ...v, freteId: opcao.id }))}
-                      className={cn(
-                        "flex items-center justify-between rounded-md border px-4 py-2.5 text-left text-sm",
-                        entrega.freteId === opcao.id
-                          ? "border-primary bg-primary/5"
-                          : "hover:border-primary/40",
-                      )}
                     >
                       <span>{opcao.nome}</span>
                       <span className="text-muted-foreground">
                         {opcao.valor ? formatoMoeda.format(opcao.valor) : "A calcular"}
                       </span>
-                    </button>
+                    </OpcaoSelecionavel>
                   ))}
               </div>
             </>
@@ -249,26 +270,14 @@ export function CheckoutWizard({ slug }: { slug: string }) {
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <Label>Forma de pagamento</Label>
-            {(
-              [
-                { value: "PIX", label: "Pix" },
-                { value: "CARTAO", label: "Cartão de crédito" },
-                { value: "NA_ENTREGA", label: "Pagamento na entrega/retirada" },
-              ] as const
-            ).map((opcao) => (
-              <button
+            {FORMAS_PAGAMENTO.map((opcao) => (
+              <OpcaoSelecionavel
                 key={opcao.value}
-                type="button"
+                selecionada={pagamento.forma === opcao.value}
                 onClick={() => setPagamento((v) => ({ ...v, forma: opcao.value }))}
-                className={cn(
-                  "rounded-md border px-4 py-2.5 text-left text-sm",
-                  pagamento.forma === opcao.value
-                    ? "border-primary bg-primary/5"
-                    : "hover:border-primary/40",
-                )}
               >
                 {opcao.label}
-              </button>
+              </OpcaoSelecionavel>
             ))}
           </div>
 

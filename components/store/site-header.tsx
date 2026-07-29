@@ -1,18 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 import { Search, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCart } from "@/components/store/cart-context";
 import { categoriasMock } from "@/lib/mocks/produtos";
-import { configuracaoLojaMock } from "@/lib/mocks/loja";
+import type { ConfiguracaoLoja } from "@/lib/mocks/loja";
 
-export function SiteHeader({ slug }: { slug: string }) {
+export function SiteHeader({ slug, config }: { slug: string; config: ConfiguracaoLoja }) {
   const { quantidadeTotal, setAberto } = useCart();
-  const [busca, setBusca] = useState("");
-  const config = configuracaoLojaMock;
 
   return (
     <div className="flex flex-col border-b">
@@ -37,8 +34,6 @@ export function SiteHeader({ slug }: { slug: string }) {
           <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
           <Input
             name="busca"
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
             placeholder="Buscar produtos"
             className="pl-9"
           />

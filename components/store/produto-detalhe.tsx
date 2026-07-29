@@ -24,7 +24,11 @@ export function ProdutoDetalhe({ produto, slug }: { produto: Produto; slug: stri
     produto.variacoes.find((v) => v.estoque > 0)?.id,
   );
 
-  const variacaoSelecionada = produto.variacoes.find((v) => v.id === variacaoId);
+  const semVariacoes = produto.variacoes.length === 0;
+  const variacaoSelecionada = semVariacoes
+    ? undefined
+    : produto.variacoes.find((v) => v.id === variacaoId);
+  const podeComprar = semVariacoes || Boolean(variacaoSelecionada);
   const preco = produto.precoPromo ?? produto.precoNormal;
 
   const relacionados = useMemo(
@@ -39,10 +43,10 @@ export function ProdutoDetalhe({ produto, slug }: { produto: Produto; slug: stri
   );
 
   function handleAdicionar() {
-    if (!variacaoSelecionada) return;
+    if (!podeComprar) return;
     adicionarItem({
       produtoId: produto.id,
-      variacaoId: variacaoSelecionada.id,
+      variacaoId: variacaoSelecionada?.id ?? produto.id,
       quantidade: 1,
       precoUnitario: preco,
     });
@@ -120,13 +124,8 @@ export function ProdutoDetalhe({ produto, slug }: { produto: Produto; slug: stri
             </div>
           )}
 
-          <Button
-            size="lg"
-            className="w-full"
-            disabled={!variacaoSelecionada}
-            onClick={handleAdicionar}
-          >
-            {variacaoSelecionada ? "Adicionar ao carrinho" : "Produto esgotado"}
+          <Button size="lg" className="w-full" disabled={!podeComprar} onClick={handleAdicionar}>
+            {podeComprar ? "Adicionar ao carrinho" : "Produto esgotado"}
           </Button>
         </div>
       </div>

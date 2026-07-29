@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ProductCard } from "@/components/store/product-card";
 import { categoriasMock, produtosMock } from "@/lib/mocks/produtos";
-import { configuracaoLojaMock } from "@/lib/mocks/loja";
+import { getConfiguracaoLojaPorSlug } from "@/lib/mocks/loja";
 
 export default async function LojaPage({
   params,
@@ -10,7 +10,8 @@ export default async function LojaPage({
 }) {
   const { slug } = await params;
   const destaques = produtosMock.filter((produto) => produto.status === "DESTAQUE");
-  const banners = configuracaoLojaMock.banners;
+  // Slug já validado pelo layout (notFound() se desconhecido).
+  const banners = getConfiguracaoLojaPorSlug(slug)?.banners ?? [];
 
   return (
     <div className="flex flex-1 flex-col gap-10 pb-12">

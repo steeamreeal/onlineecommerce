@@ -1,8 +1,8 @@
 import { MessageCircle } from "lucide-react";
-import { configuracaoLojaMock } from "@/lib/mocks/loja";
+import type { ConfiguracaoLoja } from "@/lib/mocks/loja";
 
-export function WhatsappFloatButton() {
-  const { whatsapp, nome } = configuracaoLojaMock;
+export function WhatsappFloatButton({ config }: { config: ConfiguracaoLoja }) {
+  const { whatsapp, nome } = config;
   if (!whatsapp) return null;
 
   const numero = whatsapp.replace(/\D/g, "");

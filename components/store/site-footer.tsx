@@ -1,8 +1,6 @@
-import { configuracaoLojaMock } from "@/lib/mocks/loja";
+import type { ConfiguracaoLoja } from "@/lib/mocks/loja";
 
-export function SiteFooter() {
-  const config = configuracaoLojaMock;
-
+export function SiteFooter({ config }: { config: ConfiguracaoLoja }) {
   return (
     <footer className="mt-auto border-t px-6 py-8">
       <div className="grid gap-6 text-sm sm:grid-cols-3">
