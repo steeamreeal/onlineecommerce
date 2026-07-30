@@ -151,11 +151,11 @@ A partir daqui, cada milestone troca os mocks de uma área específica por dados
 - Branch: `milestone/10-pedidos-backend`
 - Objetivo: conectar as telas do M4 a dados reais.
 - Entregas:
-  - [ ] CRUD de clientes e endereços
-  - [ ] CRUD de cupons com validação de vigência/limite de uso
-  - [ ] CRUD de opções de frete
-  - [ ] Criação e atualização de pedidos com todas as transições de status, dentro de transação Prisma
-  - [ ] Dashboard consumindo agregações reais (faturamento, ticket médio, produtos mais vendidos, etc.)
+  - [x] CRUD de clientes e endereços
+  - [x] CRUD de cupons com validação de vigência/limite de uso
+  - [x] CRUD de opções de frete
+  - [x] Criação e atualização de pedidos com todas as transições de status, dentro de transação Prisma
+  - [x] Dashboard consumindo agregações reais (faturamento, ticket médio, produtos mais vendidos, etc.)
 - Commit final: `feat: backend de pedidos, clientes, cupons, frete e dashboard`
 
 ### M11 — Backend: site de vendas e checkout
