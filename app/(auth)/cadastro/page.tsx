@@ -75,11 +75,7 @@ export default function CadastroPage() {
     }
 
     try {
-      await sincronizarUsuario.mutateAsync({
-        supabaseId: data.user.id,
-        nome: values.nome,
-        email: values.email,
-      });
+      await sincronizarUsuario.mutateAsync({ nome: values.nome });
     } catch {
       setErro("Sua conta foi criada, mas houve um problema ao configurar seu perfil. Fale com o suporte.");
       return;

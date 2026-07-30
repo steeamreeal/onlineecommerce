@@ -35,13 +35,17 @@ const CORES_HEX: Record<string, string> = {
 };
 
 function gerarSlug(nome: string): string {
-  return nome
+  const slug = nome
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
     .toLowerCase()
     .trim()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
+
+  // Nomes sem nenhum caractere latino/numérico (ex.: só emojis, só símbolos)
+  // gerariam slug vazio - usa um sufixo aleatório para garantir um slug válido.
+  return slug.length >= 2 ? slug : `loja-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 const MODELOS = [

@@ -26,10 +26,11 @@ export async function createContext({ req, resHeaders }: FetchCreateContextFnOpt
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value, options }) => {
-            resHeaders.append(
-              "Set-Cookie",
-              `${name}=${value}; Path=${options?.path ?? "/"}${options?.maxAge ? `; Max-Age=${options.maxAge}` : ""}`,
-            );
+            const partes = [`${name}=${value}`, `Path=${options?.path ?? "/"}`, "HttpOnly", "SameSite=Lax"];
+            if (options?.maxAge) partes.push(`Max-Age=${options.maxAge}`);
+            if (options?.expires) partes.push(`Expires=${new Date(options.expires).toUTCString()}`);
+            if (process.env.NODE_ENV === "production") partes.push("Secure");
+            resHeaders.append("Set-Cookie", partes.join("; "));
           });
         },
       },
@@ -59,6 +60,11 @@ export async function createContext({ req, resHeaders }: FetchCreateContextFnOpt
     prisma,
     usuario,
     lojaId,
+    // Sessão crua do Supabase, disponível mesmo antes do Usuario existir no
+    // Prisma (ex.: logo após o signUp, antes de sincronizarUsuario rodar).
+    supabaseUser: supabaseUser
+      ? { id: supabaseUser.id, email: supabaseUser.email ?? null }
+      : null,
   };
 }
 
