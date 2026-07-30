@@ -120,10 +120,10 @@ A partir daqui, cada milestone troca os mocks de uma área específica por dados
 - Branch: `milestone/07-database`
 - Objetivo: levar o schema Prisma (já criado no M0) para um banco Supabase real e rodar a primeira migration.
 - Entregas:
-  - [ ] Projeto Supabase criado, `DATABASE_URL` configurada (connection pooler)
-  - [ ] `npx prisma migrate dev` rodando a migration inicial
-  - [ ] Seed de dados de desenvolvimento (`prisma/seed.ts`): 1 loja, produtos, categorias, cliente, pedido de exemplo
-  - [ ] Revisão do schema contra o PRD (nenhum campo obrigatório faltando)
+  - [x] Projeto Supabase criado, `DATABASE_URL` configurada (connection pooler)
+  - [x] `npx prisma migrate dev` rodando a migration inicial
+  - [x] Seed de dados de desenvolvimento (`prisma/seed.ts`): 1 loja, produtos, categorias, cliente, pedido de exemplo
+  - [x] Revisão do schema contra o PRD (nenhum campo obrigatório faltando)
 - Commit final: `feat: migrations iniciais do banco de dados e seed de desenvolvimento`
 
 ### M8 — Autenticação real (Supabase Auth)

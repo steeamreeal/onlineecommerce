@@ -16,45 +16,47 @@ enum PlanoStatus {
 }
 
 model Plano {
-  id              String   @id @default(cuid())
-  nome            String
-  limiteProdutos  Int?
-  limiteUsuarios  Int?
-  precoMensal     Decimal  @db.Decimal(10, 2)
-  stripePriceId   String?
-  lojas           Loja[]
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id             String   @id @default(cuid())
+  nome           String
+  limiteProdutos Int?
+  limiteUsuarios Int?
+  precoMensal    Decimal  @db.Decimal(10, 2)
+  stripePriceId  String?
+  lojas          Loja[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
 // ---------- Tenant (Loja) ----------
 
 model Loja {
-  id              String      @id @default(cuid())
-  nome            String
-  slug            String      @unique
-  logoUrl         String?
-  corPrimaria     String?
-  banners         Json?
-  whatsapp        String?
-  endereco        String?
-  horarioAtend    String?
-  politicas       String?
-  dominioProprio  String?     @unique
-  planoId         String?
-  plano           Plano?      @relation(fields: [planoId], references: [id])
-  statusPlano     PlanoStatus @default(TESTE)
+  id             String      @id @default(cuid())
+  nome           String
+  slug           String      @unique
+  logoUrl        String?
+  corPrimaria    String?
+  banners        Json?
+  whatsapp       String?
+  instagram      String?
+  facebook       String?
+  endereco       String?
+  horarioAtend   String?
+  politicas      String?
+  dominioProprio String?     @unique
+  planoId        String?
+  plano          Plano?      @relation(fields: [planoId], references: [id])
+  statusPlano    PlanoStatus @default(TESTE)
 
-  usuarios        UsuarioLoja[]
-  produtos        Produto[]
-  categorias      Categoria[]
-  clientes        Cliente[]
-  pedidos         Pedido[]
-  cupons          Cupom[]
-  opcoesFrete     OpcaoFrete[]
+  usuarios    UsuarioLoja[]
+  produtos    Produto[]
+  categorias  Categoria[]
+  clientes    Cliente[]
+  pedidos     Pedido[]
+  cupons      Cupom[]
+  opcoesFrete OpcaoFrete[]
 
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // ---------- Usuários e permissões ----------
@@ -68,13 +70,13 @@ enum PapelUsuario {
 }
 
 model Usuario {
-  id        String        @id @default(cuid())
-  nome      String
-  email     String        @unique
-  supabaseId String       @unique
-  lojas     UsuarioLoja[]
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  id         String        @id @default(cuid())
+  nome       String
+  email      String        @unique
+  supabaseId String        @unique
+  lojas      UsuarioLoja[]
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
 }
 
 model UsuarioLoja {
@@ -85,7 +87,7 @@ model UsuarioLoja {
   loja      Loja         @relation(fields: [lojaId], references: [id], onDelete: Cascade)
   papel     PapelUsuario
 
-  createdAt DateTime     @default(now())
+  createdAt DateTime @default(now())
 
   @@unique([usuarioId, lojaId])
 }
@@ -93,11 +95,12 @@ model UsuarioLoja {
 // ---------- Catálogo ----------
 
 model Categoria {
-  id       String     @id @default(cuid())
+  id       String    @id @default(cuid())
   lojaId   String
-  loja     Loja       @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  loja     Loja      @relation(fields: [lojaId], references: [id], onDelete: Cascade)
   nome     String
   produtos Produto[]
+  cupons   Cupom[]   @relation("CupomCategorias")
 
   @@unique([lojaId, nome])
 }
@@ -109,27 +112,28 @@ enum StatusProduto {
 }
 
 model Produto {
-  id             String         @id @default(cuid())
+  id             String            @id @default(cuid())
   lojaId         String
-  loja           Loja           @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  loja           Loja              @relation(fields: [lojaId], references: [id], onDelete: Cascade)
   nome           String
   descricao      String?
   codigo         String?
-  precoNormal    Decimal        @db.Decimal(10, 2)
-  precoPromo     Decimal?       @db.Decimal(10, 2)
+  precoNormal    Decimal           @db.Decimal(10, 2)
+  precoPromo     Decimal?          @db.Decimal(10, 2)
   pesoGramas     Int?
   alturaCm       Int?
   larguraCm      Int?
   profundidadeCm Int?
-  status         StatusProduto  @default(ATIVO)
+  status         StatusProduto     @default(ATIVO)
   categoriaId    String?
-  categoria      Categoria?     @relation(fields: [categoriaId], references: [id])
+  categoria      Categoria?        @relation(fields: [categoriaId], references: [id])
   fotos          FotoProduto[]
   variacoes      VariacaoProduto[]
   itensPedido    ItemPedido[]
+  cupons         Cupom[]           @relation("CupomProdutos")
 
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([lojaId, status])
 }
@@ -143,13 +147,13 @@ model FotoProduto {
 }
 
 model VariacaoProduto {
-  id          String       @id @default(cuid())
+  id          String             @id @default(cuid())
   produtoId   String
-  produto     Produto      @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+  produto     Produto            @relation(fields: [produtoId], references: [id], onDelete: Cascade)
   cor         String?
   tamanho     String?
   modelo      String?
-  estoque     Int          @default(0)
+  estoque     Int                @default(0)
   itensPedido ItemPedido[]
   movimentos  MovimentoEstoque[]
 
@@ -157,58 +161,58 @@ model VariacaoProduto {
 }
 
 model MovimentoEstoque {
-  id          String          @id @default(cuid())
-  variacaoId  String
-  variacao    VariacaoProduto @relation(fields: [variacaoId], references: [id], onDelete: Cascade)
-  quantidade  Int
-  tipo        String // ENTRADA | SAIDA
-  motivo      String?
-  createdAt   DateTime        @default(now())
+  id         String          @id @default(cuid())
+  variacaoId String
+  variacao   VariacaoProduto @relation(fields: [variacaoId], references: [id], onDelete: Cascade)
+  quantidade Int
+  tipo       String // ENTRADA | SAIDA
+  motivo     String?
+  createdAt  DateTime        @default(now())
 }
 
 // ---------- Clientes ----------
 
 model Cliente {
-  id         String     @id @default(cuid())
-  lojaId     String
-  loja       Loja       @relation(fields: [lojaId], references: [id], onDelete: Cascade)
-  nome       String
-  telefone   String?
-  email      String?
-  documento  String? // CPF ou CNPJ
-  enderecos  EnderecoCliente[]
-  pedidos    Pedido[]
+  id        String            @id @default(cuid())
+  lojaId    String
+  loja      Loja              @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  nome      String
+  telefone  String?
+  email     String?
+  documento String? // CPF ou CNPJ
+  enderecos EnderecoCliente[]
+  pedidos   Pedido[]
 
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([lojaId])
 }
 
 model EnderecoCliente {
-  id         String  @id @default(cuid())
-  clienteId  String
-  cliente    Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-  rua        String
-  numero     String?
-  bairro     String?
-  cidade     String
-  estado     String
-  cep        String
-  principal  Boolean @default(false)
+  id        String  @id @default(cuid())
+  clienteId String
+  cliente   Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  rua       String
+  numero    String?
+  bairro    String?
+  cidade    String
+  estado    String
+  cep       String
+  principal Boolean @default(false)
 }
 
 // ---------- Frete ----------
 
 model OpcaoFrete {
-  id       String  @id @default(cuid())
-  lojaId   String
-  loja     Loja    @relation(fields: [lojaId], references: [id], onDelete: Cascade)
-  tipo     String // RETIRADA | ENTREGA_PROPRIA | FIXO | FAIXA_BAIRRO | FAIXA_CIDADE | CORREIOS
-  nome     String
-  valor    Decimal? @db.Decimal(10, 2)
+  id                 String   @id @default(cuid())
+  lojaId             String
+  loja               Loja     @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  tipo               String // RETIRADA | ENTREGA_PROPRIA | FIXO | FAIXA_BAIRRO | FAIXA_CIDADE | CORREIOS
+  nome               String
+  valor              Decimal? @db.Decimal(10, 2)
   freteGratisAcimaDe Decimal? @db.Decimal(10, 2)
-  ativo    Boolean @default(true)
+  ativo              Boolean  @default(true)
 }
 
 // ---------- Cupons ----------
@@ -220,17 +224,21 @@ enum TipoCupom {
 }
 
 model Cupom {
-  id           String    @id @default(cuid())
-  lojaId       String
-  loja         Loja      @relation(fields: [lojaId], references: [id], onDelete: Cascade)
-  codigo       String
-  tipo         TipoCupom
-  valor        Decimal?  @db.Decimal(10, 2)
-  inicio       DateTime
-  fim          DateTime
-  limiteUso    Int?
-  usosAtuais   Int       @default(0)
-  pedidos      Pedido[]
+  id         String    @id @default(cuid())
+  lojaId     String
+  loja       Loja      @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  codigo     String
+  tipo       TipoCupom
+  valor      Decimal?  @db.Decimal(10, 2)
+  inicio     DateTime
+  fim        DateTime
+  limiteUso  Int?
+  usosAtuais Int       @default(0)
+  pedidos    Pedido[]
+
+  // Vazio = aplica-se à loja inteira. Preenchido = restrito aos produtos/categorias listados.
+  produtos   Produto[]   @relation("CupomProdutos")
+  categorias Categoria[] @relation("CupomCategorias")
 
   @@unique([lojaId, codigo])
 }
@@ -264,28 +272,28 @@ model Pedido {
   cliente        Cliente        @relation(fields: [clienteId], references: [id])
   status         StatusPedido   @default(NOVO)
   formaPagamento FormaPagamento
-  valorFrete     Decimal        @db.Decimal(10, 2) @default(0)
-  valorDesconto  Decimal        @db.Decimal(10, 2) @default(0)
+  valorFrete     Decimal        @default(0) @db.Decimal(10, 2)
+  valorDesconto  Decimal        @default(0) @db.Decimal(10, 2)
   valorTotal     Decimal        @db.Decimal(10, 2)
   cupomId        String?
   cupom          Cupom?         @relation(fields: [cupomId], references: [id])
   codigoRastreio String?
   itens          ItemPedido[]
 
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([lojaId, status])
 }
 
 model ItemPedido {
-  id          String           @id @default(cuid())
-  pedidoId    String
-  pedido      Pedido           @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
-  produtoId   String
-  produto     Produto          @relation(fields: [produtoId], references: [id])
-  variacaoId  String?
-  variacao    VariacaoProduto? @relation(fields: [variacaoId], references: [id])
-  quantidade  Int
-  precoUnit   Decimal          @db.Decimal(10, 2)
+  id         String           @id @default(cuid())
+  pedidoId   String
+  pedido     Pedido           @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  produtoId  String
+  produto    Produto          @relation(fields: [produtoId], references: [id])
+  variacaoId String?
+  variacao   VariacaoProduto? @relation(fields: [variacaoId], references: [id])
+  quantidade Int
+  precoUnit  Decimal          @db.Decimal(10, 2)
 }
