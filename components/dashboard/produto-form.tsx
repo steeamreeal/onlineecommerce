@@ -1,10 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -27,7 +28,11 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Separator } from "@/components/ui/separator";
-import { categoriasMock, type Produto } from "@/lib/mocks/produtos";
+import { trpc } from "@/lib/trpc/client";
+import { enviarFotoProduto } from "@/lib/supabase/storage";
+import type { RouterOutputs } from "@/lib/trpc/types";
+
+type ProdutoExistente = RouterOutputs["produtos"]["buscarPorId"];
 
 const numeroObrigatorio = (mensagem: string) =>
   z
@@ -43,6 +48,7 @@ const numeroOpcional = () =>
 
 const variacaoSchema = z
   .object({
+    id: z.string().optional(),
     cor: z.string().optional(),
     tamanho: z.string().optional(),
     modelo: z.string().optional(),
@@ -73,10 +79,7 @@ const produtoSchema = z.object({
 
 export type ProdutoFormValues = z.infer<typeof produtoSchema>;
 
-const categoriaSelectItems = categoriasMock.map((categoria) => ({
-  value: categoria.id,
-  label: categoria.nome,
-}));
+type Foto = { id?: string; url: string; ordem: number };
 
 const statusSelectItems = [
   { value: "ATIVO", label: "Ativo" },
@@ -84,7 +87,7 @@ const statusSelectItems = [
   { value: "DESTAQUE", label: "Destaque" },
 ];
 
-function produtoParaFormValues(produto?: Produto): ProdutoFormValues {
+function produtoParaFormValues(produto?: ProdutoExistente): ProdutoFormValues {
   if (!produto) {
     return {
       nome: "",
@@ -105,16 +108,16 @@ function produtoParaFormValues(produto?: Produto): ProdutoFormValues {
     nome: produto.nome,
     descricao: produto.descricao ?? "",
     codigo: produto.codigo ?? "",
-    categoriaId: produto.categoriaId,
+    categoriaId: produto.categoriaId ?? undefined,
     precoNormal: String(produto.precoNormal),
     precoPromo: produto.precoPromo != null ? String(produto.precoPromo) : "",
     pesoGramas: produto.pesoGramas != null ? String(produto.pesoGramas) : "",
     alturaCm: produto.alturaCm != null ? String(produto.alturaCm) : "",
     larguraCm: produto.larguraCm != null ? String(produto.larguraCm) : "",
-    profundidadeCm:
-      produto.profundidadeCm != null ? String(produto.profundidadeCm) : "",
+    profundidadeCm: produto.profundidadeCm != null ? String(produto.profundidadeCm) : "",
     status: produto.status,
     variacoes: produto.variacoes.map((v) => ({
+      id: v.id,
       cor: v.cor ?? "",
       tamanho: v.tamanho ?? "",
       modelo: v.modelo ?? "",
@@ -123,9 +126,24 @@ function produtoParaFormValues(produto?: Produto): ProdutoFormValues {
   };
 }
 
-export function ProdutoForm({ produto }: { produto?: Produto }) {
+function numeroOuUndefined(valor?: string): number | undefined {
+  if (!valor) return undefined;
+  const n = Number(valor);
+  return Number.isNaN(n) ? undefined : n;
+}
+
+export function ProdutoForm({ produto }: { produto?: ProdutoExistente }) {
   const router = useRouter();
+  const utils = trpc.useUtils();
   const editando = Boolean(produto);
+  const { data: loja } = trpc.loja.atual.useQuery();
+  const [fotos, setFotos] = useState<Foto[]>(
+    produto?.fotos.map((f) => ({ id: f.id, url: f.url, ordem: f.ordem })) ?? [],
+  );
+  const [enviandoFoto, setEnviandoFoto] = useState(false);
+
+  const criar = trpc.produtos.criar.useMutation();
+  const atualizar = trpc.produtos.atualizar.useMutation();
 
   const form = useForm<ProdutoFormValues>({
     resolver: zodResolver(produtoSchema),
@@ -137,14 +155,79 @@ export function ProdutoForm({ produto }: { produto?: Produto }) {
     name: "variacoes",
   });
 
-  function onSubmit(values: ProdutoFormValues) {
-    // Mock: sem persistência real ainda (chega no M9, backend de produtos)
-    console.log("produto salvo (mock)", values);
-    toast.success(
-      editando ? "Produto atualizado com sucesso." : "Produto cadastrado com sucesso.",
-    );
-    router.push("/painel/produtos");
+  async function handleUploadFoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const arquivo = e.target.files?.[0];
+    e.target.value = "";
+    if (!arquivo || !loja) return;
+
+    setEnviandoFoto(true);
+    try {
+      const url = await enviarFotoProduto(loja.id, arquivo);
+      setFotos((atual) => [...atual, { url, ordem: atual.length }]);
+    } catch (error) {
+      const mensagem =
+        error instanceof Error && error.message
+          ? error.message
+          : "Não foi possível enviar a foto. Tente novamente.";
+      toast.error(mensagem);
+    } finally {
+      setEnviandoFoto(false);
+    }
   }
+
+  function removerFoto(index: number) {
+    setFotos((atual) =>
+      atual.filter((_, i) => i !== index).map((foto, i) => ({ ...foto, ordem: i })),
+    );
+  }
+
+  async function onSubmit(values: ProdutoFormValues) {
+    const payload = {
+      nome: values.nome,
+      descricao: values.descricao || undefined,
+      codigo: values.codigo || undefined,
+      categoriaId: values.categoriaId || undefined,
+      precoNormal: Number(values.precoNormal),
+      precoPromo: numeroOuUndefined(values.precoPromo),
+      pesoGramas: numeroOuUndefined(values.pesoGramas),
+      alturaCm: numeroOuUndefined(values.alturaCm),
+      larguraCm: numeroOuUndefined(values.larguraCm),
+      profundidadeCm: numeroOuUndefined(values.profundidadeCm),
+      status: values.status,
+      fotos: fotos.map((f) => ({ id: f.id, url: f.url, ordem: f.ordem })),
+      variacoes: values.variacoes.map((v) => ({
+        id: v.id,
+        cor: v.cor || undefined,
+        tamanho: v.tamanho || undefined,
+        modelo: v.modelo || undefined,
+        estoque: Number(v.estoque),
+      })),
+    };
+
+    try {
+      if (editando && produto) {
+        await atualizar.mutateAsync({ id: produto.id, ...payload });
+      } else {
+        await criar.mutateAsync(payload);
+      }
+      await utils.produtos.listar.invalidate();
+      await utils.produtos.buscarPorId.invalidate();
+      toast.success(
+        editando ? "Produto atualizado com sucesso." : "Produto cadastrado com sucesso.",
+      );
+      router.push("/painel/produtos");
+    } catch {
+      toast.error("Não foi possível salvar o produto. Tente novamente.");
+    }
+  }
+
+  const { data: categorias = [] } = trpc.categorias.listar.useQuery();
+  const categoriaSelectItems = categorias.map((categoria) => ({
+    value: categoria.id,
+    label: categoria.nome,
+  }));
+
+  const salvando = criar.isPending || atualizar.isPending;
 
   return (
     <Form {...form}>
@@ -208,7 +291,7 @@ export function ProdutoForm({ produto }: { produto?: Produto }) {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {categoriasMock.map((categoria) => (
+                      {categorias.map((categoria) => (
                         <SelectItem key={categoria.id} value={categoria.id}>
                           {categoria.nome}
                         </SelectItem>
@@ -219,6 +302,47 @@ export function ProdutoForm({ produto }: { produto?: Produto }) {
                 </FormItem>
               )}
             />
+          </div>
+        </section>
+
+        <Separator />
+
+        <section className="flex flex-col gap-4">
+          <div>
+            <h2 className="text-lg font-medium">Fotos</h2>
+            <p className="text-muted-foreground text-sm">
+              A primeira foto é usada como capa do produto.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {fotos.map((foto, index) => (
+              <div key={foto.id ?? foto.url} className="relative size-24">
+                {/* eslint-disable-next-line @next/next/no-img-element -- URL dinâmica do Supabase Storage, sem domínio fixo para next/image */}
+                <img
+                  src={foto.url}
+                  alt={`Foto ${index + 1}`}
+                  className="size-24 rounded-md border object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={() => removerFoto(index)}
+                  className="bg-destructive text-destructive-foreground absolute -top-2 -right-2 rounded-full p-1"
+                >
+                  <X className="size-3" />
+                </button>
+              </div>
+            ))}
+            <label className="border-input hover:bg-accent flex size-24 cursor-pointer flex-col items-center justify-center gap-1 rounded-md border border-dashed text-xs has-disabled:pointer-events-none has-disabled:opacity-50">
+              <Upload className="size-4" />
+              {enviandoFoto ? "Enviando..." : "Adicionar"}
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                disabled={enviandoFoto || !loja}
+                onChange={handleUploadFoto}
+              />
+            </label>
           </div>
         </section>
 
@@ -446,7 +570,7 @@ export function ProdutoForm({ produto }: { produto?: Produto }) {
           >
             Cancelar
           </Button>
-          <Button type="submit">
+          <Button type="submit" disabled={salvando}>
             {editando ? "Salvar alterações" : "Cadastrar produto"}
           </Button>
         </div>

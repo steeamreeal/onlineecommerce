@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { trpc } from "@/lib/trpc/client";
 
 const tipoSelectItems = [
   { value: "ENTRADA", label: "Entrada" },
@@ -29,26 +30,46 @@ const tipoSelectItems = [
 ];
 
 export function AjustarEstoqueDialog({
+  variacaoId,
   produtoNome,
   variacaoLabel,
+  onRegistrado,
 }: {
+  variacaoId: string;
   produtoNome: string;
   variacaoLabel: string;
+  onRegistrado?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [tipo, setTipo] = useState<"ENTRADA" | "SAIDA">("ENTRADA");
   const [quantidade, setQuantidade] = useState("");
   const [motivo, setMotivo] = useState("");
 
-  function handleSubmit(e: React.FormEvent) {
+  const registrarMovimento = trpc.estoque.registrarMovimento.useMutation();
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    // Mock: sem persistência real ainda (chega no M9, backend de produtos/estoque)
-    toast.success(
-      `${tipo === "ENTRADA" ? "Entrada" : "Saída"} de ${quantidade} un. registrada para ${variacaoLabel}.`,
-    );
-    setOpen(false);
-    setQuantidade("");
-    setMotivo("");
+    try {
+      await registrarMovimento.mutateAsync({
+        variacaoId,
+        tipo,
+        quantidade: Number(quantidade),
+        motivo: motivo || undefined,
+      });
+      toast.success(
+        `${tipo === "ENTRADA" ? "Entrada" : "Saída"} de ${quantidade} un. registrada para ${variacaoLabel}.`,
+      );
+      onRegistrado?.();
+      setOpen(false);
+      setQuantidade("");
+      setMotivo("");
+    } catch (error) {
+      const mensagem =
+        error instanceof Error && error.message
+          ? error.message
+          : "Não foi possível registrar o movimento.";
+      toast.error(mensagem);
+    }
   }
 
   return (
@@ -104,7 +125,9 @@ export function AjustarEstoqueDialog({
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancelar
             </Button>
-            <Button type="submit">Confirmar</Button>
+            <Button type="submit" disabled={registrarMovimento.isPending}>
+              Confirmar
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

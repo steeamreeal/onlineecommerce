@@ -160,14 +160,21 @@ model VariacaoProduto {
   @@index([produtoId])
 }
 
+enum TipoMovimentoEstoque {
+  ENTRADA
+  SAIDA
+}
+
 model MovimentoEstoque {
-  id         String          @id @default(cuid())
+  id         String               @id @default(cuid())
   variacaoId String
-  variacao   VariacaoProduto @relation(fields: [variacaoId], references: [id], onDelete: Cascade)
+  variacao   VariacaoProduto      @relation(fields: [variacaoId], references: [id], onDelete: Cascade)
   quantidade Int
-  tipo       String // ENTRADA | SAIDA
+  tipo       TipoMovimentoEstoque
   motivo     String?
-  createdAt  DateTime        @default(now())
+  createdAt  DateTime             @default(now())
+
+  @@index([variacaoId])
 }
 
 // ---------- Clientes ----------

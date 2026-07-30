@@ -68,3 +68,12 @@ Ajustar conforme o projeto evoluir — esta é a estrutura inicial de referênci
 - Mudanças em regras de estoque, pedidos ou cupons devem ser validadas contra o PRD (seções 3.6, 3.7, 3.10) antes de implementar.
 - Webhooks (Stripe, WhatsApp) precisam de verificação de assinatura — nunca confiar no payload sem validar origem.
 - Ao integrar novo gateway de pagamento da loja (PIX/boleto/cartão), documentar aqui a decisão e as credenciais necessárias, sem commitar segredos — usar variáveis de ambiente e `.env` no `.gitignore`.
+
+## Supabase Storage (fotos de produto)
+
+- Bucket usado: `fotos-produtos` (ver `lib/supabase/storage.ts`), **público para leitura** (URLs de foto aparecem no site da loja sem autenticação).
+- Upload feito direto do client autenticado (`createBrowserClient`), nunca com a `SUPABASE_SERVICE_ROLE_KEY` no browser.
+- Setup manual necessário no dashboard do Supabase (não versionado em migration):
+  1. Criar bucket `fotos-produtos` com acesso público de leitura.
+  2. Policy de `INSERT`/`UPDATE`/`DELETE` restrita a usuários autenticados (`auth.role() = 'authenticated'`); a pasta do arquivo já é prefixada por `lojaId` para organização, mas o isolamento real de escrita por tenant fica a cargo da regra de negócio na aplicação (o tRPC só aceita salvar a foto no produto se o produto pertencer à loja do usuário).
+  3. Limite de tamanho de arquivo sugerido: 5MB por foto.
