@@ -130,11 +130,11 @@ A partir daqui, cada milestone troca os mocks de uma área específica por dados
 - Branch: `milestone/08-auth-backend`
 - Objetivo: conectar as telas de login/cadastro do M2 à autenticação real, com sessão e multi-tenant funcionando.
 - Entregas:
-  - [ ] Supabase Auth configurado (e-mail/senha no mínimo)
-  - [ ] Middleware/contexto tRPC lendo a sessão real (substituir TODO em `server/trpc/context.ts`)
-  - [ ] Vínculo `Usuario` ↔ `UsuarioLoja` ↔ `Loja` funcionando (resolver loja ativa do usuário logado)
-  - [ ] Fluxo de onboarding (M2) criando `Loja` real no banco ao final do cadastro
-  - [ ] Proteção de rotas do painel (`(dashboard)` e `(admin)`) por sessão e por papel
+  - [x] Supabase Auth configurado (e-mail/senha no mínimo)
+  - [x] Middleware/contexto tRPC lendo a sessão real (substituir TODO em `server/trpc/context.ts`)
+  - [x] Vínculo `Usuario` ↔ `UsuarioLoja` ↔ `Loja` funcionando (resolver loja ativa do usuário logado)
+  - [x] Fluxo de onboarding (M2) criando `Loja` real no banco ao final do cadastro
+  - [x] Proteção de rotas do painel (`(dashboard)` e `(admin)`) por sessão e por papel
 - Commit final: `feat: autenticação real com Supabase Auth e resolução de tenant`
 
 ### M9 — Backend: produtos e estoque
