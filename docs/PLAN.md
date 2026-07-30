@@ -141,10 +141,10 @@ A partir daqui, cada milestone troca os mocks de uma área específica por dados
 - Branch: `milestone/09-produtos-backend`
 - Objetivo: conectar as telas do M3 a dados reais via tRPC/Prisma.
 - Entregas:
-  - [ ] CRUD completo de produtos, variações e categorias via tRPC (`storeProcedure`, escopado por `lojaId`)
-  - [ ] Upload de fotos de produto (Supabase Storage)
-  - [ ] Baixa automática de estoque e histórico de movimentação (`MovimentoEstoque`) em transação Prisma
-  - [ ] Bloqueio de venda sem estoque e aviso de estoque baixo com dado real
+  - [x] CRUD completo de produtos, variações e categorias via tRPC (`storeProcedure`, escopado por `lojaId`)
+  - [x] Upload de fotos de produto (Supabase Storage)
+  - [x] Baixa automática de estoque e histórico de movimentação (`MovimentoEstoque`) em transação Prisma
+  - [x] Bloqueio de venda sem estoque e aviso de estoque baixo com dado real
 - Commit final: `feat: backend de produtos, variações, fotos e estoque`
 
 ### M10 — Backend: pedidos, clientes, cupons e frete

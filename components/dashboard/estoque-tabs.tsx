@@ -15,14 +15,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
 import { AjustarEstoqueDialog } from "@/components/dashboard/ajustar-estoque-dialog";
 import { cn } from "@/lib/utils";
-import {
-  ESTOQUE_BAIXO_LIMITE,
-  movimentosEstoqueMock,
-  produtosMock,
-  variacaoLabel,
-} from "@/lib/mocks/produtos";
+import { trpc } from "@/lib/trpc/client";
+import { ESTOQUE_BAIXO_LIMITE, variacaoLabel } from "@/lib/estoque";
 
 const formatoData = new Intl.DateTimeFormat("pt-BR", {
   day: "2-digit",
@@ -33,13 +30,17 @@ const formatoData = new Intl.DateTimeFormat("pt-BR", {
 });
 
 export function EstoqueTabs() {
-  const linhasEstoque = produtosMock.flatMap((produto) =>
-    produto.variacoes.map((variacao) => ({
-      produtoNome: produto.nome,
-      label: variacaoLabel(variacao),
-      estoque: variacao.estoque,
-    })),
-  );
+  const utils = trpc.useUtils();
+  const { data: variacoes = [], isLoading: carregandoVariacoes } =
+    trpc.estoque.listarVariacoes.useQuery();
+  const { data: movimentos = [], isLoading: carregandoMovimentos } =
+    trpc.estoque.listarMovimentos.useQuery();
+
+  function aoRegistrar() {
+    utils.estoque.listarVariacoes.invalidate();
+    utils.estoque.listarMovimentos.invalidate();
+    utils.produtos.listar.invalidate();
+  }
 
   return (
     <Tabs defaultValue="por-variacao" className="flex-1">
@@ -60,35 +61,53 @@ export function EstoqueTabs() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {linhasEstoque.map((linha, i) => {
-                const baixo = linha.estoque <= ESTOQUE_BAIXO_LIMITE;
-                return (
-                  <TableRow key={i}>
-                    <TableCell className="font-medium">{linha.produtoNome}</TableCell>
-                    <TableCell>{linha.label}</TableCell>
-                    <TableCell>
-                      <div
-                        className={cn(
-                          "flex items-center gap-1.5",
-                          baixo && "text-warning font-medium",
-                        )}
-                      >
-                        {baixo && <AlertTriangle className="size-3.5" />}
-                        {linha.estoque} un.
-                        {linha.estoque === 0 && (
-                          <span className="text-destructive text-xs">(esgotado)</span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <AjustarEstoqueDialog
-                        produtoNome={linha.produtoNome}
-                        variacaoLabel={linha.label}
-                      />
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
+              {carregandoVariacoes && (
+                <TableRow>
+                  <TableCell colSpan={4}>
+                    <Skeleton className="h-8 w-full" />
+                  </TableCell>
+                </TableRow>
+              )}
+              {!carregandoVariacoes &&
+                variacoes.map((variacao) => {
+                  const baixo = variacao.estoque <= ESTOQUE_BAIXO_LIMITE;
+                  const label = variacaoLabel(variacao);
+                  return (
+                    <TableRow key={variacao.id}>
+                      <TableCell className="font-medium">{variacao.produto.nome}</TableCell>
+                      <TableCell>{label}</TableCell>
+                      <TableCell>
+                        <div
+                          className={cn(
+                            "flex items-center gap-1.5",
+                            baixo && "text-warning font-medium",
+                          )}
+                        >
+                          {baixo && <AlertTriangle className="size-3.5" />}
+                          {variacao.estoque} un.
+                          {variacao.estoque === 0 && (
+                            <span className="text-destructive text-xs">(esgotado)</span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <AjustarEstoqueDialog
+                          variacaoId={variacao.id}
+                          produtoNome={variacao.produto.nome}
+                          variacaoLabel={label}
+                          onRegistrado={aoRegistrar}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              {!carregandoVariacoes && variacoes.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-muted-foreground text-center py-8">
+                    Nenhuma variação cadastrada.
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </div>
@@ -108,18 +127,21 @@ export function EstoqueTabs() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {[...movimentosEstoqueMock]
-                .sort(
-                  (a, b) =>
-                    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-                )
-                .map((mov) => (
+              {carregandoMovimentos && (
+                <TableRow>
+                  <TableCell colSpan={6}>
+                    <Skeleton className="h-8 w-full" />
+                  </TableCell>
+                </TableRow>
+              )}
+              {!carregandoMovimentos &&
+                movimentos.map((mov) => (
                   <TableRow key={mov.id}>
                     <TableCell className="text-muted-foreground">
                       {formatoData.format(new Date(mov.createdAt))}
                     </TableCell>
-                    <TableCell className="font-medium">{mov.produtoNome}</TableCell>
-                    <TableCell>{mov.variacaoLabel}</TableCell>
+                    <TableCell className="font-medium">{mov.variacao.produto.nome}</TableCell>
+                    <TableCell>{variacaoLabel(mov.variacao)}</TableCell>
                     <TableCell>
                       <span
                         className={cn(
@@ -136,6 +158,13 @@ export function EstoqueTabs() {
                     </TableCell>
                   </TableRow>
                 ))}
+              {!carregandoMovimentos && movimentos.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-muted-foreground text-center py-8">
+                    Nenhuma movimentação registrada.
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </div>

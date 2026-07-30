@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import type { StatusProduto } from "@/lib/mocks/produtos";
+import type { StatusProduto } from "@prisma/client";
 
 const config: Record<StatusProduto, { label: string; className: string }> = {
   ATIVO: {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { Boxes, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,17 +20,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ProdutoStatusBadge } from "@/components/dashboard/produto-status-badge";
-import {
-  categoriaNome,
-  categoriasMock,
-  estoqueTotal,
-  produtosMock,
-  ESTOQUE_BAIXO_LIMITE,
-  type Produto,
-  type StatusProduto,
-} from "@/lib/mocks/produtos";
+import { trpc } from "@/lib/trpc/client";
 import { cn } from "@/lib/utils";
+import { ESTOQUE_BAIXO_LIMITE } from "@/lib/estoque";
+import type { StatusProduto } from "@prisma/client";
 
 const formatoMoeda = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -38,11 +33,6 @@ const formatoMoeda = new Intl.NumberFormat("pt-BR", {
 });
 
 const TODOS = "TODOS";
-
-const categoriaSelectItems = [
-  { value: TODOS, label: "Todas as categorias" },
-  ...categoriasMock.map((categoria) => ({ value: categoria.id, label: categoria.nome })),
-];
 
 const statusSelectItems = [
   { value: TODOS, label: "Todos os status" },
@@ -56,19 +46,17 @@ export function ProdutosLista() {
   const [categoriaId, setCategoriaId] = useState<string>(TODOS);
   const [status, setStatus] = useState<StatusProduto | typeof TODOS>(TODOS);
 
-  const produtosFiltrados = useMemo(() => {
-    const termo = busca.trim().toLowerCase();
-    return produtosMock.filter((produto: Produto) => {
-      const bateBusca =
-        termo.length === 0 ||
-        produto.nome.toLowerCase().includes(termo) ||
-        produto.codigo?.toLowerCase().includes(termo);
-      const bateCategoria =
-        categoriaId === TODOS || produto.categoriaId === categoriaId;
-      const bateStatus = status === TODOS || produto.status === status;
-      return bateBusca && bateCategoria && bateStatus;
-    });
-  }, [busca, categoriaId, status]);
+  const { data: categorias = [] } = trpc.categorias.listar.useQuery();
+  const { data: produtos = [], isLoading } = trpc.produtos.listar.useQuery({
+    busca: busca.trim() || undefined,
+    categoriaId: categoriaId === TODOS ? undefined : categoriaId,
+    status: status === TODOS ? undefined : status,
+  });
+
+  const categoriaSelectItems = [
+    { value: TODOS, label: "Todas as categorias" },
+    ...categorias.map((categoria) => ({ value: categoria.id, label: categoria.nome })),
+  ];
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-8">
@@ -115,7 +103,7 @@ export function ProdutosLista() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={TODOS}>Todas as categorias</SelectItem>
-            {categoriasMock.map((categoria) => (
+            {categorias.map((categoria) => (
               <SelectItem key={categoria.id} value={categoria.id}>
                 {categoria.nome}
               </SelectItem>
@@ -152,61 +140,69 @@ export function ProdutosLista() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {produtosFiltrados.map((produto) => {
-              const total = estoqueTotal(produto);
-              const baixo = total <= ESTOQUE_BAIXO_LIMITE;
-              return (
-                <TableRow key={produto.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <div className="bg-muted size-10 shrink-0 rounded-md" />
-                      <div>
-                        <div className="font-medium">{produto.nome}</div>
-                        {produto.codigo && (
-                          <div className="text-muted-foreground text-xs">
-                            {produto.codigo}
-                          </div>
-                        )}
+            {isLoading && (
+              <TableRow>
+                <TableCell colSpan={6}>
+                  <Skeleton className="h-8 w-full" />
+                </TableCell>
+              </TableRow>
+            )}
+            {!isLoading &&
+              produtos.map((produto) => {
+                const precoNormal = Number(produto.precoNormal);
+                const precoPromo = produto.precoPromo != null ? Number(produto.precoPromo) : null;
+                const total = produto.variacoes.reduce((soma, v) => soma + v.estoque, 0);
+                const baixo = total <= ESTOQUE_BAIXO_LIMITE;
+                return (
+                  <TableRow key={produto.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <div className="bg-muted size-10 shrink-0 rounded-md" />
+                        <div>
+                          <div className="font-medium">{produto.nome}</div>
+                          {produto.codigo && (
+                            <div className="text-muted-foreground text-xs">
+                              {produto.codigo}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>{categoriaNome(produto.categoriaId)}</TableCell>
-                  <TableCell>
-                    {produto.precoPromo ? (
-                      <div className="flex flex-col">
-                        <span className="text-muted-foreground text-xs line-through">
-                          {formatoMoeda.format(produto.precoNormal)}
-                        </span>
-                        <span className="font-medium">
-                          {formatoMoeda.format(produto.precoPromo)}
-                        </span>
-                      </div>
-                    ) : (
-                      formatoMoeda.format(produto.precoNormal)
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <span className={cn(baixo && "text-warning font-medium")}>
-                      {total} un.
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <ProdutoStatusBadge status={produto.status} />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      nativeButton={false}
-                      render={<Link href={`/painel/produtos/${produto.id}/editar`} />}
-                    >
-                      Editar
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-            {produtosFiltrados.length === 0 && (
+                    </TableCell>
+                    <TableCell>{produto.categoria?.nome ?? "Sem categoria"}</TableCell>
+                    <TableCell>
+                      {precoPromo ? (
+                        <div className="flex flex-col">
+                          <span className="text-muted-foreground text-xs line-through">
+                            {formatoMoeda.format(precoNormal)}
+                          </span>
+                          <span className="font-medium">{formatoMoeda.format(precoPromo)}</span>
+                        </div>
+                      ) : (
+                        formatoMoeda.format(precoNormal)
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <span className={cn(baixo && "text-warning font-medium")}>
+                        {total} un.
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <ProdutoStatusBadge status={produto.status} />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        nativeButton={false}
+                        render={<Link href={`/painel/produtos/${produto.id}/editar`} />}
+                      >
+                        Editar
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            {!isLoading && produtos.length === 0 && (
               <TableRow>
                 <TableCell colSpan={6} className="text-muted-foreground text-center py-8">
                   Nenhum produto encontrado.
