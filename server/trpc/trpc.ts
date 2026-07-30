@@ -16,6 +16,16 @@ export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
   return next({ ctx: { ...ctx, usuario: ctx.usuario } });
 });
 
+// Para o momento entre o signUp no Supabase e a criação do Usuario no Prisma
+// (sincronizarUsuario) - exige sessão Supabase válida, mas não exige que o
+// Usuario já exista, diferente de protectedProcedure.
+export const authedProcedure = t.procedure.use(({ ctx, next }) => {
+  if (!ctx.supabaseUser) {
+    throw new TRPCError({ code: "UNAUTHORIZED" });
+  }
+  return next({ ctx: { ...ctx, supabaseUser: ctx.supabaseUser } });
+});
+
 export const storeProcedure = protectedProcedure.use(({ ctx, next }) => {
   if (!ctx.lojaId) {
     throw new TRPCError({

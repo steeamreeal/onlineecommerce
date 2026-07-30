@@ -34,6 +34,15 @@ const loginSchema = z.object({
   senha: z.string().min(1, "Informe sua senha"),
 });
 
+// Aceita apenas paths internos (ex.: "/painel/pedidos"), nunca URLs absolutas
+// ou protocol-relative ("//evil.com") - evita open redirect via query param.
+function redirectSeguro(valor: string | null): string {
+  if (valor && valor.startsWith("/") && !valor.startsWith("//")) {
+    return valor;
+  }
+  return "/painel";
+}
+
 export default function LoginPage() {
   return (
     <Suspense>
@@ -65,7 +74,7 @@ function LoginForm() {
       return;
     }
 
-    router.push(searchParams.get("redirectTo") ?? "/painel");
+    router.push(redirectSeguro(searchParams.get("redirectTo")));
     router.refresh();
   }
 
