@@ -13,7 +13,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { clientesMock, enderecoPrincipal, resumoComprasCliente } from "@/lib/mocks/clientes";
+import { Skeleton } from "@/components/ui/skeleton";
+import { trpc } from "@/lib/trpc/client";
+import type { EnderecoCliente } from "@prisma/client";
 
 const formatoMoeda = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -26,19 +28,52 @@ const formatoData = new Intl.DateTimeFormat("pt-BR", {
   year: "numeric",
 });
 
+function enderecoPrincipal(enderecos: EnderecoCliente[]) {
+  return enderecos.find((e) => e.principal) ?? enderecos[0];
+}
+
+type ClienteComEnderecos = {
+  id: string;
+  nome: string;
+  telefone: string | null;
+  email: string | null;
+  enderecos: EnderecoCliente[];
+};
+
+function LinhaCliente({ cliente }: { cliente: ClienteComEnderecos }) {
+  const { data: resumo } = trpc.clientes.resumoCompras.useQuery({ id: cliente.id });
+  const endereco = enderecoPrincipal(cliente.enderecos);
+
+  return (
+    <TableRow>
+      <TableCell>
+        <Link href={`/painel/clientes/${cliente.id}`} className="font-medium hover:underline">
+          {cliente.nome}
+        </Link>
+      </TableCell>
+      <TableCell className="text-muted-foreground">
+        <div>{cliente.telefone ?? "—"}</div>
+        <div className="text-xs">{cliente.email ?? "—"}</div>
+      </TableCell>
+      <TableCell className="text-muted-foreground">
+        {endereco ? `${endereco.cidade}/${endereco.estado}` : "—"}
+      </TableCell>
+      <TableCell>{formatoMoeda.format(resumo?.totalGasto ?? 0)}</TableCell>
+      <TableCell className="text-muted-foreground">
+        {resumo?.ultimaCompra ? formatoData.format(new Date(resumo.ultimaCompra)) : "Nunca comprou"}
+      </TableCell>
+    </TableRow>
+  );
+}
+
 export function ClientesLista() {
   const [busca, setBusca] = useState("");
+  const buscaDebounced = busca.trim() || undefined;
 
-  const clientesFiltrados = useMemo(() => {
-    const termo = busca.trim().toLowerCase();
-    if (termo.length === 0) return clientesMock;
-    return clientesMock.filter(
-      (cliente) =>
-        cliente.nome.toLowerCase().includes(termo) ||
-        cliente.email?.toLowerCase().includes(termo) ||
-        cliente.telefone?.includes(termo),
-    );
-  }, [busca]);
+  const { data: clientes = [], isLoading } = trpc.clientes.listar.useQuery({
+    busca: buscaDebounced,
+  });
+  const clientesFiltrados = useMemo(() => clientes, [clientes]);
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-8">
@@ -71,36 +106,16 @@ export function ClientesLista() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {clientesFiltrados.map((cliente) => {
-              const resumo = resumoComprasCliente(cliente.id);
-              const endereco = enderecoPrincipal(cliente);
-              return (
-                <TableRow key={cliente.id}>
-                  <TableCell>
-                    <Link
-                      href={`/painel/clientes/${cliente.id}`}
-                      className="font-medium hover:underline"
-                    >
-                      {cliente.nome}
-                    </Link>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    <div>{cliente.telefone ?? "—"}</div>
-                    <div className="text-xs">{cliente.email ?? "—"}</div>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {endereco ? `${endereco.cidade}/${endereco.estado}` : "—"}
-                  </TableCell>
-                  <TableCell>{formatoMoeda.format(resumo.totalGasto)}</TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {resumo.ultimaCompra
-                      ? formatoData.format(new Date(resumo.ultimaCompra))
-                      : "Nunca comprou"}
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-            {clientesFiltrados.length === 0 && (
+            {isLoading && (
+              <TableRow>
+                <TableCell colSpan={5}>
+                  <Skeleton className="h-8 w-full" />
+                </TableCell>
+              </TableRow>
+            )}
+            {!isLoading &&
+              clientesFiltrados.map((cliente) => <LinhaCliente key={cliente.id} cliente={cliente} />)}
+            {!isLoading && clientesFiltrados.length === 0 && (
               <TableRow>
                 <TableCell colSpan={5} className="text-muted-foreground text-center py-8">
                   Nenhum cliente encontrado.

@@ -30,7 +30,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import type { Cupom, TipoCupom } from "@/lib/mocks/cupons";
+import { trpc } from "@/lib/trpc/client";
 
 const tipoSelectItems = [
   { value: "PERCENTUAL", label: "Percentual" },
@@ -61,11 +61,11 @@ type CupomFormValues = z.infer<typeof cupomSchema>;
 export function CupomFormDialog({
   open,
   onOpenChange,
-  onCriar,
+  onCriado,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCriar: (cupom: Cupom) => void;
+  onCriado?: () => void;
 }) {
   const form = useForm<CupomFormValues>({
     resolver: zodResolver(cupomSchema),
@@ -79,22 +79,27 @@ export function CupomFormDialog({
     },
   });
 
-  function onSubmit(values: CupomFormValues) {
-    // Mock: sem persistência real ainda (chega no M10, backend de pedidos/cupons)
-    const cupom: Cupom = {
-      id: `cup-${crypto.randomUUID()}`,
-      codigo: values.codigo.toUpperCase(),
-      tipo: values.tipo as TipoCupom,
-      valor: values.tipo === "FRETE_GRATIS" ? undefined : Number(values.valor),
-      inicio: new Date(values.inicio).toISOString(),
-      fim: new Date(values.fim).toISOString(),
-      limiteUso: values.limiteUso ? Number(values.limiteUso) : undefined,
-      usosAtuais: 0,
-    };
-    onCriar(cupom);
-    toast.success(`Cupom ${cupom.codigo} criado com sucesso.`);
-    form.reset();
-    onOpenChange(false);
+  const criarCupom = trpc.cupons.criar.useMutation();
+
+  async function onSubmit(values: CupomFormValues) {
+    try {
+      const cupom = await criarCupom.mutateAsync({
+        codigo: values.codigo.toUpperCase(),
+        tipo: values.tipo,
+        valor: values.tipo === "FRETE_GRATIS" ? undefined : Number(values.valor),
+        inicio: new Date(values.inicio),
+        fim: new Date(values.fim),
+        limiteUso: values.limiteUso ? Number(values.limiteUso) : undefined,
+      });
+      toast.success(`Cupom ${cupom.codigo} criado com sucesso.`);
+      onCriado?.();
+      form.reset();
+      onOpenChange(false);
+    } catch (error) {
+      const mensagem =
+        error instanceof Error && error.message ? error.message : "Não foi possível criar o cupom.";
+      toast.error(mensagem);
+    }
   }
 
   const tipo = form.watch("tipo");
@@ -209,7 +214,9 @@ export function CupomFormDialog({
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>
-              <Button type="submit">Criar cupom</Button>
+              <Button type="submit" disabled={criarCupom.isPending}>
+                Criar cupom
+              </Button>
             </DialogFooter>
           </form>
         </Form>

@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import type { VendaPorDia } from "@/lib/mocks/dashboard";
+
+type VendaPorDia = { data: string; valor: number };
 
 const formatoMoeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const formatoDataCurta = new Intl.DateTimeFormat("pt-BR", {

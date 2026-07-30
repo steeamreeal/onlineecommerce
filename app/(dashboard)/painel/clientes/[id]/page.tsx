@@ -1,17 +1,30 @@
+"use client";
+
+import { use } from "react";
 import { notFound } from "next/navigation";
 import { ClienteDetalhe } from "@/components/dashboard/cliente-detalhe";
-import { clientesMock } from "@/lib/mocks/clientes";
+import { Skeleton } from "@/components/ui/skeleton";
+import { trpc } from "@/lib/trpc/client";
 
-export default async function ClienteDetalhePage({
+export default function ClienteDetalhePage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = await params;
-  const cliente = clientesMock.find((c) => c.id === id);
+  const { id } = use(params);
+  const { data: cliente, isLoading, isError } = trpc.clientes.buscarPorId.useQuery({ id });
 
-  if (!cliente) {
+  if (isError) {
     notFound();
+  }
+
+  if (isLoading || !cliente) {
+    return (
+      <div className="flex flex-1 flex-col gap-6 p-8">
+        <Skeleton className="h-8 w-64" />
+        <Skeleton className="h-96 w-full" />
+      </div>
+    );
   }
 
   return <ClienteDetalhe cliente={cliente} />;
