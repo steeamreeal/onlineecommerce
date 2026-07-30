@@ -11,8 +11,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PedidoStatusBadge } from "@/components/dashboard/pedido-status-badge";
-import { resumoComprasCliente, type Cliente } from "@/lib/mocks/clientes";
-import { pedidosMock } from "@/lib/mocks/pedidos";
+import { trpc } from "@/lib/trpc/client";
+import type { Cliente, EnderecoCliente, Pedido } from "@prisma/client";
 
 const formatoMoeda = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -25,11 +25,13 @@ const formatoData = new Intl.DateTimeFormat("pt-BR", {
   year: "numeric",
 });
 
-export function ClienteDetalhe({ cliente }: { cliente: Cliente }) {
-  const resumo = resumoComprasCliente(cliente.id);
-  const pedidosDoCliente = pedidosMock
-    .filter((p) => p.clienteId === cliente.id)
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+type ClienteDetalhado = Cliente & { enderecos: EnderecoCliente[]; pedidos: Pedido[] };
+
+export function ClienteDetalhe({ cliente }: { cliente: ClienteDetalhado }) {
+  const { data: resumo } = trpc.clientes.resumoCompras.useQuery({ id: cliente.id });
+  const pedidosDoCliente = [...cliente.pedidos].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  );
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-8">
@@ -48,20 +50,20 @@ export function ClienteDetalhe({ cliente }: { cliente: Cliente }) {
       <div className="grid grid-cols-4 gap-4">
         <div className="rounded-lg border p-4">
           <p className="text-muted-foreground text-sm">Total gasto</p>
-          <p className="text-xl font-semibold">{formatoMoeda.format(resumo.totalGasto)}</p>
+          <p className="text-xl font-semibold">{formatoMoeda.format(resumo?.totalGasto ?? 0)}</p>
         </div>
         <div className="rounded-lg border p-4">
           <p className="text-muted-foreground text-sm">Pedidos</p>
-          <p className="text-xl font-semibold">{resumo.totalPedidos}</p>
+          <p className="text-xl font-semibold">{resumo?.totalPedidos ?? 0}</p>
         </div>
         <div className="rounded-lg border p-4">
           <p className="text-muted-foreground text-sm">Ticket médio</p>
-          <p className="text-xl font-semibold">{formatoMoeda.format(resumo.ticketMedio)}</p>
+          <p className="text-xl font-semibold">{formatoMoeda.format(resumo?.ticketMedio ?? 0)}</p>
         </div>
         <div className="rounded-lg border p-4">
           <p className="text-muted-foreground text-sm">Última compra</p>
           <p className="text-xl font-semibold">
-            {resumo.ultimaCompra ? formatoData.format(new Date(resumo.ultimaCompra)) : "—"}
+            {resumo?.ultimaCompra ? formatoData.format(new Date(resumo.ultimaCompra)) : "—"}
           </p>
         </div>
       </div>
@@ -83,7 +85,7 @@ export function ClienteDetalhe({ cliente }: { cliente: Cliente }) {
                 <TableRow key={pedido.id}>
                   <TableCell>
                     <Link href={`/painel/pedidos/${pedido.id}`} className="font-medium hover:underline">
-                      #{pedido.numero}
+                      #{pedido.id.slice(-6).toUpperCase()}
                     </Link>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
@@ -92,7 +94,9 @@ export function ClienteDetalhe({ cliente }: { cliente: Cliente }) {
                   <TableCell>
                     <PedidoStatusBadge status={pedido.status} />
                   </TableCell>
-                  <TableCell className="text-right">{formatoMoeda.format(pedido.valorTotal)}</TableCell>
+                  <TableCell className="text-right">
+                    {formatoMoeda.format(Number(pedido.valorTotal))}
+                  </TableCell>
                 </TableRow>
               ))}
               {pedidosDoCliente.length === 0 && (

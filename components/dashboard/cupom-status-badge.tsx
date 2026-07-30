@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { cupomStatus, type Cupom } from "@/lib/mocks/cupons";
+import { cupomStatus } from "@/lib/cupons";
+import type { Cupom } from "@prisma/client";
 
 const config = {
   ATIVO: { label: "Ativo", className: "bg-success/10 text-success" },

@@ -5,6 +5,11 @@ import { estoqueRouter } from "./routers/estoque";
 import { lojaRouter } from "./routers/loja";
 import { onboardingRouter } from "./routers/onboarding";
 import { authRouter } from "./routers/auth";
+import { clientesRouter } from "./routers/clientes";
+import { cuponsRouter } from "./routers/cupons";
+import { freteRouter } from "./routers/frete";
+import { pedidosRouter } from "./routers/pedidos";
+import { dashboardRouter } from "./routers/dashboard";
 
 export const appRouter = router({
   produtos: produtosRouter,
@@ -13,6 +18,11 @@ export const appRouter = router({
   loja: lojaRouter,
   onboarding: onboardingRouter,
   auth: authRouter,
+  clientes: clientesRouter,
+  cupons: cuponsRouter,
+  frete: freteRouter,
+  pedidos: pedidosRouter,
+  dashboard: dashboardRouter,
 });
 
 export type AppRouter = typeof appRouter;

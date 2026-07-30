@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { STATUS_PEDIDO_LABEL, type StatusPedido } from "@/lib/mocks/pedidos";
+import { STATUS_PEDIDO_LABEL } from "@/lib/pedidos";
+import type { StatusPedido } from "@prisma/client";
 
 const classNamePorStatus: Record<StatusPedido, string> = {
   NOVO: "bg-primary/10 text-primary",

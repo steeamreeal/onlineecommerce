@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, MessageCircle, Truck } from "lucide-react";
 import { toast } from "sonner";
@@ -8,14 +7,10 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { PedidoStatusBadge } from "@/components/dashboard/pedido-status-badge";
-import {
-  FORMA_PAGAMENTO_LABEL,
-  STATUS_PEDIDO_LABEL,
-  pedidoValorProdutos,
-  proximoStatus,
-  type Pedido,
-} from "@/lib/mocks/pedidos";
-import { clientesMock } from "@/lib/mocks/clientes";
+import { FORMA_PAGAMENTO_LABEL, STATUS_PEDIDO_LABEL, pedidoValorProdutos, proximoStatus } from "@/lib/pedidos";
+import { variacaoLabel } from "@/lib/estoque";
+import { trpc } from "@/lib/trpc/client";
+import type { RouterOutputs } from "@/lib/trpc/types";
 
 const formatoMoeda = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -30,21 +25,43 @@ const formatoData = new Intl.DateTimeFormat("pt-BR", {
   minute: "2-digit",
 });
 
-export function PedidoDetalhe({ pedido: pedidoInicial }: { pedido: Pedido }) {
-  const [pedido, setPedido] = useState(pedidoInicial);
-  const cliente = clientesMock.find((c) => c.id === pedido.clienteId);
-  const proximo = proximoStatus(pedido.status);
+type Pedido = RouterOutputs["pedidos"]["buscarPorId"];
 
-  function avancarStatus() {
+export function PedidoDetalhe({ pedido }: { pedido: Pedido }) {
+  const utils = trpc.useUtils();
+  const atualizarStatus = trpc.pedidos.atualizarStatus.useMutation({
+    onSuccess: () => utils.pedidos.buscarPorId.invalidate({ id: pedido.id }),
+  });
+  const proximo = proximoStatus(pedido.status);
+  const cliente = pedido.cliente;
+
+  async function avancarStatus() {
     if (!proximo) return;
-    // Mock: sem persistência real ainda (chega no M10, backend de pedidos)
-    setPedido((atual) => ({ ...atual, status: proximo }));
-    toast.success(`Pedido movido para "${STATUS_PEDIDO_LABEL[proximo]}".`);
+    try {
+      await atualizarStatus.mutateAsync({ id: pedido.id, status: proximo });
+      toast.success(`Pedido movido para "${STATUS_PEDIDO_LABEL[proximo]}".`);
+    } catch (error) {
+      const mensagem =
+        error instanceof Error && error.message ? error.message : "Não foi possível avançar o pedido.";
+      toast.error(mensagem);
+    }
   }
+
+  const enderecoPrincipal = cliente?.enderecos?.find((e) => e.principal) ?? cliente?.enderecos?.[0];
+  const enderecoEntrega = enderecoPrincipal
+    ? `${enderecoPrincipal.rua}${enderecoPrincipal.numero ? `, ${enderecoPrincipal.numero}` : ""}${
+        enderecoPrincipal.bairro ? ` - ${enderecoPrincipal.bairro}` : ""
+      }, ${enderecoPrincipal.cidade}/${enderecoPrincipal.estado}`
+    : undefined;
 
   const whatsappHref = cliente?.telefone
     ? `https://wa.me/55${cliente.telefone.replace(/\D/g, "")}`
     : undefined;
+
+  const itensComValor = pedido.itens.map((item) => ({
+    quantidade: item.quantidade,
+    precoUnit: Number(item.precoUnit),
+  }));
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-8">
@@ -54,7 +71,7 @@ export function PedidoDetalhe({ pedido: pedidoInicial }: { pedido: Pedido }) {
             <ArrowLeft className="size-4" />
           </Button>
           <div>
-            <h1 className="text-2xl font-semibold">Pedido #{pedido.numero}</h1>
+            <h1 className="text-2xl font-semibold">Pedido #{pedido.id.slice(-6).toUpperCase()}</h1>
             <p className="text-muted-foreground text-sm">
               Criado em {formatoData.format(new Date(pedido.createdAt))}
             </p>
@@ -63,7 +80,7 @@ export function PedidoDetalhe({ pedido: pedidoInicial }: { pedido: Pedido }) {
         <div className="flex items-center gap-2">
           <PedidoStatusBadge status={pedido.status} />
           {proximo && (
-            <Button size="sm" onClick={avancarStatus}>
+            <Button size="sm" onClick={avancarStatus} disabled={atualizarStatus.isPending}>
               Marcar como &quot;{STATUS_PEDIDO_LABEL[proximo]}&quot;
             </Button>
           )}
@@ -78,13 +95,15 @@ export function PedidoDetalhe({ pedido: pedidoInicial }: { pedido: Pedido }) {
               {pedido.itens.map((item) => (
                 <div key={item.id} className="flex items-center justify-between py-2 text-sm">
                   <div>
-                    <div className="font-medium">{item.produtoNome}</div>
-                    {item.variacaoLabel && (
-                      <div className="text-muted-foreground text-xs">{item.variacaoLabel}</div>
+                    <div className="font-medium">{item.produto.nome}</div>
+                    {item.variacao && (
+                      <div className="text-muted-foreground text-xs">
+                        {variacaoLabel(item.variacao)}
+                      </div>
                     )}
                   </div>
                   <div className="text-muted-foreground">
-                    {item.quantidade} x {formatoMoeda.format(item.precoUnit)}
+                    {item.quantidade} x {formatoMoeda.format(Number(item.precoUnit))}
                   </div>
                 </div>
               ))}
@@ -93,48 +112,38 @@ export function PedidoDetalhe({ pedido: pedidoInicial }: { pedido: Pedido }) {
             <div className="flex flex-col gap-1 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Produtos</span>
-                <span>{formatoMoeda.format(pedidoValorProdutos(pedido))}</span>
+                <span>{formatoMoeda.format(pedidoValorProdutos(itensComValor))}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Frete</span>
-                <span>{formatoMoeda.format(pedido.valorFrete)}</span>
+                <span>{formatoMoeda.format(Number(pedido.valorFrete))}</span>
               </div>
-              {pedido.valorDesconto > 0 && (
+              {Number(pedido.valorDesconto) > 0 && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">
-                    Desconto {pedido.cupomCodigo && `(${pedido.cupomCodigo})`}
+                    Desconto {pedido.cupom && `(${pedido.cupom.codigo})`}
                   </span>
-                  <span className="text-success">-{formatoMoeda.format(pedido.valorDesconto)}</span>
+                  <span className="text-success">
+                    -{formatoMoeda.format(Number(pedido.valorDesconto))}
+                  </span>
                 </div>
               )}
               <div className="flex justify-between font-medium">
                 <span>Total</span>
-                <span>{formatoMoeda.format(pedido.valorTotal)}</span>
+                <span>{formatoMoeda.format(Number(pedido.valorTotal))}</span>
               </div>
             </div>
           </div>
 
-          {pedido.eventosRastreio && pedido.eventosRastreio.length > 0 && (
+          {pedido.codigoRastreio && (
             <div className="rounded-lg border p-4">
               <h2 className="mb-3 flex items-center gap-2 font-medium">
                 <Truck className="size-4" />
                 Rastreio
-                {pedido.codigoRastreio && (
-                  <span className="text-muted-foreground text-xs font-normal">
-                    {pedido.codigoRastreio}
-                  </span>
-                )}
+                <span className="text-muted-foreground text-xs font-normal">
+                  {pedido.codigoRastreio}
+                </span>
               </h2>
-              <div className="flex flex-col gap-3">
-                {pedido.eventosRastreio.map((evento, i) => (
-                  <div key={i} className="flex gap-3 text-sm">
-                    <span className="text-muted-foreground w-32 shrink-0 text-xs">
-                      {formatoData.format(new Date(evento.data))}
-                    </span>
-                    <span>{evento.descricao}</span>
-                  </div>
-                ))}
-              </div>
             </div>
           )}
         </div>
@@ -176,10 +185,10 @@ export function PedidoDetalhe({ pedido: pedidoInicial }: { pedido: Pedido }) {
                 <span className="text-muted-foreground">Forma de pagamento</span>
                 <span>{FORMA_PAGAMENTO_LABEL[pedido.formaPagamento]}</span>
               </div>
-              {pedido.enderecoEntrega && (
+              {enderecoEntrega && (
                 <div className="pt-2">
                   <span className="text-muted-foreground">Endereço de entrega</span>
-                  <p>{pedido.enderecoEntrega}</p>
+                  <p>{enderecoEntrega}</p>
                 </div>
               )}
             </div>
