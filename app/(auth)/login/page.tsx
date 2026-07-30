@@ -1,10 +1,12 @@
 "use client";
 
+import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { TriangleAlertIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +26,8 @@ import {
   FormControl,
   FormMessage,
 } from "@/components/ui/form";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { createClient } from "@/lib/supabase/client";
 
 const loginSchema = z.object({
   email: z.string().min(1, "Informe seu e-mail").email("E-mail inválido"),
@@ -31,15 +35,38 @@ const loginSchema = z.object({
 });
 
 export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const [erro, setErro] = useState<string | null>(null);
   const form = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: "", senha: "" },
   });
 
-  function onSubmit() {
-    // Autenticação real chega no M8 — por ora apenas navega para o painel.
-    router.push("/painel");
+  async function onSubmit(values: z.infer<typeof loginSchema>) {
+    setErro(null);
+    const supabase = createClient();
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email: values.email,
+      password: values.senha,
+    });
+
+    if (error) {
+      setErro("E-mail ou senha incorretos.");
+      return;
+    }
+
+    router.push(searchParams.get("redirectTo") ?? "/painel");
+    router.refresh();
   }
 
   return (
@@ -56,6 +83,12 @@ export default function LoginPage() {
             onSubmit={form.handleSubmit(onSubmit)}
             className="flex flex-col gap-4"
           >
+            {erro && (
+              <Alert variant="destructive">
+                <TriangleAlertIcon />
+                <AlertDescription>{erro}</AlertDescription>
+              </Alert>
+            )}
             <FormField
               control={form.control}
               name="email"
@@ -99,8 +132,8 @@ export default function LoginPage() {
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full">
-              Entrar
+            <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+              {form.formState.isSubmitting ? "Entrando..." : "Entrar"}
             </Button>
           </form>
         </Form>

@@ -1,4 +1,5 @@
 import { AdminNav } from "@/components/admin/admin-nav";
+import { LogoutButton } from "@/components/auth/logout-button";
 
 export default function AdminLayout({
   children,
@@ -19,7 +20,7 @@ export default function AdminLayout({
       <div className="flex flex-1 flex-col">
         <header className="flex items-center justify-between border-b bg-neutral-950 px-6 py-4 text-neutral-100">
           <span className="text-sm font-medium">Dono da plataforma</span>
-          <div className="size-8 rounded-full bg-neutral-800" />
+          <LogoutButton className="text-neutral-100 hover:bg-neutral-800 hover:text-neutral-100" />
         </header>
         {children}
       </div>

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckIcon } from "lucide-react";
+import { CheckIcon, TriangleAlertIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,7 +22,27 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
+import { trpc } from "@/lib/trpc/client";
+
+const CORES_HEX: Record<string, string> = {
+  laranja: "#f97316",
+  azul: "#3b82f6",
+  verde: "#22c55e",
+  roxo: "#a855f7",
+  rosa: "#ec4899",
+};
+
+function gerarSlug(nome: string): string {
+  return nome
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
 
 const MODELOS = [
   {
@@ -70,6 +90,9 @@ export default function OnboardingPage() {
   });
   const [corId, setCorId] = useState<string>(CORES[0].id);
   const [logoNome, setLogoNome] = useState<string | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
+
+  const criarLoja = trpc.onboarding.criarLoja.useMutation();
 
   const podeAvancar =
     step === 0
@@ -79,13 +102,23 @@ export default function OnboardingPage() {
           dadosEmpresa.categoria.trim().length > 0
         : true;
 
-  function avancar() {
+  async function avancar() {
     if (step < STEPS.length - 1) {
       setStep((s) => s + 1);
       return;
     }
-    // Criação real da Loja (Prisma) chega no M8 — por ora só navega para a confirmação.
-    router.push("/onboarding/sucesso");
+
+    setErro(null);
+    try {
+      await criarLoja.mutateAsync({
+        nome: dadosEmpresa.nomeLoja,
+        slug: gerarSlug(dadosEmpresa.nomeLoja),
+        corPrimaria: CORES_HEX[corId],
+      });
+      router.push("/onboarding/sucesso");
+    } catch {
+      setErro("Não foi possível criar sua loja. Tente novamente em instantes.");
+    }
   }
 
   function voltar() {
@@ -126,6 +159,12 @@ export default function OnboardingPage() {
       </CardHeader>
 
       <CardContent className="flex flex-col gap-6">
+        {erro && (
+          <Alert variant="destructive">
+            <TriangleAlertIcon />
+            <AlertDescription>{erro}</AlertDescription>
+          </Alert>
+        )}
         {step === 0 && (
           <div className="grid gap-3 sm:grid-cols-3">
             {MODELOS.map((modelo) => (
@@ -238,8 +277,12 @@ export default function OnboardingPage() {
         <Button variant="outline" onClick={voltar} disabled={step === 0}>
           Voltar
         </Button>
-        <Button onClick={avancar} disabled={!podeAvancar}>
-          {step === STEPS.length - 1 ? "Criar loja" : "Avançar"}
+        <Button onClick={avancar} disabled={!podeAvancar || criarLoja.isPending}>
+          {step === STEPS.length - 1
+            ? criarLoja.isPending
+              ? "Criando loja..."
+              : "Criar loja"
+            : "Avançar"}
         </Button>
       </CardFooter>
     </Card>

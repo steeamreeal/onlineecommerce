@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
@@ -24,6 +25,10 @@ import {
   FormControl,
   FormMessage,
 } from "@/components/ui/form";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { TriangleAlertIcon } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import { trpc } from "@/lib/trpc/client";
 
 const cadastroSchema = z
   .object({
@@ -39,13 +44,47 @@ const cadastroSchema = z
 
 export default function CadastroPage() {
   const router = useRouter();
+  const [erro, setErro] = useState<string | null>(null);
+  const sincronizarUsuario = trpc.auth.sincronizarUsuario.useMutation();
   const form = useForm<z.infer<typeof cadastroSchema>>({
     resolver: zodResolver(cadastroSchema),
     defaultValues: { nome: "", email: "", senha: "", confirmarSenha: "" },
   });
 
-  function onSubmit() {
-    // Cadastro real (Supabase Auth) chega no M8 — segue direto para o onboarding da loja.
+  async function onSubmit(values: z.infer<typeof cadastroSchema>) {
+    setErro(null);
+    const supabase = createClient();
+
+    const { data, error } = await supabase.auth.signUp({
+      email: values.email,
+      password: values.senha,
+    });
+
+    if (error) {
+      setErro(
+        error.message.includes("already registered")
+          ? "Este e-mail já está cadastrado. Tente entrar na sua conta."
+          : "Não foi possível criar sua conta. Tente novamente em instantes.",
+      );
+      return;
+    }
+
+    if (!data.user) {
+      setErro("Não foi possível criar sua conta. Tente novamente em instantes.");
+      return;
+    }
+
+    try {
+      await sincronizarUsuario.mutateAsync({
+        supabaseId: data.user.id,
+        nome: values.nome,
+        email: values.email,
+      });
+    } catch {
+      setErro("Sua conta foi criada, mas houve um problema ao configurar seu perfil. Fale com o suporte.");
+      return;
+    }
+
     router.push("/onboarding");
   }
 
@@ -63,6 +102,12 @@ export default function CadastroPage() {
             onSubmit={form.handleSubmit(onSubmit)}
             className="flex flex-col gap-4"
           >
+            {erro && (
+              <Alert variant="destructive">
+                <TriangleAlertIcon />
+                <AlertDescription>{erro}</AlertDescription>
+              </Alert>
+            )}
             <FormField
               control={form.control}
               name="nome"
@@ -132,8 +177,8 @@ export default function CadastroPage() {
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full">
-              Criar conta
+            <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+              {form.formState.isSubmitting ? "Criando conta..." : "Criar conta"}
             </Button>
           </form>
         </Form>
