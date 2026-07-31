@@ -162,10 +162,10 @@ A partir daqui, cada milestone troca os mocks de uma área específica por dados
 - Branch: `milestone/11-checkout-backend`
 - Objetivo: conectar o site público (M5) ao catálogo e criar pedidos reais no checkout.
 - Entregas:
-  - [ ] Catálogo público (produtos ativos/destaque) consumido via tRPC público, escopado por `slug` da loja
-  - [ ] Carrinho persistido (local storage ou tabela temporária) até finalizar compra
-  - [ ] Criação de pedido real no checkout, com cliente/endereço/cupom/frete
-  - [ ] Confirmação de pedido gerando registro em `Pedido` com status `NOVO`/`AGUARDANDO_PAGAMENTO`
+  - [x] Catálogo público (produtos ativos/destaque) consumido via tRPC público, escopado por `slug` da loja
+  - [x] Carrinho persistido (local storage ou tabela temporária) até finalizar compra
+  - [x] Criação de pedido real no checkout, com cliente/endereço/cupom/frete
+  - [x] Confirmação de pedido gerando registro em `Pedido` com status `NOVO`/`AGUARDANDO_PAGAMENTO`
 - Commit final: `feat: catálogo público e checkout conectados ao backend`
 
 ### M12 — Pagamentos

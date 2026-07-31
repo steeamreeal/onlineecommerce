@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { trpc } from "@/lib/trpc/client";
 import type { RouterOutputs } from "@/lib/trpc/types";
 
@@ -32,12 +32,36 @@ type CartContextValue = {
   removerItem: (variacaoId: string) => void;
   atualizarQuantidade: (variacaoId: string, quantidade: number) => void;
   limparCarrinho: () => void;
+  // Falso até o carrinho salvo no localStorage ser lido (só acontece após o
+  // mount, no client) — usado para não mostrar "carrinho vazio" por engano
+  // no primeiro render enquanto o carrinho salvo ainda está sendo carregado.
+  hidratado: boolean;
 };
 
 const CartContext = createContext<CartContextValue | null>(null);
 
 function variacaoLabel(v: { cor?: string | null; tamanho?: string | null; modelo?: string | null }) {
   return [v.cor, v.tamanho, v.modelo].filter(Boolean).join(" / ") || "Padrão";
+}
+
+function chaveStorage(slug: string) {
+  return `carrinho:${slug}`;
+}
+
+// Lê o carrinho salvo no localStorage desta loja (escopado por slug, cada
+// loja tem seu próprio carrinho). Só roda no client — no SSR o localStorage
+// não existe, então o primeiro render sempre parte de array vazio e é
+// hidratado no useEffect abaixo.
+function lerCarrinhoSalvo(slug: string): CartItem[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const bruto = window.localStorage.getItem(chaveStorage(slug));
+    if (!bruto) return [];
+    const dados = JSON.parse(bruto);
+    return Array.isArray(dados) ? dados : [];
+  } catch {
+    return [];
+  }
 }
 
 export function CartProvider({
@@ -49,6 +73,27 @@ export function CartProvider({
 }) {
   const [itens, setItens] = useState<CartItem[]>([]);
   const [aberto, setAberto] = useState(false);
+  const [hidratado, setHidratado] = useState(false);
+
+  // Hidrata a partir do localStorage após o mount (evita mismatch de SSR) e
+  // sempre que o slug mudar (navegação entre lojas usa o mesmo Provider).
+  useEffect(() => {
+    setItens(lerCarrinhoSalvo(slug));
+    setHidratado(true);
+  }, [slug]);
+
+  // Persiste toda alteração do carrinho, mas só depois de já ter hidratado —
+  // sem essa guarda, o array vazio do primeiro render sobrescreveria o
+  // carrinho salvo antes do useEffect acima conseguir lê-lo.
+  useEffect(() => {
+    if (!hidratado) return;
+    try {
+      window.localStorage.setItem(chaveStorage(slug), JSON.stringify(itens));
+    } catch {
+      // Storage indisponível (modo privado, quota excedida) — carrinho
+      // segue funcionando em memória, só sem persistir entre sessões.
+    }
+  }, [slug, itens, hidratado]);
 
   // Carrinho guarda só ids/quantidade; os dados do produto (preço, nome,
   // estoque) são resolvidos aqui a partir do catálogo público, sempre
@@ -130,6 +175,7 @@ export function CartProvider({
         removerItem,
         atualizarQuantidade,
         limparCarrinho,
+        hidratado,
       }}
     >
       {children}

@@ -80,7 +80,7 @@ function parseEndereco(texto: string) {
 }
 
 export function CheckoutWizard({ slug }: { slug: string }) {
-  const { itensDetalhados, subtotal, limparCarrinho } = useCart();
+  const { itensDetalhados, subtotal, limparCarrinho, hidratado } = useCart();
   const [step, setStep] = useState(0);
   const [pedidoConfirmado, setPedidoConfirmado] = useState(false);
   const [erroEnvio, setErroEnvio] = useState<string | null>(null);
@@ -185,6 +185,8 @@ export function CheckoutWizard({ slug }: { slug: string }) {
       setErroEnvio("Não foi possível confirmar seu pedido. Tente novamente.");
     }
   }
+
+  if (!hidratado) return null;
 
   if (itensDetalhados.length === 0 && !pedidoConfirmado) {
     return (
