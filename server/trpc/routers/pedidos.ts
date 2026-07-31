@@ -32,7 +32,7 @@ function proximoStatusValido(atual: z.infer<typeof statusPedidoSchema>) {
   return ORDEM_STATUS[indice + 1];
 }
 
-const formaPagamentoSchema = z.enum([
+export const formaPagamentoSchema = z.enum([
   "PIX",
   "CARTAO",
   "BOLETO",
@@ -40,7 +40,7 @@ const formaPagamentoSchema = z.enum([
   "PAGAMENTO_ENTREGA",
 ]);
 
-const itemPedidoInputSchema = z.object({
+export const itemPedidoInputSchema = z.object({
   produtoId: z.string(),
   variacaoId: z.string().optional(),
   quantidade: z.number().int().positive(),
@@ -50,7 +50,8 @@ const itemPedidoInputSchema = z.object({
 // mesma técnica de update condicionado de estoque.ts (updateMany com
 // gte no where) para não haver TOCTOU entre checar saldo e decrementar.
 // Lança BAD_REQUEST se qualquer item não tiver saldo suficiente.
-async function baixarEstoqueItens(
+// Exportada para reuso pelo checkout público (checkout.ts).
+export async function baixarEstoqueItens(
   tx: Prisma.TransactionClient,
   itens: { variacaoId?: string; quantidade: number }[],
 ) {
@@ -98,7 +99,8 @@ async function devolverEstoqueItens(
   }
 }
 
-async function calcularValorItens(
+// Exportada para reuso pelo checkout público (checkout.ts).
+export async function calcularValorItens(
   prisma: PrismaClient,
   lojaId: string,
   itens: z.infer<typeof itemPedidoInputSchema>[],

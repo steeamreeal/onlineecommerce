@@ -1,22 +1,24 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductCard } from "@/components/store/product-card";
 import { useCart } from "@/components/store/cart-context";
-import {
-  categoriaNome,
-  produtosMock,
-  variacaoLabel,
-  type Produto,
-} from "@/lib/mocks/produtos";
+import { trpc } from "@/lib/trpc/client";
+import type { RouterOutputs } from "@/lib/trpc/types";
+
+type Produto = RouterOutputs["lojaPublica"]["produtoPorId"];
 
 const formatoMoeda = new Intl.NumberFormat("pt-BR", {
   style: "currency",
   currency: "BRL",
 });
+
+function variacaoLabel(v: { cor?: string | null; tamanho?: string | null; modelo?: string | null }) {
+  return [v.cor, v.tamanho, v.modelo].filter(Boolean).join(" / ") || "Padrão";
+}
 
 export function ProdutoDetalhe({ produto, slug }: { produto: Produto; slug: string }) {
   const { adicionarItem } = useCart();
@@ -24,23 +26,18 @@ export function ProdutoDetalhe({ produto, slug }: { produto: Produto; slug: stri
     produto.variacoes.find((v) => v.estoque > 0)?.id,
   );
 
+  const { data: relacionadosBrutos } = trpc.lojaPublica.produtos.useQuery({
+    slug,
+    categoriaId: produto.categoriaId ?? undefined,
+  });
+  const relacionados = (relacionadosBrutos ?? []).filter((p) => p.id !== produto.id);
+
   const semVariacoes = produto.variacoes.length === 0;
   const variacaoSelecionada = semVariacoes
     ? undefined
     : produto.variacoes.find((v) => v.id === variacaoId);
   const podeComprar = semVariacoes || Boolean(variacaoSelecionada);
-  const preco = produto.precoPromo ?? produto.precoNormal;
-
-  const relacionados = useMemo(
-    () =>
-      produtosMock.filter(
-        (p) =>
-          p.id !== produto.id &&
-          p.categoriaId === produto.categoriaId &&
-          p.status !== "INATIVO",
-      ),
-    [produto],
-  );
+  const preco = Number(produto.precoPromo ?? produto.precoNormal);
 
   function handleAdicionar() {
     if (!podeComprar) return;
@@ -63,7 +60,7 @@ export function ProdutoDetalhe({ produto, slug }: { produto: Produto; slug: stri
           href={`/loja/${slug}/produtos?categoria=${produto.categoriaId ?? ""}`}
           className="hover:text-foreground"
         >
-          {categoriaNome(produto.categoriaId)}
+          {produto.categoria?.nome ?? "Sem categoria"}
         </Link>
         <ChevronRight className="size-3.5" />
         <span className="text-foreground">{produto.nome}</span>
@@ -92,7 +89,7 @@ export function ProdutoDetalhe({ produto, slug }: { produto: Produto; slug: stri
           <div className="flex items-baseline gap-2">
             {produto.precoPromo && (
               <span className="text-muted-foreground text-sm line-through">
-                {formatoMoeda.format(produto.precoNormal)}
+                {formatoMoeda.format(Number(produto.precoNormal))}
               </span>
             )}
             <span className="text-2xl font-semibold">{formatoMoeda.format(preco)}</span>

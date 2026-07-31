@@ -1,4 +1,6 @@
-import type { ConfiguracaoLoja } from "@/lib/mocks/loja";
+import type { RouterOutputs } from "@/lib/trpc/types";
+
+type ConfiguracaoLoja = RouterOutputs["lojaPublica"]["porSlug"];
 
 export function SiteFooter({ config }: { config: ConfiguracaoLoja }) {
   return (

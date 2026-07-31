@@ -1,17 +1,21 @@
+"use client";
+
+import { use } from "react";
 import Link from "next/link";
 import { ProductCard } from "@/components/store/product-card";
-import { categoriasMock, produtosMock } from "@/lib/mocks/produtos";
-import { getConfiguracaoLojaPorSlug } from "@/lib/mocks/loja";
+import { trpc } from "@/lib/trpc/client";
 
-export default async function LojaPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
-  const { slug } = await params;
-  const destaques = produtosMock.filter((produto) => produto.status === "DESTAQUE");
-  // Slug já validado pelo layout (notFound() se desconhecido).
-  const banners = getConfiguracaoLojaPorSlug(slug)?.banners ?? [];
+type Banner = { id: string; url: string; titulo?: string };
+
+export default function LojaPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = use(params);
+
+  const { data: config } = trpc.lojaPublica.porSlug.useQuery({ slug });
+  const { data: categorias } = trpc.lojaPublica.categorias.useQuery({ slug });
+  const { data: produtos } = trpc.lojaPublica.produtos.useQuery({ slug });
+
+  const destaques = (produtos ?? []).filter((produto) => produto.status === "DESTAQUE");
+  const banners = (config?.banners as Banner[] | null) ?? [];
 
   return (
     <div className="flex flex-1 flex-col gap-10 pb-12">
@@ -35,7 +39,7 @@ export default async function LojaPage({
       <section className="flex flex-col gap-4 px-6">
         <h2 className="text-lg font-semibold">Categorias</h2>
         <div className="flex flex-wrap gap-3">
-          {categoriasMock.map((categoria) => (
+          {(categorias ?? []).map((categoria) => (
             <Link
               key={categoria.id}
               href={`/loja/${slug}/produtos?categoria=${categoria.id}`}

@@ -1,27 +1,32 @@
+"use client";
+
+import { use } from "react";
 import { notFound } from "next/navigation";
 import { CartProvider } from "@/components/store/cart-context";
 import { SiteHeader } from "@/components/store/site-header";
 import { SiteFooter } from "@/components/store/site-footer";
 import { CartSheet } from "@/components/store/cart-sheet";
 import { WhatsappFloatButton } from "@/components/store/whatsapp-float-button";
-import { getConfiguracaoLojaPorSlug } from "@/lib/mocks/loja";
+import { trpc } from "@/lib/trpc/client";
 
-export default async function PublicStoreLayout({
+export default function PublicStoreLayout({
   children,
   params,
 }: {
   children: React.ReactNode;
   params: Promise<{ slug: string }>;
 }) {
-  const { slug } = await params;
+  const { slug } = use(params);
 
-  // Escopo por tenant: cada loja é resolvida pelo slug da rota, nunca por um
-  // valor fixo. Mock hoje (getConfiguracaoLojaPorSlug), tRPC/Prisma no M11.
-  const config = getConfiguracaoLojaPorSlug(slug);
-  if (!config) notFound();
+  // Escopo por tenant: cada loja é resolvida pelo slug da rota via tRPC
+  // público, nunca por um valor fixo.
+  const { data: config, isLoading, isError } = trpc.lojaPublica.porSlug.useQuery({ slug });
+
+  if (isError) notFound();
+  if (isLoading || !config) return null;
 
   return (
-    <CartProvider>
+    <CartProvider slug={slug}>
       <div className="flex min-h-full flex-1 flex-col">
         <SiteHeader slug={slug} config={config} />
         <main className="flex flex-1 flex-col">{children}</main>

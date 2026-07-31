@@ -1,12 +1,11 @@
 "use client";
 
 import { createContext, useContext, useMemo, useState } from "react";
-import {
-  produtosMock,
-  variacaoLabel,
-  type Produto,
-  type VariacaoProduto,
-} from "@/lib/mocks/produtos";
+import { trpc } from "@/lib/trpc/client";
+import type { RouterOutputs } from "@/lib/trpc/types";
+
+type Produto = RouterOutputs["lojaPublica"]["produtos"][number];
+type VariacaoProduto = Produto["variacoes"][number];
 
 export type CartItem = {
   produtoId: string;
@@ -37,9 +36,24 @@ type CartContextValue = {
 
 const CartContext = createContext<CartContextValue | null>(null);
 
-export function CartProvider({ children }: { children: React.ReactNode }) {
+function variacaoLabel(v: { cor?: string | null; tamanho?: string | null; modelo?: string | null }) {
+  return [v.cor, v.tamanho, v.modelo].filter(Boolean).join(" / ") || "Padrão";
+}
+
+export function CartProvider({
+  slug,
+  children,
+}: {
+  slug: string;
+  children: React.ReactNode;
+}) {
   const [itens, setItens] = useState<CartItem[]>([]);
   const [aberto, setAberto] = useState(false);
+
+  // Carrinho guarda só ids/quantidade; os dados do produto (preço, nome,
+  // estoque) são resolvidos aqui a partir do catálogo público, sempre
+  // escopado por loja via slug — nunca confia em dado vindo do client.
+  const { data: produtos } = trpc.lojaPublica.produtos.useQuery({ slug });
 
   function adicionarItem(novoItem: CartItem) {
     setItens((atual) => {
@@ -75,8 +89,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }
 
   const itensDetalhados = useMemo<CartItemDetalhado[]>(() => {
+    if (!produtos) return [];
     return itens.flatMap((item) => {
-      const produto = produtosMock.find((p) => p.id === item.produtoId);
+      const produto = produtos.find((p) => p.id === item.produtoId);
       if (!produto) return [];
       const variacao = produto.variacoes.find((v) => v.id === item.variacaoId);
       if (!variacao && produto.variacoes.length > 0) return [];
@@ -90,7 +105,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         },
       ];
     });
-  }, [itens]);
+  }, [itens, produtos]);
 
   const quantidadeTotal = useMemo(
     () => itens.reduce((total, item) => total + item.quantidade, 0),
