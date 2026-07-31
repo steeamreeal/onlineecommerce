@@ -1,6 +1,7 @@
 import Link from "next/link";
-import type { Produto } from "@/lib/mocks/produtos";
-import { estoqueTotal } from "@/lib/mocks/produtos";
+import type { RouterOutputs } from "@/lib/trpc/types";
+
+type Produto = RouterOutputs["lojaPublica"]["produtos"][number];
 
 const formatoMoeda = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -8,7 +9,9 @@ const formatoMoeda = new Intl.NumberFormat("pt-BR", {
 });
 
 export function ProductCard({ produto, slug }: { produto: Produto; slug: string }) {
-  const semEstoque = estoqueTotal(produto) === 0;
+  const precoNormal = Number(produto.precoNormal);
+  const precoPromo = produto.precoPromo != null ? Number(produto.precoPromo) : undefined;
+  const semEstoque = produto.variacoes.reduce((total, v) => total + v.estoque, 0) === 0;
 
   return (
     <Link
@@ -24,17 +27,15 @@ export function ProductCard({ produto, slug }: { produto: Produto; slug: string 
       </div>
       <div className="flex flex-col gap-0.5">
         <span className="line-clamp-2 text-sm font-medium">{produto.nome}</span>
-        {produto.precoPromo ? (
+        {precoPromo ? (
           <div className="flex items-baseline gap-2">
             <span className="text-muted-foreground text-xs line-through">
-              {formatoMoeda.format(produto.precoNormal)}
+              {formatoMoeda.format(precoNormal)}
             </span>
-            <span className="text-primary font-semibold">
-              {formatoMoeda.format(produto.precoPromo)}
-            </span>
+            <span className="text-primary font-semibold">{formatoMoeda.format(precoPromo)}</span>
           </div>
         ) : (
-          <span className="font-semibold">{formatoMoeda.format(produto.precoNormal)}</span>
+          <span className="font-semibold">{formatoMoeda.format(precoNormal)}</span>
         )}
       </div>
     </Link>

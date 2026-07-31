@@ -8,8 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { useCart } from "@/components/store/cart-context";
-import { opcoesFreteMock, type OpcaoFrete } from "@/lib/mocks/frete";
-import { cuponsMock, cupomStatus, type Cupom } from "@/lib/mocks/cupons";
+import { trpc } from "@/lib/trpc/client";
+import type { RouterOutputs } from "@/lib/trpc/types";
+
+type OpcaoFrete = RouterOutputs["lojaPublica"]["frete"][number];
+type Cupom = RouterOutputs["lojaPublica"]["validarCupom"];
 
 const formatoMoeda = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -21,10 +24,8 @@ const STEPS = ["Identificação", "Entrega", "Pagamento", "Confirmação"] as co
 const FORMAS_PAGAMENTO = [
   { value: "PIX", label: "Pix" },
   { value: "CARTAO", label: "Cartão de crédito" },
-  { value: "NA_ENTREGA", label: "Pagamento na entrega/retirada" },
+  { value: "PAGAMENTO_ENTREGA", label: "Pagamento na entrega/retirada" },
 ] as const;
-
-const opcoesFreteAtivas = opcoesFreteMock.filter((o) => o.ativo);
 
 type Identificacao = { nome: string; telefone: string; email: string };
 type Entrega = {
@@ -32,7 +33,10 @@ type Entrega = {
   endereco: string;
   freteId?: string;
 };
-type Pagamento = { forma: "PIX" | "CARTAO" | "NA_ENTREGA"; cupomCodigo: string };
+type Pagamento = {
+  forma: (typeof FORMAS_PAGAMENTO)[number]["value"];
+  cupomCodigo: string;
+};
 
 function OpcaoSelecionavel({
   selecionada,
@@ -60,10 +64,30 @@ function OpcaoSelecionavel({
   );
 }
 
+// Endereço completo em uma linha "Rua, número, bairro, cidade/UF" é
+// quebrado nos campos exigidos pelo checkout.criarPedido; parsing best-effort
+// já que o formulário atual usa um único input de texto livre.
+function parseEndereco(texto: string) {
+  const partes = texto.split(",").map((p) => p.trim());
+  return {
+    rua: partes[0] || texto,
+    numero: partes[1] || undefined,
+    bairro: partes[2] || undefined,
+    cidade: partes[3] || "-",
+    estado: partes[4] || "-",
+    cep: "-",
+  };
+}
+
 export function CheckoutWizard({ slug }: { slug: string }) {
   const { itensDetalhados, subtotal, limparCarrinho } = useCart();
   const [step, setStep] = useState(0);
   const [pedidoConfirmado, setPedidoConfirmado] = useState(false);
+  const [erroEnvio, setErroEnvio] = useState<string | null>(null);
+
+  const { data: opcoesFrete } = trpc.lojaPublica.frete.useQuery({ slug });
+  const opcoesFreteAtivas = opcoesFrete ?? [];
+  const criarPedido = trpc.checkout.criarPedido.useMutation();
 
   const [identificacao, setIdentificacao] = useState<Identificacao>({
     nome: "",
@@ -75,40 +99,48 @@ export function CheckoutWizard({ slug }: { slug: string }) {
   const [cupomAplicado, setCupomAplicado] = useState<Cupom | null>(null);
   const [erroCupom, setErroCupom] = useState<string | null>(null);
 
+  const utils = trpc.useUtils();
+
   const freteEscolhido: OpcaoFrete | undefined =
     entrega.modo === "RETIRADA"
-      ? opcoesFreteMock.find((o) => o.tipo === "RETIRADA")
+      ? opcoesFreteAtivas.find((o) => o.tipo === "RETIRADA")
       : opcoesFreteAtivas.find((o) => o.id === entrega.freteId);
 
   const valorFrete = useMemo(() => {
     if (!freteEscolhido) return 0;
     if (cupomAplicado?.tipo === "FRETE_GRATIS") return 0;
-    if (freteEscolhido.freteGratisAcimaDe && subtotal >= freteEscolhido.freteGratisAcimaDe) {
-      return 0;
-    }
-    return freteEscolhido.valor ?? 0;
+    const freteGratisAcimaDe = freteEscolhido.freteGratisAcimaDe
+      ? Number(freteEscolhido.freteGratisAcimaDe)
+      : undefined;
+    if (freteGratisAcimaDe && subtotal >= freteGratisAcimaDe) return 0;
+    return freteEscolhido.valor ? Number(freteEscolhido.valor) : 0;
   }, [freteEscolhido, cupomAplicado, subtotal]);
 
   const desconto = useMemo(() => {
     if (!cupomAplicado) return 0;
-    if (cupomAplicado.tipo === "PERCENTUAL") return subtotal * ((cupomAplicado.valor ?? 0) / 100);
-    if (cupomAplicado.tipo === "VALOR_FIXO") return Math.min(cupomAplicado.valor ?? 0, subtotal);
+    const valor = cupomAplicado.valor ? Number(cupomAplicado.valor) : 0;
+    if (cupomAplicado.tipo === "PERCENTUAL") return subtotal * (valor / 100);
+    if (cupomAplicado.tipo === "VALOR_FIXO") return Math.min(valor, subtotal);
     return 0;
   }, [cupomAplicado, subtotal]);
 
   const total = Math.max(0, subtotal + valorFrete - desconto);
 
-  function aplicarCupom() {
+  async function aplicarCupom() {
     const codigo = pagamento.cupomCodigo.trim().toUpperCase();
     if (!codigo) return;
-    const cupom = cuponsMock.find((c) => c.codigo === codigo);
-    if (!cupom || cupomStatus(cupom) !== "ATIVO") {
+    try {
+      const cupom = await utils.lojaPublica.validarCupom.fetch({
+        slug,
+        codigo,
+        produtoIds: itensDetalhados.map((i) => i.produtoId),
+      });
+      setErroCupom(null);
+      setCupomAplicado(cupom);
+    } catch {
       setErroCupom("Cupom inválido ou expirado.");
       setCupomAplicado(null);
-      return;
     }
-    setErroCupom(null);
-    setCupomAplicado(cupom);
   }
 
   function podeAvancar(): boolean {
@@ -126,9 +158,32 @@ export function CheckoutWizard({ slug }: { slug: string }) {
     return true;
   }
 
-  function confirmarPedido() {
-    setPedidoConfirmado(true);
-    limparCarrinho();
+  async function confirmarPedido() {
+    setErroEnvio(null);
+    try {
+      await criarPedido.mutateAsync({
+        slug,
+        cliente: {
+          nome: identificacao.nome.trim(),
+          telefone: identificacao.telefone.trim(),
+          email: identificacao.email.trim() || undefined,
+        },
+        modoEntrega: entrega.modo,
+        endereco: entrega.modo === "ENTREGA" ? parseEndereco(entrega.endereco) : undefined,
+        freteId: entrega.modo === "ENTREGA" ? entrega.freteId : undefined,
+        formaPagamento: pagamento.forma,
+        itens: itensDetalhados.map((item) => ({
+          produtoId: item.produtoId,
+          variacaoId: item.variacao ? item.variacaoId : undefined,
+          quantidade: item.quantidade,
+        })),
+        cupomCodigo: cupomAplicado?.codigo,
+      });
+      setPedidoConfirmado(true);
+      limparCarrinho();
+    } catch {
+      setErroEnvio("Não foi possível confirmar seu pedido. Tente novamente.");
+    }
   }
 
   if (itensDetalhados.length === 0 && !pedidoConfirmado) {
@@ -256,7 +311,7 @@ export function CheckoutWizard({ slug }: { slug: string }) {
                     >
                       <span>{opcao.nome}</span>
                       <span className="text-muted-foreground">
-                        {opcao.valor ? formatoMoeda.format(opcao.valor) : "A calcular"}
+                        {opcao.valor ? formatoMoeda.format(Number(opcao.valor)) : "A calcular"}
                       </span>
                     </OpcaoSelecionavel>
                   ))}
@@ -347,6 +402,7 @@ export function CheckoutWizard({ slug }: { slug: string }) {
                 : `Entrega: ${entrega.endereco} — ${freteEscolhido?.nome ?? ""}`}
             </p>
           </div>
+          {erroEnvio && <span className="text-destructive text-xs">{erroEnvio}</span>}
         </div>
       )}
 
@@ -364,8 +420,8 @@ export function CheckoutWizard({ slug }: { slug: string }) {
             Avançar
           </Button>
         ) : (
-          <Button type="button" onClick={confirmarPedido}>
-            Confirmar pedido
+          <Button type="button" disabled={criarPedido.isPending} onClick={confirmarPedido}>
+            {criarPedido.isPending ? "Enviando..." : "Confirmar pedido"}
           </Button>
         )}
       </div>

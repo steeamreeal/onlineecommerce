@@ -11,14 +11,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ProductCard } from "@/components/store/product-card";
-import { categoriasMock, produtosMock } from "@/lib/mocks/produtos";
+import { trpc } from "@/lib/trpc/client";
 
 const TODAS = "TODAS";
-
-const categoriaSelectItems = [
-  { value: TODAS, label: "Todas as categorias" },
-  ...categoriasMock.map((categoria) => ({ value: categoria.id, label: categoria.nome })),
-];
 
 export function ProdutosCatalogo({
   slug,
@@ -34,21 +29,24 @@ export function ProdutosCatalogo({
   const [precoMin, setPrecoMin] = useState("");
   const [precoMax, setPrecoMax] = useState("");
 
+  const { data: categorias } = trpc.lojaPublica.categorias.useQuery({ slug });
+  const { data: produtos } = trpc.lojaPublica.produtos.useQuery({
+    slug,
+    busca: busca.trim() || undefined,
+    categoriaId: categoriaId === TODAS ? undefined : categoriaId,
+  });
+
   const produtosFiltrados = useMemo(() => {
-    const termo = busca.trim().toLowerCase();
     const min = precoMin ? Number(precoMin) : undefined;
     const max = precoMax ? Number(precoMax) : undefined;
 
-    return produtosMock.filter((produto) => {
-      if (produto.status === "INATIVO") return false;
-      const preco = produto.precoPromo ?? produto.precoNormal;
-      const bateBusca = termo.length === 0 || produto.nome.toLowerCase().includes(termo);
-      const bateCategoria = categoriaId === TODAS || produto.categoriaId === categoriaId;
+    return (produtos ?? []).filter((produto) => {
+      const preco = Number(produto.precoPromo ?? produto.precoNormal);
       const batePrecoMin = min === undefined || preco >= min;
       const batePrecoMax = max === undefined || preco <= max;
-      return bateBusca && bateCategoria && batePrecoMin && batePrecoMax;
+      return batePrecoMin && batePrecoMax;
     });
-  }, [busca, categoriaId, precoMin, precoMax]);
+  }, [produtos, precoMin, precoMax]);
 
   return (
     <div className="flex flex-1 flex-col gap-6 px-6 py-8">
@@ -71,7 +69,13 @@ export function ProdutosCatalogo({
           />
         </div>
         <Select
-          items={categoriaSelectItems}
+          items={[
+            { value: TODAS, label: "Todas as categorias" },
+            ...(categorias ?? []).map((categoria) => ({
+              value: categoria.id,
+              label: categoria.nome,
+            })),
+          ]}
           value={categoriaId}
           onValueChange={(v) => setCategoriaId(v ?? TODAS)}
         >
@@ -80,7 +84,7 @@ export function ProdutosCatalogo({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={TODAS}>Todas as categorias</SelectItem>
-            {categoriasMock.map((categoria) => (
+            {(categorias ?? []).map((categoria) => (
               <SelectItem key={categoria.id} value={categoria.id}>
                 {categoria.nome}
               </SelectItem>

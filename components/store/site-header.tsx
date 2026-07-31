@@ -5,23 +5,17 @@ import { Search, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCart } from "@/components/store/cart-context";
-import { categoriasMock } from "@/lib/mocks/produtos";
-import type { ConfiguracaoLoja } from "@/lib/mocks/loja";
+import { trpc } from "@/lib/trpc/client";
+import type { RouterOutputs } from "@/lib/trpc/types";
+
+type ConfiguracaoLoja = RouterOutputs["lojaPublica"]["porSlug"];
 
 export function SiteHeader({ slug, config }: { slug: string; config: ConfiguracaoLoja }) {
   const { quantidadeTotal, setAberto } = useCart();
+  const { data: categorias } = trpc.lojaPublica.categorias.useQuery({ slug });
 
   return (
     <div className="flex flex-col border-b">
-      {config.avisoTopo && (
-        <div
-          className="px-6 py-2 text-center text-sm font-medium text-white"
-          style={{ backgroundColor: config.corPrimaria }}
-        >
-          {config.avisoTopo}
-        </div>
-      )}
-
       <div className="flex flex-wrap items-center gap-4 px-6 py-4">
         <Link href={`/loja/${slug}`} className="text-lg font-semibold">
           {config.nome}
@@ -40,7 +34,7 @@ export function SiteHeader({ slug, config }: { slug: string; config: Configuraca
         </form>
 
         <nav className="hidden items-center gap-4 text-sm md:flex">
-          {categoriasMock.map((categoria) => (
+          {(categorias ?? []).map((categoria) => (
             <Link
               key={categoria.id}
               href={`/loja/${slug}/produtos?categoria=${categoria.id}`}
@@ -56,7 +50,7 @@ export function SiteHeader({ slug, config }: { slug: string; config: Configuraca
           {quantidadeTotal > 0 && (
             <span
               className="absolute -top-1.5 -right-1.5 flex size-4 items-center justify-center rounded-full text-[0.65rem] font-medium text-white"
-              style={{ backgroundColor: config.corPrimaria }}
+              style={{ backgroundColor: config.corPrimaria ?? undefined }}
             >
               {quantidadeTotal}
             </span>
