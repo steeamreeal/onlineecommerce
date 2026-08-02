@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { PedidoStatusBadge } from "@/components/dashboard/pedido-status-badge";
 import { FORMA_PAGAMENTO_LABEL, STATUS_PEDIDO_LABEL, pedidoValorProdutos, proximoStatus } from "@/lib/pedidos";
 import { variacaoLabel } from "@/lib/estoque";
+import { whatsappStatusAtualizado } from "@/lib/whatsapp";
 import { trpc } from "@/lib/trpc/client";
 import type { RouterOutputs } from "@/lib/trpc/types";
 
@@ -29,6 +30,7 @@ type Pedido = RouterOutputs["pedidos"]["buscarPorId"];
 
 export function PedidoDetalhe({ pedido }: { pedido: Pedido }) {
   const utils = trpc.useUtils();
+  const { data: loja } = trpc.loja.atual.useQuery();
   const atualizarStatus = trpc.pedidos.atualizarStatus.useMutation({
     onSuccess: () => utils.pedidos.buscarPorId.invalidate({ id: pedido.id }),
   });
@@ -54,9 +56,16 @@ export function PedidoDetalhe({ pedido }: { pedido: Pedido }) {
       }, ${enderecoPrincipal.cidade}/${enderecoPrincipal.estado}`
     : undefined;
 
-  const whatsappHref = cliente?.telefone
-    ? `https://wa.me/55${cliente.telefone.replace(/\D/g, "")}`
-    : undefined;
+  const whatsappHref =
+    cliente?.telefone && loja
+      ? whatsappStatusAtualizado({
+          telefone: cliente.telefone,
+          clienteNome: cliente.nome,
+          lojaNome: loja.nome,
+          pedidoId: pedido.id,
+          status: pedido.status,
+        })
+      : undefined;
 
   const itensComValor = pedido.itens.map((item) => ({
     quantidade: item.quantidade,

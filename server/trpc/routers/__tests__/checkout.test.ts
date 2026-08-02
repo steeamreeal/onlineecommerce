@@ -12,8 +12,16 @@ vi.mock("@/lib/mercadopago", () => ({
 // mpAccessToken presente simula uma loja que já conectou o Mercado Pago
 // (Connect/OAuth) — sem ele, o checkoutRouter rejeita formas de pagamento
 // com gateway antes mesmo de criar o pedido.
-const LOJA = { id: "loja-1", slug: "minha-loja", mpAccessToken: "token-da-loja-1" };
-const PRODUTO = { id: "produto-1", lojaId: LOJA.id, precoNormal: 100, precoPromo: null };
+const LOJA = { id: "loja-1", nome: "Minha Loja", slug: "minha-loja", mpAccessToken: "token-da-loja-1" };
+const PRODUTO = { id: "produto-1", lojaId: LOJA.id, nome: "Produto 1", precoNormal: 100, precoPromo: null };
+const VARIACAO = {
+  id: "variacao-1",
+  produtoId: PRODUTO.id,
+  estoque: 10,
+  cor: null,
+  tamanho: null,
+  modelo: null,
+};
 
 type PrismaMockShape = Record<string, Record<string, ReturnType<typeof vi.fn>>>;
 
@@ -43,8 +51,14 @@ function criarPrismaMock(overrides: Record<string, unknown> = {}) {
       create: vi.fn().mockResolvedValue(cliente),
     },
     enderecoCliente: { create: vi.fn() },
-    variacaoProduto: { updateMany: vi.fn(), update: vi.fn() },
+    variacaoProduto: {
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+      update: vi.fn(),
+      findUniqueOrThrow: vi.fn().mockResolvedValue(VARIACAO),
+    },
     movimentoEstoque: { create: vi.fn() },
+    usuarioLoja: { findFirst: vi.fn().mockResolvedValue(null) },
+    notificacao: { create: vi.fn() },
     pedido: {
       create: vi.fn().mockResolvedValue(pedidoCriado),
       update: vi.fn(),
@@ -189,7 +203,11 @@ describe("checkoutRouter.criarPedido", () => {
 
   it("não gera preferência de pagamento nem cria o pedido quando falta estoque", async () => {
     const { mock, client } = criarPrismaMock({
-      variacaoProduto: { updateMany: vi.fn().mockResolvedValue({ count: 0 }), update: vi.fn() },
+      variacaoProduto: {
+        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+        update: vi.fn(),
+        findUniqueOrThrow: vi.fn().mockResolvedValue(VARIACAO),
+      },
     });
     const caller = criarCaller(client);
 

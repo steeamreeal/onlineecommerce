@@ -2,6 +2,13 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { router, storeProcedure } from "../trpc";
+import { ESTOQUE_BAIXO_LIMITE, variacaoLabel } from "@/lib/estoque";
+import {
+  buscarEmailAdministradorLoja,
+  notificarEstoqueBaixo,
+  notificarPedidoConfirmado,
+  notificarStatusAtualizado,
+} from "@/lib/email/notificacoes";
 
 const statusPedidoSchema = z.enum([
   "NOVO",
@@ -54,9 +61,11 @@ export const itemPedidoInputSchema = z.object({
 export async function baixarEstoqueItens(
   tx: Prisma.TransactionClient,
   itens: { variacaoId?: string; quantidade: number }[],
+  loja: { id: string; nome: string },
 ) {
   for (const item of itens) {
     if (!item.variacaoId) continue;
+    const antes = await tx.variacaoProduto.findUniqueOrThrow({ where: { id: item.variacaoId } });
     const resultado = await tx.variacaoProduto.updateMany({
       where: { id: item.variacaoId, estoque: { gte: item.quantidade } },
       data: { estoque: { decrement: item.quantidade } },
@@ -75,6 +84,23 @@ export async function baixarEstoqueItens(
         motivo: "Venda (pedido)",
       },
     });
+
+    // Só notifica no momento em que o estoque cruza o limite (antes estava
+    // acima, agora está em ou abaixo) — evita notificar de novo a cada venda
+    // enquanto o estoque já está baixo.
+    const depois = antes.estoque - item.quantidade;
+    if (antes.estoque > ESTOQUE_BAIXO_LIMITE && depois <= ESTOQUE_BAIXO_LIMITE) {
+      const produto = await tx.produto.findUniqueOrThrow({ where: { id: antes.produtoId } });
+      const emailAdmin = await buscarEmailAdministradorLoja(tx, loja.id);
+      await notificarEstoqueBaixo(tx, {
+        lojaId: loja.id,
+        lojaNome: loja.nome,
+        lojistaEmail: emailAdmin,
+        produtoNome: produto.nome,
+        variacaoLabel: variacaoLabel(antes),
+        estoqueAtual: depois,
+      });
+    }
   }
 }
 
@@ -179,6 +205,7 @@ export const pedidosRouter = router({
       if (!cliente) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Cliente inválido." });
       }
+      const loja = await ctx.prisma.loja.findUniqueOrThrow({ where: { id: ctx.lojaId } });
 
       const itensComPreco = await calcularValorItens(ctx.prisma, ctx.lojaId, input.itens);
       const valorProdutos = itensComPreco.reduce((s, i) => s + i.precoUnit * i.quantidade, 0);
@@ -214,13 +241,13 @@ export const pedidosRouter = router({
       const valorTotal = valorProdutos + valorFrete - valorDesconto;
 
       return ctx.prisma.$transaction(async (tx) => {
-        await baixarEstoqueItens(tx, input.itens);
+        await baixarEstoqueItens(tx, input.itens, loja);
 
         if (cupomId) {
           await tx.cupom.update({ where: { id: cupomId }, data: { usosAtuais: { increment: 1 } } });
         }
 
-        return tx.pedido.create({
+        const pedido = await tx.pedido.create({
           data: {
             lojaId: ctx.lojaId,
             clienteId: input.clienteId,
@@ -240,6 +267,17 @@ export const pedidosRouter = router({
           },
           include: { itens: true, cliente: true, cupom: true },
         });
+
+        await notificarPedidoConfirmado(tx, {
+          lojaId: loja.id,
+          lojaNome: loja.nome,
+          clienteNome: cliente.nome,
+          clienteEmail: cliente.email,
+          pedidoId: pedido.id,
+          valorTotal,
+        });
+
+        return pedido;
       });
     }),
 
@@ -251,7 +289,7 @@ export const pedidosRouter = router({
     .mutation(async ({ ctx, input }) => {
       const pedido = await ctx.prisma.pedido.findFirst({
         where: { id: input.id, lojaId: ctx.lojaId },
-        include: { itens: true },
+        include: { itens: true, cliente: true },
       });
       if (!pedido) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Pedido não encontrado." });
@@ -271,6 +309,8 @@ export const pedidosRouter = router({
         });
       }
 
+      const loja = await ctx.prisma.loja.findUniqueOrThrow({ where: { id: ctx.lojaId } });
+
       return ctx.prisma.$transaction(async (tx) => {
         if (ehCancelamento) {
           await devolverEstoqueItens(tx, pedido.itens);
@@ -282,11 +322,22 @@ export const pedidosRouter = router({
           }
         }
 
-        return tx.pedido.update({
+        const pedidoAtualizado = await tx.pedido.update({
           where: { id: input.id },
           data: { status: input.status },
           include: { itens: true, cliente: true, cupom: true },
         });
+
+        await notificarStatusAtualizado(tx, {
+          lojaId: loja.id,
+          lojaNome: loja.nome,
+          clienteNome: pedido.cliente.nome,
+          clienteEmail: pedido.cliente.email,
+          pedidoId: pedido.id,
+          status: input.status,
+        });
+
+        return pedidoAtualizado;
       });
     }),
 

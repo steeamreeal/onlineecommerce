@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, storeProcedure } from "../trpc";
+import { ESTOQUE_BAIXO_LIMITE, variacaoLabel } from "@/lib/estoque";
+import { buscarEmailAdministradorLoja, notificarEstoqueBaixo } from "@/lib/email/notificacoes";
 
 export const estoqueRouter = router({
   listarVariacoes: storeProcedure.query(({ ctx }) => {
@@ -79,6 +81,29 @@ export const estoqueRouter = router({
             motivo: input.motivo,
           },
         });
+
+        // Mesma regra de cruzamento de limite usada na baixa automática por
+        // venda (pedidos.ts): só notifica quando o estoque passa de acima do
+        // limite para em/abaixo dele.
+        if (
+          input.tipo === "SAIDA" &&
+          variacao.estoque > ESTOQUE_BAIXO_LIMITE &&
+          variacaoAtualizada.estoque <= ESTOQUE_BAIXO_LIMITE
+        ) {
+          const [loja, produto] = await Promise.all([
+            tx.loja.findUniqueOrThrow({ where: { id: ctx.lojaId } }),
+            tx.produto.findUniqueOrThrow({ where: { id: variacao.produtoId } }),
+          ]);
+          const emailAdmin = await buscarEmailAdministradorLoja(tx, ctx.lojaId);
+          await notificarEstoqueBaixo(tx, {
+            lojaId: ctx.lojaId,
+            lojaNome: loja.nome,
+            lojistaEmail: emailAdmin,
+            produtoNome: produto.nome,
+            variacaoLabel: variacaoLabel(variacaoAtualizada),
+            estoqueAtual: variacaoAtualizada.estoque,
+          });
+        }
 
         return { movimento, variacao: variacaoAtualizada };
       });

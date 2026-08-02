@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, storeProcedure } from "../trpc";
+import { ESTOQUE_BAIXO_LIMITE, variacaoLabel } from "@/lib/estoque";
+import { buscarEmailAdministradorLoja, notificarEstoqueBaixo } from "@/lib/email/notificacoes";
 
 const statusProdutoSchema = z.enum(["ATIVO", "INATIVO", "DESTAQUE"]);
 
@@ -150,6 +152,7 @@ export const produtosRouter = router({
       if (!produtoExistente) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Produto não encontrado." });
       }
+      const loja = await ctx.prisma.loja.findUniqueOrThrow({ where: { id: ctx.lojaId } });
 
       await validarCategoria(ctx.prisma, ctx.lojaId, input.categoriaId);
 
@@ -225,6 +228,8 @@ export const produtosRouter = router({
             where: { id: { in: variacoesParaRemover.map((v) => v.id) }, produtoId: input.id },
           });
         }
+        const estoqueAnteriorPorId = new Map(produtoExistente.variacoes.map((v) => [v.id, v.estoque]));
+
         for (const variacao of variacoesParaManter) {
           await tx.variacaoProduto.updateMany({
             where: { id: variacao.id, produtoId: input.id },
@@ -235,6 +240,31 @@ export const produtosRouter = router({
               estoque: variacao.estoque,
             },
           });
+
+          // Mesma regra de cruzamento de limite da baixa por venda/movimento
+          // manual (pedidos.ts, estoque.ts): só notifica quando o lojista
+          // edita o estoque para um valor que cruza de acima do limite para
+          // em/abaixo dele, não a cada edição enquanto já está baixo.
+          const estoqueAntes = estoqueAnteriorPorId.get(variacao.id!);
+          if (
+            estoqueAntes != null &&
+            estoqueAntes > ESTOQUE_BAIXO_LIMITE &&
+            variacao.estoque <= ESTOQUE_BAIXO_LIMITE
+          ) {
+            const emailAdmin = await buscarEmailAdministradorLoja(tx, ctx.lojaId);
+            await notificarEstoqueBaixo(tx, {
+              lojaId: ctx.lojaId,
+              lojaNome: loja.nome,
+              lojistaEmail: emailAdmin,
+              produtoNome: input.nome,
+              variacaoLabel: variacaoLabel({
+                cor: variacao.cor ?? null,
+                tamanho: variacao.tamanho ?? null,
+                modelo: variacao.modelo ?? null,
+              }),
+              estoqueAtual: variacao.estoque,
+            });
+          }
         }
         if (variacoesParaCriar.length > 0) {
           await tx.variacaoProduto.createMany({
