@@ -1,5 +1,6 @@
 import { PainelNav } from "@/components/dashboard/painel-nav";
 import { LogoutButton } from "@/components/auth/logout-button";
+import { NotificacoesSino } from "@/components/dashboard/notificacoes-sino";
 
 export default function DashboardLayout({
   children,
@@ -20,7 +21,10 @@ export default function DashboardLayout({
       <div className="flex flex-1 flex-col">
         <header className="flex items-center justify-between border-b px-6 py-4">
           <span className="text-sm font-medium">Minha Loja</span>
-          <LogoutButton />
+          <div className="flex items-center gap-2">
+            <NotificacoesSino />
+            <LogoutButton />
+          </div>
         </header>
         {children}
       </div>

@@ -58,13 +58,14 @@ model Loja {
   mpUserId       String?   @unique
   mpConectadoEm  DateTime?
 
-  usuarios    UsuarioLoja[]
-  produtos    Produto[]
-  categorias  Categoria[]
-  clientes    Cliente[]
-  pedidos     Pedido[]
-  cupons      Cupom[]
-  opcoesFrete OpcaoFrete[]
+  usuarios     UsuarioLoja[]
+  produtos     Produto[]
+  categorias   Categoria[]
+  clientes     Cliente[]
+  pedidos      Pedido[]
+  cupons       Cupom[]
+  opcoesFrete  OpcaoFrete[]
+  notificacoes Notificacao[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -318,6 +319,28 @@ model ItemPedido {
   variacao   VariacaoProduto? @relation(fields: [variacaoId], references: [id])
   quantidade Int
   precoUnit  Decimal          @db.Decimal(10, 2)
+}
+
+// ---------- Notificações in-app ----------
+
+enum TipoNotificacao {
+  PEDIDO_NOVO
+  ESTOQUE_BAIXO
+  STATUS_ATUALIZADO
+}
+
+model Notificacao {
+  id        String          @id @default(cuid())
+  lojaId    String
+  loja      Loja            @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  tipo      TipoNotificacao
+  titulo    String
+  mensagem  String
+  lida      Boolean         @default(false)
+  pedidoId  String?
+  createdAt DateTime        @default(now())
+
+  @@index([lojaId, lida])
 }
 
 // ---------- Webhooks ----------

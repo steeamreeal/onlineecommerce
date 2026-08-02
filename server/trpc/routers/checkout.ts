@@ -4,6 +4,7 @@ import { router, publicProcedure } from "../trpc";
 import { resolverLojaPorSlug } from "./loja-publica";
 import { baixarEstoqueItens, calcularValorItens, formaPagamentoSchema, itemPedidoInputSchema } from "./pedidos";
 import { getMpPreference } from "@/lib/mercadopago";
+import { notificarPedidoConfirmado } from "@/lib/email/notificacoes";
 
 function baseUrl() {
   if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
@@ -148,13 +149,13 @@ export const checkoutRouter = router({
           });
         }
 
-        await baixarEstoqueItens(tx, input.itens);
+        await baixarEstoqueItens(tx, input.itens, loja);
 
         if (cupomId) {
           await tx.cupom.update({ where: { id: cupomId }, data: { usosAtuais: { increment: 1 } } });
         }
 
-        return tx.pedido.create({
+        const novoPedido = await tx.pedido.create({
           data: {
             lojaId: loja.id,
             clienteId: cliente.id,
@@ -175,6 +176,17 @@ export const checkoutRouter = router({
           },
           include: { itens: true, cliente: true, cupom: true },
         });
+
+        await notificarPedidoConfirmado(tx, {
+          lojaId: loja.id,
+          lojaNome: loja.nome,
+          clienteNome: cliente.nome,
+          clienteEmail: cliente.email,
+          pedidoId: novoPedido.id,
+          valorTotal,
+        });
+
+        return novoPedido;
       });
 
       if (!usaGateway) {
