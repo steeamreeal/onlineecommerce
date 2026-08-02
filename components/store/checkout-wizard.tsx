@@ -82,12 +82,21 @@ function parseEndereco(texto: string) {
 export function CheckoutWizard({ slug }: { slug: string }) {
   const { itensDetalhados, subtotal, limparCarrinho, hidratado } = useCart();
   const [step, setStep] = useState(0);
-  const [pedidoConfirmado, setPedidoConfirmado] = useState(false);
+  const [linkPagamento, setLinkPagamento] = useState<string | null | undefined>(undefined);
   const [erroEnvio, setErroEnvio] = useState<string | null>(null);
 
   const { data: opcoesFrete } = trpc.lojaPublica.frete.useQuery({ slug });
   const opcoesFreteAtivas = opcoesFrete ?? [];
+  const { data: config } = trpc.lojaPublica.porSlug.useQuery({ slug });
   const criarPedido = trpc.checkout.criarPedido.useMutation();
+
+  // Sem Mercado Pago conectado, a loja só pode receber na entrega — evita o
+  // cliente escolher PIX/cartão e só descobrir o erro na confirmação. Se a
+  // seleção atual (default "PIX") não estiver mais disponível, cai para
+  // pagamento na entrega direto na renderização, sem depender de efeito.
+  const formasPagamentoDisponiveis = config?.aceitaPagamentoOnline
+    ? FORMAS_PAGAMENTO
+    : FORMAS_PAGAMENTO.filter((f) => f.value === "PAGAMENTO_ENTREGA");
 
   const [identificacao, setIdentificacao] = useState<Identificacao>({
     nome: "",
@@ -100,6 +109,10 @@ export function CheckoutWizard({ slug }: { slug: string }) {
   const [erroCupom, setErroCupom] = useState<string | null>(null);
 
   const utils = trpc.useUtils();
+
+  const formaPagamentoEfetiva = formasPagamentoDisponiveis.some((f) => f.value === pagamento.forma)
+    ? pagamento.forma
+    : "PAGAMENTO_ENTREGA";
 
   const freteEscolhido: OpcaoFrete | undefined =
     entrega.modo === "RETIRADA"
@@ -161,7 +174,7 @@ export function CheckoutWizard({ slug }: { slug: string }) {
   async function confirmarPedido() {
     setErroEnvio(null);
     try {
-      await criarPedido.mutateAsync({
+      const resultado = await criarPedido.mutateAsync({
         slug,
         cliente: {
           nome: identificacao.nome.trim(),
@@ -171,7 +184,7 @@ export function CheckoutWizard({ slug }: { slug: string }) {
         modoEntrega: entrega.modo,
         endereco: entrega.modo === "ENTREGA" ? parseEndereco(entrega.endereco) : undefined,
         freteId: entrega.modo === "ENTREGA" ? entrega.freteId : undefined,
-        formaPagamento: pagamento.forma,
+        formaPagamento: formaPagamentoEfetiva,
         itens: itensDetalhados.map((item) => ({
           produtoId: item.produtoId,
           variacaoId: item.variacao ? item.variacaoId : undefined,
@@ -179,12 +192,22 @@ export function CheckoutWizard({ slug }: { slug: string }) {
         })),
         cupomCodigo: cupomAplicado?.codigo,
       });
-      setPedidoConfirmado(true);
+      setLinkPagamento(resultado.linkPagamento);
       limparCarrinho();
-    } catch {
-      setErroEnvio("Não foi possível confirmar seu pedido. Tente novamente.");
+    } catch (erro) {
+      // Erros de validação do checkout (ex.: "loja não configurou o
+      // pagamento online") já vêm em português e sem jargão técnico —
+      // mostramos direto. Qualquer outro erro (rede, 500) cai na mensagem
+      // genérica para não expor detalhe interno ao cliente final.
+      const mensagem =
+        erro instanceof Error && erro.name === "TRPCClientError"
+          ? erro.message
+          : "Não foi possível confirmar seu pedido. Tente novamente.";
+      setErroEnvio(mensagem);
     }
   }
+
+  const pedidoConfirmado = linkPagamento !== undefined;
 
   if (!hidratado) return null;
 
@@ -205,10 +228,20 @@ export function CheckoutWizard({ slug }: { slug: string }) {
         <CheckCircle2 className="text-success size-12" />
         <h1 className="text-2xl font-semibold">Pedido confirmado!</h1>
         <p className="text-muted-foreground max-w-sm text-sm">
-          Recebemos seu pedido. Em breve entraremos em contato pelo WhatsApp informado para
-          confirmar os próximos passos.
+          {linkPagamento
+            ? "Recebemos seu pedido. Finalize o pagamento no link abaixo para que ele seja preparado."
+            : "Recebemos seu pedido. Em breve entraremos em contato pelo WhatsApp informado para confirmar os próximos passos."}
         </p>
-        <Button nativeButton={false} render={<Link href={`/loja/${slug}`} />}>
+        {linkPagamento && (
+          <Button nativeButton={false} render={<a href={linkPagamento} target="_blank" rel="noreferrer" />}>
+            Pagar agora
+          </Button>
+        )}
+        <Button
+          nativeButton={false}
+          variant={linkPagamento ? "outline" : "default"}
+          render={<Link href={`/loja/${slug}`} />}
+        >
           Voltar para a loja
         </Button>
       </div>
@@ -327,10 +360,10 @@ export function CheckoutWizard({ slug }: { slug: string }) {
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <Label>Forma de pagamento</Label>
-            {FORMAS_PAGAMENTO.map((opcao) => (
+            {formasPagamentoDisponiveis.map((opcao) => (
               <OpcaoSelecionavel
                 key={opcao.value}
-                selecionada={pagamento.forma === opcao.value}
+                selecionada={formaPagamentoEfetiva === opcao.value}
                 onClick={() => setPagamento((v) => ({ ...v, forma: opcao.value }))}
               >
                 {opcao.label}

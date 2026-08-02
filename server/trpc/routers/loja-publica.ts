@@ -32,6 +32,10 @@ export const lojaPublicaRouter = router({
         horarioAtend: loja.horarioAtend,
         politicas: loja.politicas,
         dominioProprio: loja.dominioProprio,
+        // Booleano derivado (nunca o token) — usado pelo checkout para
+        // esconder PIX/cartão/boleto quando a loja não conectou o Mercado
+        // Pago, em vez do cliente só descobrir o erro no fim do fluxo.
+        aceitaPagamentoOnline: Boolean(loja.mpAccessToken),
       };
     }),
 

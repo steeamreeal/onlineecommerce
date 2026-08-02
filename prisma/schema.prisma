@@ -47,6 +47,17 @@ model Loja {
   plano          Plano?      @relation(fields: [planoId], references: [id])
   statusPlano    PlanoStatus @default(TESTE)
 
+  stripeCustomerId     String? @unique
+  stripeSubscriptionId String? @unique
+
+  // Credenciais do Mercado Pago Connect da própria loja (OAuth) — o dinheiro
+  // do checkout cai direto na conta do lojista, nunca numa conta central da
+  // plataforma. Nulos até o lojista concluir "Conectar Mercado Pago".
+  mpAccessToken  String?   @unique
+  mpRefreshToken String?
+  mpUserId       String?   @unique
+  mpConectadoEm  DateTime?
+
   usuarios    UsuarioLoja[]
   produtos    Produto[]
   categorias  Categoria[]
@@ -287,6 +298,10 @@ model Pedido {
   codigoRastreio String?
   itens          ItemPedido[]
 
+  mpPaymentId   String?   @unique
+  linkPagamento String?
+  pagoEm        DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -303,4 +318,22 @@ model ItemPedido {
   variacao   VariacaoProduto? @relation(fields: [variacaoId], references: [id])
   quantidade Int
   precoUnit  Decimal          @db.Decimal(10, 2)
+}
+
+// ---------- Webhooks ----------
+
+enum OrigemWebhook {
+  STRIPE
+  MERCADO_PAGO
+}
+
+// Registro de eventos de webhook já processados, usado para garantir
+// idempotência (gateways podem reenviar o mesmo evento mais de uma vez).
+model WebhookEvent {
+  id        String        @id @default(cuid())
+  origem    OrigemWebhook
+  eventoId  String
+  createdAt DateTime      @default(now())
+
+  @@unique([origem, eventoId])
 }

@@ -12,6 +12,7 @@ import { pedidosRouter } from "./routers/pedidos";
 import { dashboardRouter } from "./routers/dashboard";
 import { lojaPublicaRouter } from "./routers/loja-publica";
 import { checkoutRouter } from "./routers/checkout";
+import { pagamentosRouter } from "./routers/pagamentos";
 
 export const appRouter = router({
   produtos: produtosRouter,
@@ -27,6 +28,7 @@ export const appRouter = router({
   dashboard: dashboardRouter,
   lojaPublica: lojaPublicaRouter,
   checkout: checkoutRouter,
+  pagamentos: pagamentosRouter,
 });
 
 export type AppRouter = typeof appRouter;

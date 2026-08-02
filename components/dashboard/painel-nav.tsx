@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  CreditCard,
   LayoutDashboard,
   Package,
   ShoppingCart,
@@ -20,6 +21,7 @@ const itens = [
   { href: "/painel/clientes", label: "Clientes", icon: Users },
   { href: "/painel/cupons", label: "Cupons", icon: Tag },
   { href: "/painel/frete", label: "Frete", icon: Truck },
+  { href: "/painel/assinatura", label: "Assinatura", icon: CreditCard },
   { href: "/painel/configuracoes", label: "Configurações", icon: Settings },
 ];
 
