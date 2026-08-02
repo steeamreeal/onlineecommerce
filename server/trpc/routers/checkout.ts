@@ -3,6 +3,16 @@ import { TRPCError } from "@trpc/server";
 import { router, publicProcedure } from "../trpc";
 import { resolverLojaPorSlug } from "./loja-publica";
 import { baixarEstoqueItens, calcularValorItens, formaPagamentoSchema, itemPedidoInputSchema } from "./pedidos";
+import { getMpPreference } from "@/lib/mercadopago";
+
+function baseUrl() {
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return "http://localhost:3000";
+}
+
+// Formas de pagamento que passam pelo gateway Mercado Pago. PAGAMENTO_ENTREGA
+// não gera preferência — confirmação é manual pelo lojista no painel.
+const FORMAS_COM_GATEWAY = ["PIX", "CARTAO", "BOLETO", "LINK_PAGAMENTO"] as const;
 
 const enderecoInputSchema = z.object({
   rua: z.string().min(1),
@@ -99,8 +109,19 @@ export const checkoutRouter = router({
       }
 
       const valorTotal = Math.max(0, valorProdutos + valorFrete - valorDesconto);
+      const usaGateway = (FORMAS_COM_GATEWAY as readonly string[]).includes(input.formaPagamento);
 
-      return ctx.prisma.$transaction(async (tx) => {
+      // Validado antes de criar o pedido: sem isso, baixaríamos estoque e
+      // criaríamos o pedido para só então descobrir que a loja não tem como
+      // receber o pagamento.
+      if (usaGateway && !loja.mpAccessToken) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Esta loja ainda não configurou o pagamento online. Escolha pagamento na entrega ou contate o lojista.",
+        });
+      }
+
+      const pedido = await ctx.prisma.$transaction(async (tx) => {
         // Reaproveita cliente existente da loja pelo telefone; senão cria um novo.
         let cliente = await tx.cliente.findFirst({
           where: { lojaId: loja.id, telefone: input.cliente.telefone },
@@ -137,7 +158,7 @@ export const checkoutRouter = router({
           data: {
             lojaId: loja.id,
             clienteId: cliente.id,
-            status: "NOVO",
+            status: usaGateway ? "AGUARDANDO_PAGAMENTO" : "NOVO",
             formaPagamento: input.formaPagamento,
             valorFrete,
             valorDesconto,
@@ -155,5 +176,39 @@ export const checkoutRouter = router({
           include: { itens: true, cliente: true, cupom: true },
         });
       });
+
+      if (!usaGateway) {
+        return { pedido, linkPagamento: null };
+      }
+
+      // Preferência de pagamento fora da transação: se a chamada ao Mercado
+      // Pago falhar, o pedido já existe como AGUARDANDO_PAGAMENTO e pode ser
+      // retomado, em vez de perder a baixa de estoque já confirmada.
+      // mpAccessToken é da própria loja (Mercado Pago Connect) — o dinheiro
+      // cai direto na conta do lojista, nunca numa conta da plataforma.
+      const preferencia = await getMpPreference(loja.mpAccessToken!).create({
+        body: {
+          items: pedido.itens.map((item) => ({
+            id: item.produtoId,
+            title: `Item do pedido ${pedido.id}`,
+            quantity: item.quantidade,
+            unit_price: Number(item.precoUnit),
+          })),
+          external_reference: pedido.id,
+          payer: { name: pedido.cliente.nome, email: pedido.cliente.email ?? undefined },
+          back_urls: {
+            success: `${baseUrl()}/loja/${loja.slug}/pedido/${pedido.id}`,
+            pending: `${baseUrl()}/loja/${loja.slug}/pedido/${pedido.id}`,
+            failure: `${baseUrl()}/loja/${loja.slug}/pedido/${pedido.id}`,
+          },
+        },
+      });
+
+      const linkPagamento = preferencia.init_point ?? null;
+      if (linkPagamento) {
+        await ctx.prisma.pedido.update({ where: { id: pedido.id }, data: { linkPagamento } });
+      }
+
+      return { pedido, linkPagamento };
     }),
 });

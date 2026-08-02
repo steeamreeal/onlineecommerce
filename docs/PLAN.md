@@ -172,10 +172,11 @@ A partir daqui, cada milestone troca os mocks de uma área específica por dados
 - Branch: `milestone/12-pagamentos`
 - Objetivo: integrar meios de pagamento da loja e assinatura do SaaS.
 - Entregas:
-  - [ ] Stripe configurado para assinatura de planos do SaaS (webhook validado por assinatura)
-  - [ ] Gateway de pagamento da loja (PIX/cartão/boleto) integrado — decisão documentada no CLAUDE.md antes de implementar
-  - [ ] Confirmação automática de pagamento atualizando status do pedido
-  - [ ] Link de pagamento e opção de pagamento na entrega
+  - [x] Stripe configurado para assinatura de planos do SaaS (webhook validado por assinatura)
+  - [x] Gateway de pagamento da loja (PIX/cartão/boleto) integrado via Mercado Pago Connect (OAuth por loja) — decisão documentada no CLAUDE.md antes de implementar
+  - [x] Confirmação automática de pagamento atualizando status do pedido
+  - [x] Link de pagamento e opção de pagamento na entrega
+- Pendências para ativar em produção (fora do escopo deste milestone): preencher credenciais reais no `.env` (Stripe e Mercado Pago) e registrar a `redirect_uri` do OAuth no app do Mercado Pago.
 - Commit final: `feat: integração de pagamentos (assinatura SaaS e checkout da loja)`
 
 ### M13 — Notificações e WhatsApp

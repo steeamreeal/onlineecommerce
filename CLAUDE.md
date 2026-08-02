@@ -13,7 +13,7 @@ PRD completo em [docs/PRD.md](docs/PRD.md) — consultar antes de qualquer decis
 - **Banco de dados**: PostgreSQL via Supabase, acessado com Prisma
 - **API**: tRPC (client/server typesafe, sem REST manual)
 - **Autenticação**: Supabase Auth
-- **Pagamentos**: Stripe (assinaturas do SaaS) — pagamentos da loja (PIX/cartão/boleto) via gateway a definir, ver PRD seção 3.5
+- **Pagamentos**: Stripe (assinaturas do SaaS) + Mercado Pago (checkout da loja — PIX/cartão/boleto), ver decisão detalhada em "Cuidados para manutenção futura" e PRD seção 3.5
 - **E-mails transacionais**: Resend
 - **Deploy**: Vercel
 - **Assistente de dev**: Claude Code
@@ -66,8 +66,20 @@ Ajustar conforme o projeto evoluir — esta é a estrutura inicial de referênci
 
 - Nunca vazar dados entre tenants — toda query de loja precisa de escopo por `store_id`.
 - Mudanças em regras de estoque, pedidos ou cupons devem ser validadas contra o PRD (seções 3.6, 3.7, 3.10) antes de implementar.
-- Webhooks (Stripe, WhatsApp) precisam de verificação de assinatura — nunca confiar no payload sem validar origem.
+- Webhooks (Stripe, Mercado Pago, WhatsApp) precisam de verificação de assinatura — nunca confiar no payload sem validar origem.
 - Ao integrar novo gateway de pagamento da loja (PIX/boleto/cartão), documentar aqui a decisão e as credenciais necessárias, sem commitar segredos — usar variáveis de ambiente e `.env` no `.gitignore`.
+
+## Pagamentos (M12)
+
+- **Assinatura do SaaS (cobrança do lojista pela plataforma)**: Stripe. Usa `Plano.stripePriceId` (já existente no schema) e Checkout Session/Payment Link. Webhook em `app/api/webhooks/stripe/route.ts`, validado por `stripe-signature`, atualiza `Loja.statusPlano` a partir de `checkout.session.completed` e `customer.subscription.updated|deleted`.
+- **Checkout da loja (pagamento do cliente final)**: Mercado Pago, via **Mercado Pago Connect (OAuth/marketplace)** — cada lojista conecta sua própria conta Mercado Pago; o dinheiro do checkout cai direto na conta dele, nunca numa conta central da plataforma (evita a plataforma virar intermediária financeira). Decisão de usar Mercado Pago (em vez de só Stripe) tomada porque a Stripe Brasil não processa PIX nem boleto nativamente — só cartão — e o PRD 3.5 exige PIX, cartão e boleto.
+  - Credenciais por loja ficam em `Loja.mpAccessToken/mpRefreshToken/mpUserId/mpConectadoEm` (schema.prisma) — nunca uma env var global com token de acesso.
+  - Fluxo de conexão: painel do lojista (`/painel/assinatura`) → `pagamentos.iniciarConexaoMercadoPago` gera a URL de autorização (`OAuth.getAuthorizationURL`, com `state` assinado carregando o `lojaId`) → lojista autoriza no Mercado Pago → callback em `app/api/mercadopago/callback/route.ts` troca o `code` por tokens (`OAuth.create`) e salva na `Loja`.
+  - `FormaPagamento.PIX | CARTAO | BOLETO | LINK_PAGAMENTO` geram uma preferência no Mercado Pago **usando o `mpAccessToken` da loja do pedido** (`server/trpc/routers/checkout.ts`) — nunca um token global. Se a loja não tiver conectado o Mercado Pago, o checkout com essas formas de pagamento falha com mensagem clara pedindo para o lojista conectar a conta primeiro.
+  - `FormaPagamento.PAGAMENTO_ENTREGA` não passa por gateway nenhum — confirmação manual pelo lojista no painel.
+  - Webhook em `app/api/webhooks/mercadopago/route.ts`, validado por assinatura (`x-signature`/`x-request-id`, secret único da integração da plataforma). Como o pagamento pode ser de qualquer loja, o webhook primeiro localiza o `Pedido` (por `external_reference`) para descobrir a loja e o `mpAccessToken` correto antes de consultar o pagamento na API do Mercado Pago.
+- **Credenciais necessárias** (variáveis de ambiente, nunca commitadas): `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` (assinatura SaaS), `MERCADOPAGO_CLIENT_ID`, `MERCADOPAGO_CLIENT_SECRET` (credenciais do app da plataforma no Mercado Pago, usadas só para o fluxo OAuth), `MERCADOPAGO_WEBHOOK_SECRET`.
+- Se o Mercado Pago mudar política de webhook/assinatura ou o fluxo OAuth do Connect, revalidar a documentação oficial antes de alterar `app/api/webhooks/mercadopago/route.ts` ou `app/api/mercadopago/callback/route.ts`.
 
 ## Supabase Storage (fotos de produto)
 
