@@ -5,11 +5,7 @@ import { resolverLojaPorSlug } from "./loja-publica";
 import { baixarEstoqueItens, calcularValorItens, formaPagamentoSchema, itemPedidoInputSchema } from "./pedidos";
 import { getMpPreference } from "@/lib/mercadopago";
 import { notificarPedidoConfirmado } from "@/lib/email/notificacoes";
-
-function baseUrl() {
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  return "http://localhost:3000";
-}
+import { baseUrl } from "@/lib/base-url";
 
 // Formas de pagamento que passam pelo gateway Mercado Pago. PAGAMENTO_ENTREGA
 // não gera preferência — confirmação é manual pelo lojista no painel.

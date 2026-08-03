@@ -39,7 +39,17 @@ function resolverTenantPorHost(request: NextRequest): NextResponse | null {
   return NextResponse.rewrite(url);
 }
 
+// Showcase interno de componentes (M1) — nunca deve ficar acessível em
+// produção, mas o código continua útil em dev para revisar o design system.
+function bloqueadaEmProducao(pathname: string) {
+  return process.env.NODE_ENV === "production" && pathname.startsWith("/dev/ui");
+}
+
 export async function proxy(request: NextRequest) {
+  if (bloqueadaEmProducao(request.nextUrl.pathname)) {
+    return new NextResponse(null, { status: 404 });
+  }
+
   const rewrite = resolverTenantPorHost(request);
   if (rewrite) return rewrite;
 
