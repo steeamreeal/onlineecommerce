@@ -1,14 +1,19 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import type { StatusLoja } from "@/lib/mocks/lojas";
+
+type StatusLoja = "ATIVO" | "BLOQUEADO" | "CANCELADO" | "TESTE";
 
 const config: Record<StatusLoja, { label: string; className: string }> = {
-  ATIVA: {
+  ATIVO: {
     label: "Ativa",
     className: "bg-success/10 text-success",
   },
-  BLOQUEADA: {
+  BLOQUEADO: {
     label: "Bloqueada",
+    className: "bg-destructive/10 text-destructive",
+  },
+  CANCELADO: {
+    label: "Cancelada",
     className: "bg-destructive/10 text-destructive",
   },
   TESTE: {

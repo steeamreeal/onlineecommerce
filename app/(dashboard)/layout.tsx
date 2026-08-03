@@ -1,6 +1,7 @@
 import { PainelNav } from "@/components/dashboard/painel-nav";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { NotificacoesSino } from "@/components/dashboard/notificacoes-sino";
+import { AcessoLojaGuard } from "@/components/dashboard/acesso-loja-guard";
 
 export default function DashboardLayout({
   children,
@@ -26,7 +27,7 @@ export default function DashboardLayout({
             <LogoutButton />
           </div>
         </header>
-        {children}
+        <AcessoLojaGuard>{children}</AcessoLojaGuard>
       </div>
     </div>
   );

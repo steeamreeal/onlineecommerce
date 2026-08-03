@@ -1,14 +1,13 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Ban, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { LojaStatusBadge } from "@/components/admin/loja-status-badge";
-import type { Loja } from "@/lib/mocks/lojas";
-import { planoNome } from "@/lib/mocks/planos";
+import { trpc } from "@/lib/trpc/client";
 
 const formatoMoeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const formatoData = new Intl.DateTimeFormat("pt-BR", {
@@ -17,18 +16,35 @@ const formatoData = new Intl.DateTimeFormat("pt-BR", {
   year: "numeric",
 });
 
-export function LojaDetalhe({ loja: lojaInicial }: { loja: Loja }) {
-  const [loja, setLoja] = useState(lojaInicial);
-  const bloqueada = loja.status === "BLOQUEADA";
+export function LojaDetalhe({ lojaId }: { lojaId: string }) {
+  const utils = trpc.useUtils();
+  const { data: loja, isLoading } = trpc.admin.obterLoja.useQuery({ id: lojaId });
 
-  function alternarBloqueio() {
-    // Mock: sem persistência real ainda (chega no M14, backend do painel admin)
-    const novoStatus = bloqueada ? "ATIVA" : "BLOQUEADA";
-    setLoja((atual) => ({ ...atual, status: novoStatus }));
-    toast.success(
-      bloqueada ? `${loja.nome} foi liberada.` : `${loja.nome} foi bloqueada.`,
+  const bloquear = trpc.admin.bloquearLoja.useMutation({
+    onSuccess: () => {
+      utils.admin.obterLoja.invalidate({ id: lojaId });
+      toast.success(`${loja?.nome} foi bloqueada.`);
+    },
+    onError: () => toast.error("Não foi possível bloquear a loja."),
+  });
+  const liberar = trpc.admin.liberarLoja.useMutation({
+    onSuccess: () => {
+      utils.admin.obterLoja.invalidate({ id: lojaId });
+      toast.success(`${loja?.nome} foi liberada.`);
+    },
+    onError: () => toast.error("Não foi possível liberar a loja."),
+  });
+
+  if (isLoading || !loja) {
+    return (
+      <div className="flex flex-1 flex-col gap-6 p-8">
+        <Skeleton className="h-8 w-40" />
+        <Skeleton className="h-40 w-full" />
+      </div>
     );
   }
+
+  const bloqueada = loja.statusPlano === "BLOQUEADO";
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-8">
@@ -43,13 +59,16 @@ export function LojaDetalhe({ loja: lojaInicial }: { loja: Loja }) {
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-semibold">{loja.nome}</h1>
-            <LojaStatusBadge status={loja.status} />
+            <LojaStatusBadge status={loja.statusPlano} />
           </div>
           <p className="text-muted-foreground text-sm">/{loja.slug}</p>
         </div>
         <Button
           variant={bloqueada ? "default" : "destructive"}
-          onClick={alternarBloqueio}
+          disabled={bloquear.isPending || liberar.isPending}
+          onClick={() =>
+            bloqueada ? liberar.mutate({ id: loja.id }) : bloquear.mutate({ id: loja.id })
+          }
         >
           {bloqueada ? <CheckCircle2 className="size-4" /> : <Ban className="size-4" />}
           {bloqueada ? "Liberar loja" : "Bloquear loja"}
@@ -59,20 +78,20 @@ export function LojaDetalhe({ loja: lojaInicial }: { loja: Loja }) {
       <div className="grid grid-cols-3 gap-6">
         <div className="rounded-lg border p-4">
           <h2 className="text-muted-foreground mb-3 text-sm font-medium">Responsável</h2>
-          <p className="font-medium">{loja.responsavel}</p>
-          <p className="text-muted-foreground text-sm">{loja.email}</p>
+          <p className="font-medium">{loja.responsavel ?? "Não informado"}</p>
+          <p className="text-muted-foreground text-sm">{loja.emailContato ?? "—"}</p>
         </div>
         <div className="rounded-lg border p-4">
           <h2 className="text-muted-foreground mb-3 text-sm font-medium">Plano</h2>
-          <p className="font-medium">{planoNome(loja.planoId)}</p>
+          <p className="font-medium">{loja.plano?.nome ?? "Sem plano"}</p>
           <p className="text-muted-foreground text-sm">
             Cliente desde {formatoData.format(new Date(loja.createdAt))}
           </p>
         </div>
         <div className="rounded-lg border p-4">
-          <h2 className="text-muted-foreground mb-3 text-sm font-medium">Faturamento (mês)</h2>
-          <p className="font-medium">{formatoMoeda.format(loja.faturamentoMes)}</p>
-          <p className="text-muted-foreground text-sm">{loja.numeroPedidosMes} pedidos</p>
+          <h2 className="text-muted-foreground mb-3 text-sm font-medium">Faturamento</h2>
+          <p className="font-medium">{formatoMoeda.format(loja.faturamentoTotal)}</p>
+          <p className="text-muted-foreground text-sm">{loja.numeroPedidos} pedidos</p>
         </div>
       </div>
     </div>

@@ -24,7 +24,10 @@ function criarPrismaMock(overrides: Record<string, unknown> = {}) {
   };
 
   const mock: Record<string, unknown> = {
-    loja: { findUniqueOrThrow: vi.fn().mockResolvedValue(LOJA) },
+    loja: {
+      findUniqueOrThrow: vi.fn().mockResolvedValue(LOJA),
+      findUnique: vi.fn().mockResolvedValue({ statusPlano: "ATIVO" }),
+    },
     cliente: { findFirst: vi.fn().mockResolvedValue(CLIENTE) },
     produto: {
       findMany: vi.fn().mockResolvedValue([PRODUTO]),

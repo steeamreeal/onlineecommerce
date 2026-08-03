@@ -15,6 +15,14 @@ enum PlanoStatus {
   TESTE
 }
 
+// Papel de um Usuario dentro do painel administrativo do SaaS (dono da
+// plataforma), não confundir com PapelUsuario (papel dentro de uma Loja).
+enum PapelAdmin {
+  SUPER_ADMIN
+  SUPORTE
+  FINANCEIRO
+}
+
 model Plano {
   id             String   @id @default(cuid())
   nome           String
@@ -22,6 +30,7 @@ model Plano {
   limiteUsuarios Int?
   precoMensal    Decimal  @db.Decimal(10, 2)
   stripePriceId  String?
+  features       String[] @default([])
   lojas          Loja[]
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -33,6 +42,8 @@ model Loja {
   id             String      @id @default(cuid())
   nome           String
   slug           String      @unique
+  responsavel    String?
+  emailContato   String?
   logoUrl        String?
   corPrimaria    String?
   banners        Json?
@@ -86,6 +97,9 @@ model Usuario {
   nome       String
   email      String        @unique
   supabaseId String        @unique
+  // Null = não é usuário da plataforma (só lojista). Preenchido = tem acesso
+  // ao painel admin do SaaS com este papel — independente de UsuarioLoja.
+  papelAdmin PapelAdmin?
   lojas      UsuarioLoja[]
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @updatedAt

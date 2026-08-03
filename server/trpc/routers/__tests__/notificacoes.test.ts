@@ -12,6 +12,7 @@ function criarPrismaMock(overrides: Record<string, unknown> = {}) {
       count: vi.fn().mockResolvedValue(0),
       updateMany: vi.fn().mockResolvedValue({ count: 1 }),
     },
+    loja: { findUnique: vi.fn().mockResolvedValue({ statusPlano: "ATIVO" }) },
     ...overrides,
   };
   return mock as unknown as PrismaClient;

@@ -14,6 +14,11 @@ const formatoDataCurta = new Intl.DateTimeFormat("pt-BR", {
 
 export function VendasPorPeriodoChart({ dados }: { dados: VendaPorDia[] }) {
   const [ativo, setAtivo] = useState<number | null>(null);
+
+  if (dados.length === 0) {
+    return <p className="text-muted-foreground text-sm">Sem dados de vendas para o período.</p>;
+  }
+
   const max = Math.max(...dados.map((d) => d.valor), 1);
   const ultimoComVenda = dados.reduce(
     (ultimo, dia, i) => (dia.valor > 0 ? i : ultimo),

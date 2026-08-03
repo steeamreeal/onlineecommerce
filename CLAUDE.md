@@ -69,6 +69,15 @@ Ajustar conforme o projeto evoluir — esta é a estrutura inicial de referênci
 - Webhooks (Stripe, Mercado Pago, WhatsApp) precisam de verificação de assinatura — nunca confiar no payload sem validar origem.
 - Ao integrar novo gateway de pagamento da loja (PIX/boleto/cartão), documentar aqui a decisão e as credenciais necessárias, sem commitar segredos — usar variáveis de ambiente e `.env` no `.gitignore`.
 
+## Modelo de cobrança do lojista (M14)
+
+Cobrança híbrida, decidida no M14:
+
+- **Taxa de implementação**: pagamento único, negociado e cobrado manualmente pelo dono da plataforma, **fora da plataforma** (sem checkout, sem campo no schema) — cobre o trabalho de configurar a loja do cliente.
+- **Mensalidade recorrente**: via Stripe (M12, inalterado) — cobre hospedagem, suporte e evolução contínua. Continua sendo o único valor rastreado no schema (`Plano.precoMensal`) e usado no cálculo de MRR do painel admin.
+- Como não há mais cadastro self-service de loja (é sempre um projeto fechado com o cliente), a criação da `Loja` no banco é feita pelo dono da plataforma via painel admin (`admin.criarLoja`), não pelo próprio lojista se cadastrando sozinho.
+- `Loja.statusPlano` (ATIVO/BLOQUEADO/CANCELADO/TESTE) é alternado manualmente pelo admin (`admin.bloquearLoja`/`admin.liberarLoja`) — não é mais só cosmético: bloquear de fato impede o lojista de acessar o painel `(dashboard)`.
+
 ## Pagamentos (M12)
 
 - **Assinatura do SaaS (cobrança do lojista pela plataforma)**: Stripe. Usa `Plano.stripePriceId` (já existente no schema) e Checkout Session/Payment Link. Webhook em `app/api/webhooks/stripe/route.ts`, validado por `stripe-signature`, atualiza `Loja.statusPlano` a partir de `checkout.session.completed` e `customer.subscription.updated|deleted`.
