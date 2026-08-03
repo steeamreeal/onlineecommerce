@@ -19,13 +19,23 @@ vi.mock("@/lib/mercadopago", () => ({
 
 const webhookEventCreate = vi.hoisted(() => vi.fn());
 const pedidoUpdateMany = vi.hoisted(() => vi.fn());
+const pedidoFindUnique = vi.hoisted(() => vi.fn());
 const lojaFindUnique = vi.hoisted(() => vi.fn());
+const tx = vi.hoisted(() => ({
+  pedido: { updateMany: pedidoUpdateMany, findUnique: pedidoFindUnique },
+}));
 vi.mock("@/server/db/client", () => ({
   prisma: {
     webhookEvent: { create: webhookEventCreate },
-    pedido: { updateMany: pedidoUpdateMany },
+    pedido: { updateMany: pedidoUpdateMany, findUnique: pedidoFindUnique },
     loja: { findUnique: lojaFindUnique },
+    $transaction: (fn: (tx: unknown) => unknown) => fn(tx),
   },
+}));
+
+const notificarStatusAtualizado = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/email/notificacoes", () => ({
+  notificarStatusAtualizado,
 }));
 
 async function importRoute() {
@@ -54,8 +64,13 @@ describe("POST /api/webhooks/mercadopago", () => {
     mpPaymentGet.mockReset();
     getMpPaymentMock.mockClear();
     webhookEventCreate.mockReset().mockResolvedValue({});
-    pedidoUpdateMany.mockReset();
-    lojaFindUnique.mockReset().mockResolvedValue({ id: "loja-1", mpAccessToken: "token-da-loja-1" });
+    pedidoUpdateMany.mockReset().mockResolvedValue({ count: 1 });
+    pedidoFindUnique.mockReset().mockResolvedValue({
+      id: "pedido-1",
+      cliente: { nome: "Cliente Teste", email: "cliente@example.com" },
+    });
+    notificarStatusAtualizado.mockReset();
+    lojaFindUnique.mockReset().mockResolvedValue({ id: "loja-1", nome: "Loja Teste", mpAccessToken: "token-da-loja-1" });
   });
 
   it("rejeita quando a assinatura não confere", async () => {
@@ -130,6 +145,25 @@ describe("POST /api/webhooks/mercadopago", () => {
       where: { id: "pedido-1", lojaId: "loja-1", status: "AGUARDANDO_PAGAMENTO" },
       data: { status: "PAGO", mpPaymentId: "pagamento-1", pagoEm: expect.any(Date) },
     });
+    expect(notificarStatusAtualizado).toHaveBeenCalledWith(expect.anything(), {
+      lojaId: "loja-1",
+      lojaNome: "Loja Teste",
+      clienteNome: "Cliente Teste",
+      clienteEmail: "cliente@example.com",
+      pedidoId: "pedido-1",
+      status: "PAGO",
+    });
+  });
+
+  it("não notifica quando o pedido já não estava mais aguardando pagamento (evento duplicado/fora de ordem)", async () => {
+    validate.mockReturnValue(undefined);
+    mpPaymentGet.mockResolvedValue({ id: "pagamento-1", status: "approved", external_reference: "pedido-1" });
+    pedidoUpdateMany.mockResolvedValue({ count: 0 });
+    const { POST } = await importRoute();
+    const res = await POST(criarRequest({ type: "payment", data: { id: "pagamento-1" } }));
+
+    expect(res.status).toBe(200);
+    expect(notificarStatusAtualizado).not.toHaveBeenCalled();
   });
 
   it("não atualiza o pedido quando o pagamento ainda está pendente", async () => {

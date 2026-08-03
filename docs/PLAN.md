@@ -183,9 +183,10 @@ A partir daqui, cada milestone troca os mocks de uma área específica por dados
 - Branch: `milestone/13-notificacoes`
 - Objetivo: fechar os requisitos transversais de notificação (PRD 3.14 e requisitos funcionais gerais).
 - Entregas:
-  - [ ] E-mails transacionais via Resend (confirmação de pedido, mudança de status, aviso de estoque baixo)
-  - [ ] Link direto de WhatsApp com mensagem pré-preenchida (confirmação, atualização de status, recuperação de carrinho)
-  - [ ] Notificações in-app no painel do lojista (pedidos novos, estoque baixo)
+  - [x] E-mails transacionais via Resend (confirmação de pedido, mudança de status, aviso de estoque baixo) — `lib/email/`
+  - [x] Link direto de WhatsApp com mensagem pré-preenchida (confirmação, atualização de status, recuperação de carrinho, contato da loja) — `lib/whatsapp.ts`
+  - [x] Notificações in-app no painel do lojista (pedidos novos, estoque baixo, status atualizado) — model `Notificacao`, `server/trpc/routers/notificacoes.ts`, sino no header do painel
+- Achado corrigido neste milestone: o webhook do Mercado Pago (`app/api/webhooks/mercadopago/route.ts`) confirmava pagamento (`PAGO`) direto no banco sem passar pelos helpers de notificação — cliente/lojista não recebiam e-mail nem notificação in-app quando o pagamento era aprovado automaticamente (caso mais comum: PIX/cartão). Corrigido para chamar `notificarStatusAtualizado` dentro da mesma transação Prisma do `updateMany`.
 - Commit final: `feat: notificações por e-mail, WhatsApp e in-app`
 
 ### M14 — Backend: painel administrativo do SaaS

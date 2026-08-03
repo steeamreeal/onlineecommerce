@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { WebhookSignatureValidator, InvalidWebhookSignatureError } from "mercadopago";
 import { getMpPayment } from "@/lib/mercadopago";
 import { prisma } from "@/server/db/client";
+import { notificarStatusAtualizado } from "@/lib/email/notificacoes";
 
 export async function POST(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -55,9 +56,28 @@ export async function POST(req: Request) {
   const pedidoId = pagamento.external_reference;
 
   if (pagamento.status === "approved" && pedidoId) {
-    await prisma.pedido.updateMany({
-      where: { id: pedidoId, lojaId: loja.id, status: "AGUARDANDO_PAGAMENTO" },
-      data: { status: "PAGO", mpPaymentId: String(pagamento.id), pagoEm: new Date() },
+    await prisma.$transaction(async (tx) => {
+      const { count } = await tx.pedido.updateMany({
+        where: { id: pedidoId, lojaId: loja.id, status: "AGUARDANDO_PAGAMENTO" },
+        data: { status: "PAGO", mpPaymentId: String(pagamento.id), pagoEm: new Date() },
+      });
+
+      if (count === 0) return;
+
+      const pedido = await tx.pedido.findUnique({
+        where: { id: pedidoId },
+        include: { cliente: true },
+      });
+      if (!pedido) return;
+
+      await notificarStatusAtualizado(tx, {
+        lojaId: loja.id,
+        lojaNome: loja.nome,
+        clienteNome: pedido.cliente.nome,
+        clienteEmail: pedido.cliente.email,
+        pedidoId: pedido.id,
+        status: "PAGO",
+      });
     });
   }
 
