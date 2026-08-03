@@ -232,9 +232,11 @@ A partir daqui, cada milestone troca os mocks de uma área específica por dados
 - Branch: `milestone/17-deploy`
 - Objetivo: publicar a plataforma em produção na Vercel com banco Supabase de produção.
 - Entregas:
-  - [ ] Projeto Vercel conectado ao repositório, variáveis de ambiente de produção configuradas
-  - [ ] Banco de produção no Supabase com migrations aplicadas
+  - [ ] Projeto Vercel conectado ao repositório, variáveis de ambiente de produção configuradas *(preparação de código concluída; execução nas contas Vercel/Supabase/Stripe/Mercado Pago/Resend pendente — ver [DEPLOY.md](DEPLOY.md))*
+  - [ ] Banco de produção no Supabase com migrations aplicadas *(automatizado: `prisma migrate deploy` roda antes de `next build`; falta rodar o primeiro deploy real)*
   - [ ] Domínio principal da plataforma configurado
   - [ ] Smoke test em produção: cadastro de loja → produto → pedido de teste → pagamento em modo teste
-  - [ ] Remoção/proteção de telas de desenvolvimento (`/dev/ui` do M1)
-- Commit final: `chore: deploy inicial em produção`
+  - [x] Remoção/proteção de telas de desenvolvimento (`/dev/ui` do M1) — bloqueada com 404 quando `NODE_ENV=production` (`proxy.ts`), testado localmente com `next start`
+- Achados corrigidos durante a preparação: `baseUrl()` (usado nos redirects do Stripe e no OAuth do Mercado Pago Connect) dependia de `VERCEL_URL`, que muda a cada deployment/preview — quebraria a `redirect_uri` fixa do Mercado Pago em produção. Centralizado em `lib/base-url.ts`, usando `NEXT_PUBLIC_PLATFORM_DOMAIN` como fonte de verdade.
+- Runbook completo de deploy (passo a passo, variáveis de ambiente e de onde vêm, smoke test) em [docs/DEPLOY.md](DEPLOY.md).
+- Commit final: `chore: deploy inicial em produção` *(pendente até a execução real do deploy)*
