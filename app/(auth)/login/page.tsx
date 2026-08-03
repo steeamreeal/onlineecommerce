@@ -124,7 +124,7 @@ function LoginForm() {
                   <div className="flex items-center justify-between">
                     <FormLabel>Senha</FormLabel>
                     <Link
-                      href="#"
+                      href="/esqueci-senha"
                       className="text-muted-foreground text-xs hover:underline"
                     >
                       Esqueci minha senha

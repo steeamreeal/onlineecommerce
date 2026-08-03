@@ -96,6 +96,10 @@ Depende do domínio já estar ativo (passo 5), porque as URLs abaixo usam `NEXT_
 2. Configure o webhook de notificações apontando para `https://{NEXT_PUBLIC_PLATFORM_DOMAIN}/api/webhooks/mercadopago`.
 3. Copie o secret de assinatura do webhook → variável `MERCADOPAGO_WEBHOOK_SECRET` na Vercel.
 
+**Supabase Auth (redefinição de senha):**
+1. No painel do Supabase → **Authentication → URL Configuration**, defina **Site URL** como `https://{NEXT_PUBLIC_PLATFORM_DOMAIN}`.
+2. Em **Redirect URLs**, adicione `https://{NEXT_PUBLIC_PLATFORM_DOMAIN}/redefinir-senha` (e, se quiser testar localmente contra o mesmo projeto Supabase, `http://localhost:3000/redefinir-senha`). Sem isso, o link do e-mail de "esqueci minha senha" (`app/(auth)/esqueci-senha`) é rejeitado pelo Supabase mesmo com o código da aplicação correto.
+
 Depois de configurar, redeploy na Vercel se alguma variável foi adicionada/alterada depois do deploy inicial (variáveis de ambiente só entram em vigor no próximo build).
 
 ---
