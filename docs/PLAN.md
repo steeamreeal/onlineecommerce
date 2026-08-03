@@ -220,10 +220,11 @@ A partir daqui, cada milestone troca os mocks de uma área específica por dados
 - Branch: `milestone/16-seguranca`
 - Objetivo: garantir isolamento entre tenants e permissões corretas por papel antes do deploy.
 - Entregas:
-  - [ ] Auditoria de todas as queries tRPC: nenhuma sem escopo de `lojaId` onde aplicável
-  - [ ] Verificação de assinatura em todos os webhooks (Stripe, gateway de pagamento, WhatsApp)
-  - [ ] Testes manuais de permissão por papel (Administrador, Gerente, Vendedor, Estoquista, Separador)
-  - [ ] Revisão de variáveis sensíveis (nenhum segredo commitado, `.env.example` atualizado)
+  - [x] Auditoria de todas as queries tRPC: nenhuma sem escopo de `lojaId` onde aplicável
+  - [x] Verificação de assinatura em todos os webhooks (Stripe, Mercado Pago) — não há webhook de WhatsApp neste projeto (integração é só link direto, ver M13)
+  - [x] Auditoria de permissão por papel (Administrador, Gerente, Vendedor, Estoquista, Separador): `storeProcedure` não checava `UsuarioLoja.papel` — qualquer usuário da loja podia chamar mutations sensíveis via API direta, mesmo escondidas na UI. Corrigido com `roleProcedure` aplicado a pagamentos/assinatura, conexão Mercado Pago, domínio próprio, cupons e remoção de produto.
+  - [x] Revisão de variáveis sensíveis (nenhum segredo commitado, `.env.example` atualizado)
+- Achado adicional (não bloqueante, registrado para acompanhamento): a policy do bucket Supabase Storage `fotos-produtos` restringe escrita a `auth.role() = 'authenticated'`, mas não ao `lojaId` do caminho — a separação por pasta depende do client sempre enviar o `lojaId` correto, não de uma regra server-side. Ver CLAUDE.md "Supabase Storage".
 - Commit final: `fix: revisão de segurança, isolamento multi-tenant e permissões`
 
 ### M17 — Deploy em produção
