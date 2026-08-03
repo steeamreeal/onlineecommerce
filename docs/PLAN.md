@@ -209,8 +209,11 @@ A partir daqui, cada milestone troca os mocks de uma área específica por dados
 - Branch: `milestone/15-dominio-personalizado`
 - Objetivo: permitir que cada loja use subdomínio ou domínio próprio (PRD 3.12).
 - Entregas:
-  - [ ] Resolução de tenant por subdomínio (`loja.plataforma.com`) além do `/loja/[slug]`
-  - [ ] Suporte a domínio personalizado (configuração + verificação DNS)
+  - [x] Resolução de tenant por subdomínio (`{slug}.NEXT_PUBLIC_PLATFORM_DOMAIN`) além do `/loja/[slug]`, via `proxy.ts` (rewrite, sem consulta ao banco no Edge)
+  - [x] Suporte a domínio personalizado: `Loja.dominioProprio` resolvido em `app/(public-store)/loja/dominio-proprio/[host]/[[...rest]]` (Node runtime, Prisma) com redirect para `/loja/{slug}`; mutation `loja.atualizarDominioProprio` com validação de unicidade; UI em `DominioProprioForm` (`/painel/configuracoes`) com instrução de CNAME
+  - Sem verificação automática de DNS/API de hospedagem neste milestone (decisão registrada no CLAUDE.md) — só UI + instrução manual de CNAME
+  - Limitação conhecida: acesso por domínio próprio resulta em redirect visível para `/loja/{slug}` na barra de endereço (não mantém o domínio do lojista puro na URL)
+- Testado ponta a ponta: `curl` com header `Host` forjado (subdomínio, domínio próprio, domínio desconhecido → 404, rotas da plataforma não afetadas) e fluxo real no navegador via Playwright (cadastro → onboarding → login → `/painel/configuracoes` → salvar/validar/remover domínio, com screenshots). Um bug real foi encontrado e corrigido nesse teste: `DominioProprioForm` tinha um `<form>` aninhado dentro do `<form>` de `LojaForm` (HTML inválido, quebrava a hidratação) — corrigido movendo a seção para fora do form principal.
 - Commit final: `feat: suporte a subdomínio e domínio personalizado por loja`
 
 ### M16 — Revisão de segurança e permissões
