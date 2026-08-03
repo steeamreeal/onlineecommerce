@@ -191,11 +191,14 @@ A partir daqui, cada milestone troca os mocks de uma área específica por dados
 ### M14 — Backend: painel administrativo do SaaS
 - Branch: `milestone/14-admin-saas-backend`
 - Objetivo: conectar o painel do M6 a dados reais.
+- Decisão de escopo (ver CLAUDE.md "Modelo de cobrança do lojista"): sem checkout de venda do próprio SaaS — cada loja é um projeto fechado sob encomenda, cadastrado pelo admin. Onboarding self-service (M2/M8) continua existindo em paralelo, sem remoção.
 - Entregas:
-  - [ ] Cadastro/listagem real de lojas e planos
-  - [ ] Bloqueio/liberação de loja refletindo em acesso real (`statusPlano`)
-  - [ ] Métricas gerais agregando dados reais de todas as lojas
-  - [ ] Limites por plano aplicados (ex.: limite de produtos/usuários bloqueando ação no painel do lojista)
+  - [x] Cadastro/listagem real de lojas e planos (`admin.criarLoja`, `admin.listarLojas`, `admin.obterLoja`)
+  - [x] Bloqueio/liberação de loja refletindo em acesso real (`statusPlano`) — `storeProcedure` passa a barrar o painel do lojista quando `BLOQUEADO`
+  - [x] Métricas gerais agregando dados reais de todas as lojas (`admin.metricas`)
+  - [x] Limites por plano aplicados (`limiteProdutos` bloqueando `produtos.criar`; `limiteUsuarios` fica para quando existir backend de convite de usuário de loja)
+  - [x] Autorização do admin da plataforma: `Usuario.papelAdmin` (SUPER_ADMIN/SUPORTE/FINANCEIRO), bootstrap via `ADMIN_EMAILS`, gestão de acesso pelo próprio painel (`admin.concederAcessoPlataforma`)
+- Testado end-to-end no navegador (Playwright) contra o Supabase real: bootstrap de SUPER_ADMIN, as 5 telas admin com dado real, bloqueio/liberação de loja, limite de produtos por plano. Dois bugs encontrados e corrigidos nesse teste: painel do lojista travava em skeleton infinito (sem mensagem) quando a loja era bloqueada — `components/dashboard/acesso-loja-guard.tsx` agora mostra o erro claro; `VendasPorPeriodoChart` quebrava com tela de erro do Next.js quando não havia dados de venda no período.
 - Commit final: `feat: backend do painel administrativo do SaaS`
 
 ---

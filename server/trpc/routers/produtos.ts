@@ -107,6 +107,20 @@ export const produtosRouter = router({
     .mutation(async ({ ctx, input }) => {
       await validarCategoria(ctx.prisma, ctx.lojaId, input.categoriaId);
 
+      const loja = await ctx.prisma.loja.findUniqueOrThrow({
+        where: { id: ctx.lojaId },
+        select: { plano: { select: { limiteProdutos: true } } },
+      });
+      if (loja.plano?.limiteProdutos != null) {
+        const totalProdutos = await ctx.prisma.produto.count({ where: { lojaId: ctx.lojaId } });
+        if (totalProdutos >= loja.plano.limiteProdutos) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: `Seu plano permite até ${loja.plano.limiteProdutos} produtos. Fale com o suporte para aumentar o limite.`,
+          });
+        }
+      }
+
       return ctx.prisma.produto.create({
         data: {
           lojaId: ctx.lojaId,

@@ -27,7 +27,10 @@ function criarPrismaMock(variacao: {
       findUniqueOrThrow: vi.fn(),
     },
     movimentoEstoque: { create: vi.fn() },
-    loja: { findUniqueOrThrow: vi.fn().mockResolvedValue({ id: LOJA_ID, nome: "Minha Loja" }) },
+    loja: {
+      findUniqueOrThrow: vi.fn().mockResolvedValue({ id: LOJA_ID, nome: "Minha Loja" }),
+      findUnique: vi.fn().mockResolvedValue({ statusPlano: "ATIVO" }),
+    },
     produto: { findUniqueOrThrow: vi.fn().mockResolvedValue(PRODUTO) },
     usuarioLoja: {
       findFirst: vi.fn().mockResolvedValue({ usuario: { email: "dono@loja.com" } }),

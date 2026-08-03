@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Plus, Trash2, Upload, X } from "lucide-react";
 import { toast } from "sonner";
+import { TRPCClientError } from "@trpc/client";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -216,8 +217,14 @@ export function ProdutoForm({ produto }: { produto?: ProdutoExistente }) {
         editando ? "Produto atualizado com sucesso." : "Produto cadastrado com sucesso.",
       );
       router.push("/painel/produtos");
-    } catch {
-      toast.error("Não foi possível salvar o produto. Tente novamente.");
+    } catch (erro) {
+      // FORBIDDEN (ex.: limite de produtos do plano, loja bloqueada) já vem
+      // com mensagem clara do servidor — repassa em vez do texto genérico.
+      const mensagem =
+        erro instanceof TRPCClientError && erro.data?.code === "FORBIDDEN"
+          ? erro.message
+          : "Não foi possível salvar o produto. Tente novamente.";
+      toast.error(mensagem);
     }
   }
 

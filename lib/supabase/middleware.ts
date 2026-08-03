@@ -1,11 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? "")
-  .split(",")
-  .map((e) => e.trim().toLowerCase())
-  .filter(Boolean);
-
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
 
@@ -41,12 +36,8 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  if (pathname.startsWith("/admin") && user) {
-    const email = user.email?.toLowerCase();
-    if (!email || !ADMIN_EMAILS.includes(email)) {
-      return NextResponse.redirect(new URL("/painel", request.url));
-    }
-  }
-
+  // A checagem de papelAdmin (quem pode entrar em /admin) exige Prisma e
+  // roda em app/(admin)/layout.tsx (runtime Node) — o middleware roda em
+  // Edge e só cuida de exigir sessão logada aqui.
   return response;
 }

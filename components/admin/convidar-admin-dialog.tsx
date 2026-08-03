@@ -30,7 +30,13 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { PAPEL_ADMIN_LABEL, type PapelAdmin, type UsuarioAdmin } from "@/lib/mocks/admin-usuarios";
+import { trpc } from "@/lib/trpc/client";
+
+const PAPEL_ADMIN_LABEL = {
+  SUPER_ADMIN: "Super admin",
+  SUPORTE: "Suporte",
+  FINANCEIRO: "Financeiro",
+} as const;
 
 const papelSelectItems = Object.entries(PAPEL_ADMIN_LABEL).map(([value, label]) => ({
   value,
@@ -38,7 +44,6 @@ const papelSelectItems = Object.entries(PAPEL_ADMIN_LABEL).map(([value, label]) 
 }));
 
 const convidarSchema = z.object({
-  nome: z.string().min(2, "Informe o nome"),
   email: z.string().email("Informe um e-mail válido"),
   papel: z.enum(["SUPER_ADMIN", "SUPORTE", "FINANCEIRO"]),
 });
@@ -48,30 +53,30 @@ type ConvidarFormValues = z.infer<typeof convidarSchema>;
 export function ConvidarAdminDialog({
   open,
   onOpenChange,
-  onConvidar,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onConvidar: (usuario: UsuarioAdmin) => void;
 }) {
+  const utils = trpc.useUtils();
   const form = useForm<ConvidarFormValues>({
     resolver: zodResolver(convidarSchema),
-    defaultValues: { nome: "", email: "", papel: "SUPORTE" },
+    defaultValues: { email: "", papel: "SUPORTE" },
+  });
+
+  const conceder = trpc.admin.concederAcessoPlataforma.useMutation({
+    onSuccess: (_, values) => {
+      utils.admin.listarUsuariosPlataforma.invalidate();
+      toast.success(`Acesso concedido para ${values.email}.`);
+      form.reset();
+      onOpenChange(false);
+    },
+    onError: (erro) => {
+      toast.error(erro.message || "Não foi possível conceder acesso.");
+    },
   });
 
   function onSubmit(values: ConvidarFormValues) {
-    // Mock: sem persistência real ainda (chega no M14, backend do painel admin)
-    const usuario: UsuarioAdmin = {
-      id: `admin-${crypto.randomUUID()}`,
-      nome: values.nome,
-      email: values.email,
-      papel: values.papel as PapelAdmin,
-      createdAt: new Date().toISOString(),
-    };
-    onConvidar(usuario);
-    toast.success(`Convite enviado para ${values.email}.`);
-    form.reset();
-    onOpenChange(false);
+    conceder.mutate(values);
   }
 
   return (
@@ -84,26 +89,14 @@ export function ConvidarAdminDialog({
     >
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Convidar usuário da plataforma</DialogTitle>
+          <DialogTitle>Conceder acesso ao painel administrativo</DialogTitle>
           <DialogDescription>
-            Defina o papel de acesso ao painel administrativo do SaaS.
+            O usuário precisa já ter feito login na plataforma pelo menos uma vez. Defina o papel
+            de acesso ao painel administrativo do SaaS.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
-            <FormField
-              control={form.control}
-              name="nome"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nome</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
             <FormField
               control={form.control}
               name="email"
@@ -145,7 +138,9 @@ export function ConvidarAdminDialog({
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>
-              <Button type="submit">Enviar convite</Button>
+              <Button type="submit" disabled={conceder.isPending}>
+                Conceder acesso
+              </Button>
             </DialogFooter>
           </form>
         </Form>

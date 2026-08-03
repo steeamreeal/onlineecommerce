@@ -5,6 +5,7 @@ import { prisma } from "@/server/db/client";
 type UsuarioContexto = {
   id: string;
   email: string;
+  papelAdmin: "SUPER_ADMIN" | "SUPORTE" | "FINANCEIRO" | null;
 } | null;
 
 export async function createContext({ req, resHeaders }: FetchCreateContextFnOptions) {
@@ -51,7 +52,7 @@ export async function createContext({ req, resHeaders }: FetchCreateContextFnOpt
     });
 
     if (usuarioDb) {
-      usuario = { id: usuarioDb.id, email: usuarioDb.email };
+      usuario = { id: usuarioDb.id, email: usuarioDb.email, papelAdmin: usuarioDb.papelAdmin };
       lojaId = usuarioDb.lojas[0]?.lojaId ?? null;
     }
   }
