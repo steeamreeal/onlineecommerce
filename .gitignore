@@ -39,6 +39,7 @@ yarn-error.log*
 
 # claude code (runtime local, não faz parte do projeto)
 .claude/
+.superpowers/
 
 # typescript
 *.tsbuildinfo
