@@ -28,8 +28,8 @@ export function AdminNav() {
               className={cn(
                 "flex items-center gap-2 rounded-md px-3 py-2 transition-colors",
                 ativo
-                  ? "bg-neutral-800 font-medium text-neutral-100"
-                  : "text-neutral-400 hover:bg-neutral-800/50 hover:text-neutral-100",
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                  : "hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground",
               )}
             >
               <Icon className="size-4" />
