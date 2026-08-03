@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, storeProcedure } from "../trpc";
+import { router, storeProcedure, roleProcedure } from "../trpc";
+
+// Assinatura do SaaS e conexão de pagamento da loja são decisões financeiras
+// — restritas a quem administra a loja, não a qualquer usuário vinculado.
+const financeiroProcedure = roleProcedure(["ADMINISTRADOR"]);
 import { getStripe } from "@/lib/stripe";
 import { getMpOAuth } from "@/lib/mercadopago";
 import { assinarState } from "@/lib/mercadopago-state";
@@ -24,7 +28,7 @@ export const pagamentosRouter = router({
   // Checkout Session de assinatura para o plano escolhido. O painel
   // redireciona o lojista para essa URL; o status real da loja só muda
   // quando o webhook confirma o pagamento (ver app/api/webhooks/stripe).
-  criarCheckoutAssinatura: storeProcedure
+  criarCheckoutAssinatura: financeiroProcedure
     .input(z.object({ planoId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const [loja, plano] = await Promise.all([
@@ -68,7 +72,7 @@ export const pagamentosRouter = router({
 
   // Link para o lojista gerenciar a própria assinatura (trocar cartão,
   // cancelar) direto no portal hospedado da Stripe.
-  criarPortalAssinatura: storeProcedure.mutation(async ({ ctx }) => {
+  criarPortalAssinatura: financeiroProcedure.mutation(async ({ ctx }) => {
     const loja = await ctx.prisma.loja.findUniqueOrThrow({ where: { id: ctx.lojaId } });
     if (!loja.stripeCustomerId) {
       throw new TRPCError({ code: "BAD_REQUEST", message: "Esta loja ainda não possui assinatura." });
@@ -85,7 +89,7 @@ export const pagamentosRouter = router({
   // URL de autorização do Mercado Pago Connect: o lojista é redirecionado
   // para lá, autoriza a plataforma, e volta em app/api/mercadopago/callback
   // com os tokens da própria conta (o dinheiro do checkout cai direto nela).
-  iniciarConexaoMercadoPago: storeProcedure.mutation(({ ctx }) => {
+  iniciarConexaoMercadoPago: financeiroProcedure.mutation(({ ctx }) => {
     const url = getMpOAuth().getAuthorizationURL({
       options: {
         client_id: process.env.MERCADOPAGO_CLIENT_ID!,

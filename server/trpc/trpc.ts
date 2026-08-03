@@ -1,5 +1,6 @@
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
+import type { PapelUsuario } from "@prisma/client";
 import type { Context } from "./context";
 
 const t = initTRPC.context<Context>().create({
@@ -49,6 +50,22 @@ export const storeProcedure = protectedProcedure.use(async ({ ctx, next }) => {
 
   return next({ ctx: { ...ctx, lojaId: ctx.lojaId } });
 });
+
+// Ações sensíveis dentro de uma loja (pagamentos, domínio, cupons, exclusão
+// de produtos etc.) exigem um papel mínimo — Estoquista/Separador/Vendedor
+// não devem conseguir chamar essas mutations diretamente pela API, mesmo
+// que a UI já esconda os botões para esses papéis.
+export function roleProcedure(papeisPermitidos: PapelUsuario[]) {
+  return storeProcedure.use(({ ctx, next }) => {
+    if (!ctx.papel || !papeisPermitidos.includes(ctx.papel)) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Você não tem permissão para realizar esta ação.",
+      });
+    }
+    return next({ ctx: { ...ctx, papel: ctx.papel } });
+  });
+}
 
 // Qualquer usuário da plataforma (papelAdmin preenchido), para o painel
 // administrativo do SaaS (app/(admin)) — camada separada dos tenants.

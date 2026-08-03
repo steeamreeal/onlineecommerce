@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, storeProcedure } from "../trpc";
+import { router, storeProcedure, roleProcedure } from "../trpc";
+
+// Criar/editar/remover cupons afeta descontos em toda a loja — restrito a
+// quem administra ou gerencia, não a Vendedor/Estoquista/Separador.
+const gestorProcedure = roleProcedure(["ADMINISTRADOR", "GERENTE"]);
 
 const tipoCupomSchema = z.enum(["PERCENTUAL", "VALOR_FIXO", "FRETE_GRATIS"]);
 
@@ -103,7 +107,7 @@ export const cuponsRouter = router({
       return cupom;
     }),
 
-  criar: storeProcedure
+  criar: gestorProcedure
     .input(z.object(cupomInputBase).superRefine(cupomInputRefinement))
     .mutation(async ({ ctx, input }) => {
       const codigo = input.codigo.toUpperCase();
@@ -129,7 +133,7 @@ export const cuponsRouter = router({
       });
     }),
 
-  atualizar: storeProcedure
+  atualizar: gestorProcedure
     .input(z.object({ id: z.string(), ...cupomInputBase }).superRefine(cupomInputRefinement))
     .mutation(async ({ ctx, input }) => {
       const cupomExistente = await ctx.prisma.cupom.findFirst({
@@ -162,7 +166,7 @@ export const cuponsRouter = router({
       });
     }),
 
-  remover: storeProcedure
+  remover: gestorProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const cupom = await ctx.prisma.cupom.findFirst({

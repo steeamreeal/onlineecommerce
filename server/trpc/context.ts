@@ -1,6 +1,7 @@
 import type { FetchCreateContextFnOptions } from "@trpc/server/adapters/fetch";
 import { createServerClient } from "@supabase/ssr";
 import { prisma } from "@/server/db/client";
+import type { PapelUsuario } from "@prisma/client";
 
 type UsuarioContexto = {
   id: string;
@@ -44,6 +45,7 @@ export async function createContext({ req, resHeaders }: FetchCreateContextFnOpt
 
   let usuario: UsuarioContexto = null;
   let lojaId: string | null = null;
+  let papel: PapelUsuario | null = null;
 
   if (supabaseUser) {
     const usuarioDb = await prisma.usuario.findUnique({
@@ -54,6 +56,7 @@ export async function createContext({ req, resHeaders }: FetchCreateContextFnOpt
     if (usuarioDb) {
       usuario = { id: usuarioDb.id, email: usuarioDb.email, papelAdmin: usuarioDb.papelAdmin };
       lojaId = usuarioDb.lojas[0]?.lojaId ?? null;
+      papel = usuarioDb.lojas[0]?.papel ?? null;
     }
   }
 
@@ -61,6 +64,7 @@ export async function createContext({ req, resHeaders }: FetchCreateContextFnOpt
     prisma,
     usuario,
     lojaId,
+    papel,
     // Sessão crua do Supabase, disponível mesmo antes do Usuario existir no
     // Prisma (ex.: logo após o signUp, antes de sincronizarUsuario rodar).
     supabaseUser: supabaseUser

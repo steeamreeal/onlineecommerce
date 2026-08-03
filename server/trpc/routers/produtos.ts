@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, storeProcedure } from "../trpc";
+import { router, storeProcedure, roleProcedure } from "../trpc";
+
+// Inativar um produto some com ele da vitrine pública — só Administrador e
+// Gerente, não Estoquista (que cadastra/edita) nem Vendedor/Separador.
+const gestorProcedure = roleProcedure(["ADMINISTRADOR", "GERENTE"]);
 import { ESTOQUE_BAIXO_LIMITE, variacaoLabel } from "@/lib/estoque";
 import { buscarEmailAdministradorLoja, notificarEstoqueBaixo } from "@/lib/email/notificacoes";
 
@@ -299,7 +303,7 @@ export const produtosRouter = router({
       });
     }),
 
-  remover: storeProcedure
+  remover: gestorProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const produto = await ctx.prisma.produto.findFirst({
