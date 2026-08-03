@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, storeProcedure } from "../trpc";
+import { router, storeProcedure, roleProcedure } from "../trpc";
 
 export const lojaRouter = router({
   atual: storeProcedure.query(({ ctx }) => {
@@ -23,7 +23,7 @@ export const lojaRouter = router({
   // Domínio próprio é opcional e único na plataforma inteira (não só por
   // loja) — precisa checar colisão com outra loja antes de salvar, já que
   // é o valor usado pelo middleware para resolver o tenant pelo host.
-  atualizarDominioProprio: storeProcedure
+  atualizarDominioProprio: roleProcedure(["ADMINISTRADOR"])
     .input(z.object({ dominioProprio: z.string().trim().toLowerCase().min(1).nullable() }))
     .mutation(async ({ ctx, input }) => {
       const dominio = input.dominioProprio?.replace(/^https?:\/\//, "").replace(/\/$/, "") || null;
