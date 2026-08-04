@@ -27,7 +27,10 @@ export default function PublicStoreLayout({
 
   return (
     <CartProvider slug={slug}>
-      <div className="flex min-h-full flex-1 flex-col">
+      <div
+        className="flex min-h-full flex-1 flex-col"
+        style={{ "--loja-primary": config.corPrimaria || "var(--primary)" } as React.CSSProperties}
+      >
         <SiteHeader slug={slug} config={config} />
         <main className="flex flex-1 flex-col">{children}</main>
         <SiteFooter config={config} />

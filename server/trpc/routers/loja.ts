@@ -15,6 +15,8 @@ export const lojaRouter = router({
         stripeCustomerId: true,
         mpConectadoEm: true,
         dominioProprio: true,
+        template: true,
+        corPrimaria: true,
         plano: { select: { id: true, nome: true, precoMensal: true } },
       },
     });
@@ -45,6 +47,21 @@ export const lojaRouter = router({
         where: { id: ctx.lojaId },
         data: { dominioProprio: dominio },
         select: { dominioProprio: true },
+      });
+    }),
+
+  atualizarPersonalizacao: roleProcedure(["ADMINISTRADOR"])
+    .input(
+      z.object({
+        template: z.enum(["MINIMALISTA", "EDITORIAL", "VITRINE"]),
+        corPrimaria: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Informe uma cor no formato #RRGGBB"),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      return ctx.prisma.loja.update({
+        where: { id: ctx.lojaId },
+        data: { template: input.template, corPrimaria: input.corPrimaria },
+        select: { template: true, corPrimaria: true },
       });
     }),
 });

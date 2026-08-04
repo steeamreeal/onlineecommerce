@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/form";
 import { configuracaoLojaMock } from "@/lib/mocks/loja";
 import { DominioProprioForm } from "@/components/dashboard/dominio-proprio-form";
+import { TemplateLojaForm } from "@/components/dashboard/template-loja-form";
 
 const lojaSchema = z.object({
   nome: z.string().min(2, "Informe o nome da loja"),
@@ -248,6 +249,17 @@ export function LojaForm() {
           </div>
         </form>
       </Form>
+
+      <Separator />
+
+      <section className="flex flex-col gap-4">
+        <h2 className="text-lg font-medium">Template da loja</h2>
+        <p className="text-muted-foreground text-sm">
+          Escolha o layout da vitrine pública. A cor primária definida acima é aplicada
+          automaticamente em cada template.
+        </p>
+        <TemplateLojaForm />
+      </section>
 
       <Separator />
 
