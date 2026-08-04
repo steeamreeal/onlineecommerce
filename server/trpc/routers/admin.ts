@@ -149,6 +149,7 @@ export const adminRouter = router({
       z.object({
         nome: z.string().min(2),
         precoMensal: z.number().positive(),
+        stripePriceId: z.string().optional(),
         limiteProdutos: z.number().int().positive().optional(),
         limiteUsuarios: z.number().int().positive().optional(),
         features: z.array(z.string()).default([]),
@@ -164,6 +165,7 @@ export const adminRouter = router({
         id: z.string(),
         nome: z.string().min(2),
         precoMensal: z.number().positive(),
+        stripePriceId: z.string().optional(),
         limiteProdutos: z.number().int().positive().optional(),
         limiteUsuarios: z.number().int().positive().optional(),
         features: z.array(z.string()).default([]),
