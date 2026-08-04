@@ -8,11 +8,7 @@ const financeiroProcedure = roleProcedure(["ADMINISTRADOR"]);
 import { getStripe } from "@/lib/stripe";
 import { getMpOAuth } from "@/lib/mercadopago";
 import { assinarState } from "@/lib/mercadopago-state";
-
-function baseUrl() {
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  return "http://localhost:3000";
-}
+import { baseUrl } from "@/lib/base-url";
 
 export const pagamentosRouter = router({
   // Planos disponíveis para assinatura, ordenados do mais barato ao mais

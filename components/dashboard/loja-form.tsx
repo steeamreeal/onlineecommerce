@@ -20,6 +20,8 @@ import {
 } from "@/components/ui/form";
 import { configuracaoLojaMock } from "@/lib/mocks/loja";
 import { DominioProprioForm } from "@/components/dashboard/dominio-proprio-form";
+import { TemplateLojaForm } from "@/components/dashboard/template-loja-form";
+import { BannersLojaForm } from "@/components/dashboard/banners-loja-form";
 
 const lojaSchema = z.object({
   nome: z.string().min(2, "Informe o nome da loja"),
@@ -222,32 +224,32 @@ export function LojaForm() {
             />
           </section>
 
-          <Separator />
-
-          <section className="flex flex-col gap-4">
-            <h2 className="text-lg font-medium">Banners</h2>
-            <div className="grid grid-cols-3 gap-4">
-              {configuracaoLojaMock.banners.map((banner) => (
-                <div
-                  key={banner.id}
-                  className="bg-muted flex aspect-video items-center justify-center rounded-lg border"
-                >
-                  <span className="text-muted-foreground px-3 text-center text-xs">
-                    {banner.titulo}
-                  </span>
-                </div>
-              ))}
-              <div className="text-muted-foreground flex aspect-video items-center justify-center rounded-lg border border-dashed text-xs">
-                Adicionar banner
-              </div>
-            </div>
-          </section>
-
           <div className="flex justify-end">
             <Button type="submit">Salvar alterações</Button>
           </div>
         </form>
       </Form>
+
+      <Separator />
+
+      <section className="flex flex-col gap-4">
+        <h2 className="text-lg font-medium">Banners</h2>
+        <p className="text-muted-foreground text-sm">
+          Até 3 banners. O primeiro é usado como destaque na página inicial da loja.
+        </p>
+        <BannersLojaForm />
+      </section>
+
+      <Separator />
+
+      <section className="flex flex-col gap-4">
+        <h2 className="text-lg font-medium">Template da loja</h2>
+        <p className="text-muted-foreground text-sm">
+          Escolha o layout da vitrine pública. A cor primária definida acima é aplicada
+          automaticamente em cada template.
+        </p>
+        <TemplateLojaForm />
+      </section>
 
       <Separator />
 

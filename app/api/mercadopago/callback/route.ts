@@ -2,11 +2,7 @@ import { NextResponse } from "next/server";
 import { getMpOAuth } from "@/lib/mercadopago";
 import { verificarState } from "@/lib/mercadopago-state";
 import { prisma } from "@/server/db/client";
-
-function baseUrl() {
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  return "http://localhost:3000";
-}
+import { baseUrl } from "@/lib/base-url";
 
 // Callback do Mercado Pago Connect: o lojista autorizou a plataforma no
 // Mercado Pago e volta aqui com um `code` de uso único, que trocamos pelos

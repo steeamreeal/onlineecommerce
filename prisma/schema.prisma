@@ -38,14 +38,21 @@ model Plano {
 
 // ---------- Tenant (Loja) ----------
 
+enum TemplateLoja {
+  MINIMALISTA
+  EDITORIAL
+  VITRINE
+}
+
 model Loja {
-  id             String      @id @default(cuid())
+  id             String       @id @default(cuid())
   nome           String
-  slug           String      @unique
+  slug           String       @unique
   responsavel    String?
   emailContato   String?
   logoUrl        String?
   corPrimaria    String?
+  template       TemplateLoja @default(MINIMALISTA)
   banners        Json?
   whatsapp       String?
   instagram      String?
@@ -53,10 +60,10 @@ model Loja {
   endereco       String?
   horarioAtend   String?
   politicas      String?
-  dominioProprio String?     @unique
+  dominioProprio String?      @unique
   planoId        String?
-  plano          Plano?      @relation(fields: [planoId], references: [id])
-  statusPlano    PlanoStatus @default(TESTE)
+  plano          Plano?       @relation(fields: [planoId], references: [id])
+  statusPlano    PlanoStatus  @default(TESTE)
 
   stripeCustomerId     String? @unique
   stripeSubscriptionId String? @unique

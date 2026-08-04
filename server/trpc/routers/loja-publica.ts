@@ -24,6 +24,7 @@ export const lojaPublicaRouter = router({
         slug: loja.slug,
         logoUrl: loja.logoUrl,
         corPrimaria: loja.corPrimaria,
+        template: loja.template,
         banners: loja.banners,
         whatsapp: loja.whatsapp,
         instagram: loja.instagram,
