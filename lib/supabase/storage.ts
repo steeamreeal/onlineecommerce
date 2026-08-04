@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/client";
 
 export const BUCKET_FOTOS_PRODUTO = "fotos-produtos";
+export const BUCKET_BANNERS_LOJA = "banners-loja";
 
 // Sem esses limites no client, um arquivo grande demais ou de tipo errado só
 // seria barrado (se barrado) pela configuração do bucket no Supabase, gerando
@@ -14,12 +15,7 @@ function extensaoArquivo(nomeArquivo: string): string {
   return partes.length > 1 ? partes[partes.length - 1] : "jpg";
 }
 
-/**
- * Faz upload de uma foto de produto para o bucket público do Supabase Storage,
- * dentro de uma pasta por loja (lojaId) para manter o isolamento entre tenants.
- * Retorna a URL pública do arquivo.
- */
-export async function enviarFotoProduto(lojaId: string, arquivo: File): Promise<string> {
+async function enviarImagem(bucket: string, lojaId: string, arquivo: File): Promise<string> {
   if (!TIPOS_ACEITOS.includes(arquivo.type)) {
     throw new Error("Envie uma imagem em formato JPG, PNG, WEBP ou GIF.");
   }
@@ -31,13 +27,31 @@ export async function enviarFotoProduto(lojaId: string, arquivo: File): Promise<
   const caminho = `${lojaId}/${crypto.randomUUID()}.${extensaoArquivo(arquivo.name)}`;
 
   const { error } = await supabase.storage
-    .from(BUCKET_FOTOS_PRODUTO)
+    .from(bucket)
     .upload(caminho, arquivo, { cacheControl: "3600", upsert: false });
 
   if (error) {
-    throw new Error("Não foi possível enviar a foto. Tente novamente.");
+    throw new Error("Não foi possível enviar a imagem. Tente novamente.");
   }
 
-  const { data } = supabase.storage.from(BUCKET_FOTOS_PRODUTO).getPublicUrl(caminho);
+  const { data } = supabase.storage.from(bucket).getPublicUrl(caminho);
   return data.publicUrl;
+}
+
+/**
+ * Faz upload de uma foto de produto para o bucket público do Supabase Storage,
+ * dentro de uma pasta por loja (lojaId) para manter o isolamento entre tenants.
+ * Retorna a URL pública do arquivo.
+ */
+export function enviarFotoProduto(lojaId: string, arquivo: File): Promise<string> {
+  return enviarImagem(BUCKET_FOTOS_PRODUTO, lojaId, arquivo);
+}
+
+/**
+ * Faz upload de uma imagem de banner de loja para o bucket público do
+ * Supabase Storage, dentro de uma pasta por loja (lojaId). Retorna a URL
+ * pública do arquivo.
+ */
+export function enviarBannerLoja(lojaId: string, arquivo: File): Promise<string> {
+  return enviarImagem(BUCKET_BANNERS_LOJA, lojaId, arquivo);
 }

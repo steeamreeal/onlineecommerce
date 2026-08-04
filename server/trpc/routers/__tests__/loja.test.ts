@@ -89,3 +89,71 @@ describe("lojaRouter.atualizarPersonalizacao", () => {
     ).rejects.toThrow(TRPCError);
   });
 });
+
+describe("lojaRouter.atualizarBanners", () => {
+  const banner = { url: "https://exemplo.com/banner.jpg", titulo: "Coleção Verão" };
+
+  it("atualiza o array de banners escopado pela lojaId do contexto", async () => {
+    const update = vi.fn().mockResolvedValue({ banners: [banner] });
+    const client = criarPrismaMock({
+      loja: { findUnique: vi.fn().mockResolvedValue({ statusPlano: "ATIVO" }), findFirst: vi.fn(), update },
+    });
+    const caller = criarCaller(client);
+
+    await caller.atualizarBanners({ banners: [banner] });
+
+    expect(update).toHaveBeenCalledWith({
+      where: { id: LOJA_ID },
+      data: { banners: [banner] },
+      select: { banners: true },
+    });
+  });
+
+  it("nunca atualiza a loja de outro tenant: where.id é sempre a lojaId do contexto", async () => {
+    const update = vi.fn().mockResolvedValue({ banners: [banner] });
+    const client = criarPrismaMock({
+      loja: { findUnique: vi.fn().mockResolvedValue({ statusPlano: "ATIVO" }), findFirst: vi.fn(), update },
+    });
+    const caller = criarCaller(client);
+
+    await caller.atualizarBanners({ banners: [banner] });
+
+    const chamada = update.mock.calls[0][0];
+    expect(chamada.where.id).toBe(LOJA_ID);
+    expect(chamada.where.id).not.toBe(OUTRA_LOJA_ID);
+  });
+
+  it("rejeita mais de 3 banners", async () => {
+    const client = criarPrismaMock();
+    const caller = criarCaller(client);
+
+    await expect(
+      caller.atualizarBanners({ banners: [banner, banner, banner, banner] }),
+    ).rejects.toThrow();
+  });
+
+  it("rejeita banner sem título", async () => {
+    const client = criarPrismaMock();
+    const caller = criarCaller(client);
+
+    await expect(
+      caller.atualizarBanners({ banners: [{ url: banner.url, titulo: "" }] }),
+    ).rejects.toThrow();
+  });
+
+  it("rejeita banner sem url", async () => {
+    const client = criarPrismaMock();
+    const caller = criarCaller(client);
+
+    await expect(
+      caller.atualizarBanners({ banners: [{ url: "", titulo: banner.titulo }] }),
+    ).rejects.toThrow();
+  });
+
+  it("rejeita usuário sem papel ADMINISTRADOR (roleProcedure)", async () => {
+    const client = criarPrismaMock();
+    const caller = criarCaller(client, "VENDEDOR");
+
+    await expect(caller.atualizarBanners({ banners: [banner] })).rejects.toThrow(TRPCError);
+  });
+});

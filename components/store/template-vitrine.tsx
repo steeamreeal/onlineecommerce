@@ -19,8 +19,18 @@ export function TemplateVitrine({
 }) {
   return (
     <div className="flex flex-1 flex-col gap-10 pb-12">
-      <section className="bg-[var(--loja-primary)] px-6 py-10 text-center text-white">
-        <p className="text-lg font-bold">
+      <section
+        className="relative flex items-center justify-center overflow-hidden bg-[var(--loja-primary)] px-6 py-10 text-center text-white"
+        style={
+          banners[0]?.url
+            ? { backgroundImage: `url(${banners[0].url})`, backgroundSize: "cover", backgroundPosition: "center" }
+            : undefined
+        }
+      >
+        {banners[0]?.url && (
+          <div className="absolute inset-0 bg-[var(--loja-primary)]/70" />
+        )}
+        <p className="relative text-lg font-bold">
           {banners[0]?.titulo ?? "Confira as novidades da loja"}
         </p>
       </section>

@@ -21,9 +21,25 @@ export function TemplateMinimalista({
     <div className="flex flex-1 flex-col gap-12 pb-12">
       {banners.length > 0 && (
         <section className="px-6 pt-6">
-          <div className="bg-muted relative flex aspect-[21/6] items-end overflow-hidden rounded-md">
+          <div
+            className="bg-muted relative flex aspect-[21/6] items-end overflow-hidden rounded-md"
+            style={
+              banners[0]?.url
+                ? { backgroundImage: `url(${banners[0].url})`, backgroundSize: "cover", backgroundPosition: "center" }
+                : undefined
+            }
+          >
             {banners[0]?.titulo && (
-              <span className="m-4 text-sm font-medium">{banners[0].titulo}</span>
+              <>
+                {banners[0]?.url && (
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                )}
+                <span
+                  className={`relative m-4 text-sm font-medium ${banners[0]?.url ? "text-white" : ""}`}
+                >
+                  {banners[0].titulo}
+                </span>
+              </>
             )}
           </div>
         </section>

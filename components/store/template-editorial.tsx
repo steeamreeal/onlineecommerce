@@ -19,8 +19,16 @@ export function TemplateEditorial({
 }) {
   return (
     <div className="flex flex-1 flex-col gap-14 pb-16">
-      <section className="bg-accent flex aspect-[3/1] items-center justify-center px-6 text-center">
-        <p className="font-heading max-w-lg text-2xl italic text-[var(--loja-primary)]">
+      <section
+        className="bg-accent relative flex aspect-[3/1] items-center justify-center overflow-hidden px-6 text-center"
+        style={
+          banners[0]?.url
+            ? { backgroundImage: `url(${banners[0].url})`, backgroundSize: "cover", backgroundPosition: "center" }
+            : undefined
+        }
+      >
+        {banners[0]?.url && <div className="bg-background/70 absolute inset-0" />}
+        <p className="font-heading relative max-w-lg text-2xl italic text-[var(--loja-primary)]">
           {banners[0]?.titulo ?? "Uma seleção pensada para você"}
         </p>
       </section>

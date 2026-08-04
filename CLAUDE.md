@@ -100,11 +100,11 @@ Cobrança híbrida, decidida no M14:
 - `Loja.dominioProprio` é único na plataforma inteira (`@unique` no schema) — a mutation `loja.atualizarDominioProprio` valida colisão com outra loja antes de salvar, já que é o valor usado para resolver o tenant pelo host.
 - **Sem automação de DNS/hosting neste milestone**: a tela de personalização (`components/dashboard/dominio-proprio-form.tsx`) só mostra a instrução de criar um CNAME apontando para a plataforma — não há chamada a nenhuma API de domínios (ex. Vercel Domains API). Quem cadastra o domínio no provedor de hosting real (seja Vercel ou outro) é o admin da plataforma, manualmente, ao ativar o cliente. Se isso for automatizado no futuro, documentar aqui a API escolhida e as credenciais necessárias — sem amarrar a decisão de arquitetura a um provedor de hosting específico só por causa disso.
 
-## Supabase Storage (fotos de produto)
+## Supabase Storage (fotos de produto e banners de loja)
 
-- Bucket usado: `fotos-produtos` (ver `lib/supabase/storage.ts`), **público para leitura** (URLs de foto aparecem no site da loja sem autenticação).
+- Buckets usados (ver `lib/supabase/storage.ts`): `fotos-produtos` (fotos de produto) e `banners-loja` (banners da vitrine — até 3 por loja, `Loja.banners`), ambos **públicos para leitura** (as URLs aparecem no site da loja sem autenticação).
 - Upload feito direto do client autenticado (`createBrowserClient`), nunca com a `SUPABASE_SERVICE_ROLE_KEY` no browser.
-- Setup manual necessário no dashboard do Supabase (não versionado em migration):
-  1. Criar bucket `fotos-produtos` com acesso público de leitura.
-  2. Policy de `INSERT`/`UPDATE`/`DELETE` restrita a usuários autenticados (`auth.role() = 'authenticated'`); a pasta do arquivo já é prefixada por `lojaId` para organização, mas o isolamento real de escrita por tenant fica a cargo da regra de negócio na aplicação (o tRPC só aceita salvar a foto no produto se o produto pertencer à loja do usuário).
-  3. Limite de tamanho de arquivo sugerido: 5MB por foto.
+- Setup manual necessário no dashboard do Supabase para cada bucket (não versionado em migration):
+  1. Criar o bucket (`fotos-produtos` ou `banners-loja`) com acesso público de leitura.
+  2. Policy de `INSERT`/`UPDATE`/`DELETE` restrita a usuários autenticados (`auth.role() = 'authenticated'`); a pasta do arquivo já é prefixada por `lojaId` para organização, mas o isolamento real de escrita por tenant fica a cargo da regra de negócio na aplicação (o tRPC só aceita salvar a foto/banner se pertencer à loja do usuário).
+  3. Limite de tamanho de arquivo sugerido: 5MB por imagem.
