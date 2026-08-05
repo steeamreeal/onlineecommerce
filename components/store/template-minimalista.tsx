@@ -1,8 +1,16 @@
 import Link from "next/link";
 import { ProductCard } from "@/components/store/product-card";
+import { BannerMidia } from "@/components/store/banner-midia";
 import type { RouterOutputs } from "@/lib/trpc/types";
 
-type Banner = { id: string; url: string; titulo?: string; tipo?: "IMAGEM" | "VIDEO" };
+type Banner = {
+  id: string;
+  url: string;
+  titulo?: string;
+  tipo?: "IMAGEM" | "VIDEO";
+  urlMobile?: string;
+  tipoMobile?: "IMAGEM" | "VIDEO";
+};
 type Categoria = RouterOutputs["lojaPublica"]["categorias"][number];
 type Produto = RouterOutputs["lojaPublica"]["produtos"][number];
 
@@ -21,24 +29,8 @@ export function TemplateMinimalista({
     <div className="flex flex-1 flex-col gap-12 pb-12">
       {banners.length > 0 && (
         <section className="px-6 pt-6">
-          <div
-            className="bg-muted relative flex aspect-[4/5] items-end overflow-hidden rounded-md md:aspect-[3/1]"
-            style={
-              banners[0]?.url && banners[0]?.tipo !== "VIDEO"
-                ? { backgroundImage: `url(${banners[0].url})`, backgroundSize: "cover", backgroundPosition: "center" }
-                : undefined
-            }
-          >
-            {banners[0]?.url && banners[0]?.tipo === "VIDEO" && (
-              <video
-                src={banners[0].url}
-                className="absolute inset-0 size-full object-cover"
-                autoPlay
-                muted
-                loop
-                playsInline
-              />
-            )}
+          <div className="bg-muted relative flex aspect-[4/5] items-end overflow-hidden rounded-md md:aspect-[3/1]">
+            <BannerMidia banner={banners[0]} />
             {banners[0]?.titulo && (
               <>
                 {banners[0]?.url && (

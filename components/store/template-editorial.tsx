@@ -1,8 +1,16 @@
 import Link from "next/link";
 import { ProductCard } from "@/components/store/product-card";
+import { BannerMidia } from "@/components/store/banner-midia";
 import type { RouterOutputs } from "@/lib/trpc/types";
 
-type Banner = { id: string; url: string; titulo?: string; tipo?: "IMAGEM" | "VIDEO" };
+type Banner = {
+  id: string;
+  url: string;
+  titulo?: string;
+  tipo?: "IMAGEM" | "VIDEO";
+  urlMobile?: string;
+  tipoMobile?: "IMAGEM" | "VIDEO";
+};
 type Categoria = RouterOutputs["lojaPublica"]["categorias"][number];
 type Produto = RouterOutputs["lojaPublica"]["produtos"][number];
 
@@ -19,24 +27,8 @@ export function TemplateEditorial({
 }) {
   return (
     <div className="flex flex-1 flex-col gap-14 pb-16">
-      <section
-        className="bg-accent relative flex aspect-[4/5] items-center justify-center overflow-hidden px-6 text-center md:aspect-[3/1]"
-        style={
-          banners[0]?.url && banners[0]?.tipo !== "VIDEO"
-            ? { backgroundImage: `url(${banners[0].url})`, backgroundSize: "cover", backgroundPosition: "center" }
-            : undefined
-        }
-      >
-        {banners[0]?.url && banners[0]?.tipo === "VIDEO" && (
-          <video
-            src={banners[0].url}
-            className="absolute inset-0 size-full object-cover"
-            autoPlay
-            muted
-            loop
-            playsInline
-          />
-        )}
+      <section className="bg-accent relative flex aspect-[4/5] items-center justify-center overflow-hidden px-6 text-center md:aspect-[3/1]">
+        <BannerMidia banner={banners[0]} />
         {banners[0]?.url && <div className="bg-background/70 absolute inset-0" />}
         <p className="font-heading relative max-w-lg text-2xl italic text-[var(--loja-primary)]">
           {banners[0]?.titulo ?? "Uma seleção pensada para você"}

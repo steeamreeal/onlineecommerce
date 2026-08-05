@@ -6,7 +6,14 @@ import { TemplateEditorial } from "@/components/store/template-editorial";
 import { TemplateVitrine } from "@/components/store/template-vitrine";
 import { trpc } from "@/lib/trpc/client";
 
-type Banner = { id: string; url: string; titulo?: string; tipo?: "IMAGEM" | "VIDEO" };
+type Banner = {
+  id: string;
+  url: string;
+  titulo?: string;
+  tipo?: "IMAGEM" | "VIDEO";
+  urlMobile?: string;
+  tipoMobile?: "IMAGEM" | "VIDEO";
+};
 
 const templatesPorTipo = {
   MINIMALISTA: TemplateMinimalista,
