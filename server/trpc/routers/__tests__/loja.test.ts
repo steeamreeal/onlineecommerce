@@ -221,13 +221,16 @@ describe("lojaRouter.atualizarBanners", () => {
     ).rejects.toThrow();
   });
 
-  it("rejeita banner sem título", async () => {
-    const client = criarPrismaMock();
+  it("aceita banner sem título (título é opcional)", async () => {
+    const update = vi.fn().mockResolvedValue({ banners: [{ url: banner.url, titulo: "" }] });
+    const client = criarPrismaMock({
+      loja: { findUnique: vi.fn().mockResolvedValue({ statusPlano: "ATIVO" }), findFirst: vi.fn(), update },
+    });
     const caller = criarCaller(client);
 
     await expect(
       caller.atualizarBanners({ banners: [{ url: banner.url, titulo: "" }] }),
-    ).rejects.toThrow();
+    ).resolves.not.toThrow();
   });
 
   it("rejeita banner sem url", async () => {

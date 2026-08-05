@@ -126,7 +126,7 @@ export const lojaRouter = router({
             z.object({
               id: z.string().optional(),
               url: z.string().min(1),
-              titulo: z.string().min(1),
+              titulo: z.string(),
             }),
           )
           .max(3, "No máximo 3 banners por loja."),
