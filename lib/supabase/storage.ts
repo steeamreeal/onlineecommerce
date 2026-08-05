@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/client";
 
 export const BUCKET_FOTOS_PRODUTO = "fotos-produtos";
 export const BUCKET_BANNERS_LOJA = "banners-loja";
+export const BUCKET_LOGOS_LOJA = "logos-loja";
 
 // Sem esses limites no client, um arquivo grande demais ou de tipo errado só
 // seria barrado (se barrado) pela configuração do bucket no Supabase, gerando
@@ -54,4 +55,12 @@ export function enviarFotoProduto(lojaId: string, arquivo: File): Promise<string
  */
 export function enviarBannerLoja(lojaId: string, arquivo: File): Promise<string> {
   return enviarImagem(BUCKET_BANNERS_LOJA, lojaId, arquivo);
+}
+
+/**
+ * Faz upload da logo da loja para o bucket público do Supabase Storage,
+ * dentro de uma pasta por loja (lojaId). Retorna a URL pública do arquivo.
+ */
+export function enviarLogoLoja(lojaId: string, arquivo: File): Promise<string> {
+  return enviarImagem(BUCKET_LOGOS_LOJA, lojaId, arquivo);
 }

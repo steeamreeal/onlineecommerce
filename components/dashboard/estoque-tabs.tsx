@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AjustarEstoqueDialog } from "@/components/dashboard/ajustar-estoque-dialog";
+import { ImportarEstoqueDialog } from "@/components/dashboard/importar-estoque-dialog";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc/client";
 import { ESTOQUE_BAIXO_LIMITE, variacaoLabel } from "@/lib/estoque";
@@ -44,10 +45,13 @@ export function EstoqueTabs() {
 
   return (
     <Tabs defaultValue="por-variacao" className="flex-1">
-      <TabsList>
-        <TabsTrigger value="por-variacao">Estoque por variação</TabsTrigger>
-        <TabsTrigger value="historico">Histórico de movimentações</TabsTrigger>
-      </TabsList>
+      <div className="flex items-center justify-between">
+        <TabsList>
+          <TabsTrigger value="por-variacao">Estoque por variação</TabsTrigger>
+          <TabsTrigger value="historico">Histórico de movimentações</TabsTrigger>
+        </TabsList>
+        <ImportarEstoqueDialog onImportado={aoRegistrar} />
+      </div>
 
       <TabsContent value="por-variacao">
         <div className="rounded-lg border">

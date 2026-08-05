@@ -10,6 +10,7 @@ export const lojaRouter = router({
         id: true,
         nome: true,
         slug: true,
+        logoUrl: true,
         planoId: true,
         statusPlano: true,
         stripeCustomerId: true,
@@ -18,10 +19,58 @@ export const lojaRouter = router({
         template: true,
         corPrimaria: true,
         banners: true,
+        whatsapp: true,
+        instagram: true,
+        facebook: true,
+        endereco: true,
+        horarioAtend: true,
+        politicas: true,
         plano: { select: { id: true, nome: true, precoMensal: true } },
       },
     });
   }),
+
+  // Nome e slug (URL da loja) não entram aqui: são geridos pelo admin da
+  // plataforma via admin.atualizarLoja, já que a criação da loja não é mais
+  // self-service (M14) e o slug é usado na resolução de tenant por host.
+  atualizarIdentidade: roleProcedure(["ADMINISTRADOR"])
+    .input(
+      z.object({
+        corPrimaria: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Informe uma cor no formato #RRGGBB"),
+        logoUrl: z.string().min(1).nullable(),
+        whatsapp: z.string().trim().max(30).optional(),
+        instagram: z.string().trim().max(60).optional(),
+        facebook: z.string().trim().max(60).optional(),
+        endereco: z.string().trim().max(300).optional(),
+        horarioAtend: z.string().trim().max(120).optional(),
+        politicas: z.string().trim().max(2000).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      return ctx.prisma.loja.update({
+        where: { id: ctx.lojaId },
+        data: {
+          corPrimaria: input.corPrimaria,
+          logoUrl: input.logoUrl,
+          whatsapp: input.whatsapp || null,
+          instagram: input.instagram || null,
+          facebook: input.facebook || null,
+          endereco: input.endereco || null,
+          horarioAtend: input.horarioAtend || null,
+          politicas: input.politicas || null,
+        },
+        select: {
+          corPrimaria: true,
+          logoUrl: true,
+          whatsapp: true,
+          instagram: true,
+          facebook: true,
+          endereco: true,
+          horarioAtend: true,
+          politicas: true,
+        },
+      });
+    }),
 
   // Domínio próprio é opcional e único na plataforma inteira (não só por
   // loja) — precisa checar colisão com outra loja antes de salvar, já que

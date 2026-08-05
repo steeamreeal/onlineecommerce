@@ -106,3 +106,106 @@ describe("estoqueRouter.registrarMovimento", () => {
     ).rejects.toThrow("Quantidade de saída maior que o estoque disponível.");
   });
 });
+
+describe("estoqueRouter.importar", () => {
+  function criarPrismaMockImportar(variacoes: Array<{
+    id: string;
+    estoque: number;
+    cor: string | null;
+    tamanho: string | null;
+    modelo: string | null;
+    produto: { nome: string };
+  }>) {
+    const update = vi.fn();
+    const create = vi.fn();
+    const mock: Record<string, unknown> = {
+      variacaoProduto: {
+        findMany: vi.fn().mockResolvedValue(variacoes),
+        update,
+      },
+      movimentoEstoque: { create },
+      loja: { findUnique: vi.fn().mockResolvedValue({ statusPlano: "ATIVO" }) },
+    };
+    mock.$transaction = vi.fn(async (fn: (tx: unknown) => unknown) => fn(mock));
+    return { update, create, client: mock as unknown as PrismaClient };
+  }
+
+  const variacaoCamiseta = {
+    id: "v1",
+    estoque: 10,
+    cor: "Azul",
+    tamanho: "M",
+    modelo: null,
+    produto: { nome: "Camiseta" },
+  };
+
+  it("atualiza o saldo por nome do produto + variação (case-insensitive) e registra o movimento", async () => {
+    const { update, create, client } = criarPrismaMockImportar([variacaoCamiseta]);
+    const caller = criarCaller(client);
+
+    const resultado = await caller.importar({
+      linhas: [{ produto: "camiseta", cor: "azul", tamanho: "m", quantidade: 25 }],
+    });
+
+    expect(update).toHaveBeenCalledWith({ where: { id: "v1" }, data: { estoque: 25 } });
+    expect(create).toHaveBeenCalledWith({
+      data: { variacaoId: "v1", quantidade: 15, tipo: "ENTRADA", motivo: "Importação de planilha" },
+    });
+    expect(resultado).toEqual({ atualizados: 1, naoEncontrados: [] });
+  });
+
+  it("registra SAIDA quando o novo saldo é menor que o atual", async () => {
+    const { create, client } = criarPrismaMockImportar([variacaoCamiseta]);
+    const caller = criarCaller(client);
+
+    await caller.importar({
+      linhas: [{ produto: "Camiseta", cor: "Azul", tamanho: "M", quantidade: 2 }],
+    });
+
+    expect(create).toHaveBeenCalledWith({
+      data: { variacaoId: "v1", quantidade: 8, tipo: "SAIDA", motivo: "Importação de planilha" },
+    });
+  });
+
+  it("não escreve nada quando o saldo da planilha é igual ao atual", async () => {
+    const { update, create, client } = criarPrismaMockImportar([variacaoCamiseta]);
+    const caller = criarCaller(client);
+
+    const resultado = await caller.importar({
+      linhas: [{ produto: "Camiseta", cor: "Azul", tamanho: "M", quantidade: 10 }],
+    });
+
+    expect(update).not.toHaveBeenCalled();
+    expect(create).not.toHaveBeenCalled();
+    expect(resultado.atualizados).toBe(0);
+  });
+
+  it("reporta linhas sem variação correspondente sem interromper as demais", async () => {
+    const { update, client } = criarPrismaMockImportar([variacaoCamiseta]);
+    const caller = criarCaller(client);
+
+    const resultado = await caller.importar({
+      linhas: [
+        { produto: "Camiseta", cor: "Azul", tamanho: "M", quantidade: 30 },
+        { produto: "Produto Inexistente", quantidade: 5 },
+      ],
+    });
+
+    expect(update).toHaveBeenCalledTimes(1);
+    expect(resultado.atualizados).toBe(1);
+    expect(resultado.naoEncontrados).toEqual(["Produto Inexistente"]);
+  });
+
+  it("só casa variações da própria loja (findMany já escopado por lojaId no where)", async () => {
+    const { client } = criarPrismaMockImportar([variacaoCamiseta]);
+    const caller = criarCaller(client);
+    const findMany = (client as unknown as { variacaoProduto: { findMany: ReturnType<typeof vi.fn> } })
+      .variacaoProduto.findMany;
+
+    await caller.importar({ linhas: [{ produto: "Camiseta", quantidade: 1 }] });
+
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { produto: { lojaId: LOJA_ID } } }),
+    );
+  });
+});

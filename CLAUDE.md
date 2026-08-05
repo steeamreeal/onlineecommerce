@@ -107,11 +107,11 @@ Cobrança híbrida, decidida no M14:
 - Também conferir em Authentication → URL Configuration que "Site URL" e "Redirect URLs" incluem o domínio de produção e `localhost:3000` (dev) com o path `/redefinir-senha` — redirect não permitido faz o link falhar silenciosamente.
 - Se um lojista/cliente relatar que e-mail de redefinição de senha/convite não chegou, o problema é quase sempre essa configuração no dashboard do Supabase (SMTP não configurado ou redirect URL ausente), não um bug no código da aplicação.
 
-## Supabase Storage (fotos de produto e banners de loja)
+## Supabase Storage (fotos de produto, banners e logo de loja)
 
-- Buckets usados (ver `lib/supabase/storage.ts`): `fotos-produtos` (fotos de produto) e `banners-loja` (banners da vitrine — até 3 por loja, `Loja.banners`), ambos **públicos para leitura** (as URLs aparecem no site da loja sem autenticação).
+- Buckets usados (ver `lib/supabase/storage.ts`): `fotos-produtos` (fotos de produto), `banners-loja` (banners da vitrine — até 3 por loja, `Loja.banners`) e `logos-loja` (logo da loja, `Loja.logoUrl`), todos **públicos para leitura** (as URLs aparecem no site da loja sem autenticação).
 - Upload feito direto do client autenticado (`createBrowserClient`), nunca com a `SUPABASE_SERVICE_ROLE_KEY` no browser.
 - Setup manual necessário no dashboard do Supabase para cada bucket (não versionado em migration):
-  1. Criar o bucket (`fotos-produtos` ou `banners-loja`) com acesso público de leitura.
+  1. Criar o bucket (`fotos-produtos`, `banners-loja` ou `logos-loja`) com acesso público de leitura.
   2. Policy de `INSERT`/`UPDATE`/`DELETE` restrita a usuários autenticados (`auth.role() = 'authenticated'`); a pasta do arquivo já é prefixada por `lojaId` para organização, mas o isolamento real de escrita por tenant fica a cargo da regra de negócio na aplicação (o tRPC só aceita salvar a foto/banner se pertencer à loja do usuário).
   3. Limite de tamanho de arquivo sugerido: 5MB por imagem.
