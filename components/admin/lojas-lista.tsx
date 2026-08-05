@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Search } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LojaStatusBadge } from "@/components/admin/loja-status-badge";
+import { CriarLojaDialog } from "@/components/admin/criar-loja-dialog";
 import { trpc } from "@/lib/trpc/client";
 
 const formatoMoeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -46,6 +47,7 @@ const statusSelectItems = [
 export function LojasLista() {
   const [busca, setBusca] = useState("");
   const [status, setStatus] = useState<StatusLoja | typeof TODOS>(TODOS);
+  const [dialogAberto, setDialogAberto] = useState(false);
 
   const { data: lojas, isLoading } = trpc.admin.listarLojas.useQuery({
     busca: busca.trim() || undefined,
@@ -54,11 +56,17 @@ export function LojasLista() {
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-8">
-      <div>
-        <h1 className="text-2xl font-semibold">Lojas</h1>
-        <p className="text-muted-foreground text-sm">
-          Todas as lojas cadastradas na plataforma.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">Lojas</h1>
+          <p className="text-muted-foreground text-sm">
+            Todas as lojas cadastradas na plataforma.
+          </p>
+        </div>
+        <Button size="sm" onClick={() => setDialogAberto(true)}>
+          <Plus className="size-4" />
+          Nova loja
+        </Button>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -146,6 +154,8 @@ export function LojasLista() {
           </TableBody>
         </Table>
       </div>
+
+      <CriarLojaDialog open={dialogAberto} onOpenChange={setDialogAberto} />
     </div>
   );
 }
