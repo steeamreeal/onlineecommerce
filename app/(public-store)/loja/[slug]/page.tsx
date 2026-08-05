@@ -4,7 +4,9 @@ import { use } from "react";
 import { TemplateMinimalista } from "@/components/store/template-minimalista";
 import { TemplateEditorial } from "@/components/store/template-editorial";
 import { TemplateVitrine } from "@/components/store/template-vitrine";
+import { ThemeRenderer } from "@/components/store/theme-renderer";
 import { trpc } from "@/lib/trpc/client";
+import type { TemaConfig } from "@/lib/tema-loja";
 
 type Banner = {
   id: string;
@@ -35,6 +37,22 @@ export default function LojaPage({ params }: { params: Promise<{ slug: string }>
     a.status === b.status ? 0 : a.status === "DESTAQUE" ? -1 : 1,
   );
   const banners = (config?.banners as Banner[] | null) ?? [];
+  const temaConfig = config?.temaConfig as TemaConfig | null;
+
+  // Lojas que já abriram o editor de tema têm temaConfig salvo e usam o
+  // ThemeRenderer (seções configuráveis). As demais continuam no template
+  // fixo antigo — fallback que preserva o comportamento anterior ao editor.
+  if (temaConfig) {
+    return (
+      <ThemeRenderer
+        secoes={temaConfig.secoes}
+        template={config?.template ?? "MINIMALISTA"}
+        slug={slug}
+        categorias={categorias ?? []}
+        destaques={destaques}
+      />
+    );
+  }
 
   const Template = templatesPorTipo[config?.template ?? "MINIMALISTA"];
 

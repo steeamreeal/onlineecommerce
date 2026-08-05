@@ -1,0 +1,315 @@
+import Link from "next/link";
+import { ProductCard } from "@/components/store/product-card";
+import { BannerCarousel } from "@/components/store/banner-carousel";
+import { cn } from "@/lib/utils";
+import type { RouterOutputs } from "@/lib/trpc/types";
+import type { AlinhamentoTexto, SecaoTema } from "@/lib/tema-loja";
+
+type Variante = "MINIMALISTA" | "EDITORIAL" | "VITRINE";
+type Categoria = RouterOutputs["lojaPublica"]["categorias"][number];
+type Produto = RouterOutputs["lojaPublica"]["produtos"][number];
+
+// Dados salvos antes do campo `alinhamento` existir não passam pelo default
+// do Zod (só a mutation de save valida) — sempre ler com fallback aqui.
+const classeTextoPorAlinhamento: Record<AlinhamentoTexto, string> = {
+  ESQUERDA: "text-left items-start",
+  CENTRO: "text-center items-center",
+  DIREITA: "text-right items-end",
+};
+
+function classeAlinhamento(alinhamento: AlinhamentoTexto | undefined): string {
+  return classeTextoPorAlinhamento[alinhamento ?? "ESQUERDA"];
+}
+
+// Aparência de cada seção por template — mesmas classes que antes viviam
+// hardcoded em cada components/store/template-*.tsx, agora indexadas por
+// variante para que o editor de tema possa trocar o "skin" sem duplicar a
+// estrutura de seções. Os templates antigos continuam existindo à parte,
+// usados só como fallback para lojas sem temaConfig (ver page.tsx).
+const heroClassePorVariante: Record<Variante, string> = {
+  MINIMALISTA:
+    "bg-muted relative flex aspect-[4/5] items-end overflow-hidden rounded-md md:aspect-[3/1]",
+  EDITORIAL:
+    "bg-accent relative flex aspect-[4/5] items-center justify-center overflow-hidden px-6 text-center md:aspect-[3/1]",
+  VITRINE:
+    "relative flex aspect-[4/5] items-center justify-center overflow-hidden bg-[var(--loja-primary)] px-6 text-center text-white md:aspect-[3/1]",
+};
+
+const categoriaLinkClassePorVariante: Record<Variante, string> = {
+  MINIMALISTA: "text-muted-foreground hover:text-foreground",
+  EDITORIAL: "font-heading text-muted-foreground hover:text-foreground",
+  VITRINE:
+    "rounded-full border-2 border-[var(--loja-primary)]/30 px-4 py-1.5 text-sm font-medium text-[var(--loja-primary)] hover:border-[var(--loja-primary)]",
+};
+
+const categoriasWrapperClassePorVariante: Record<Variante, string> = {
+  MINIMALISTA: "flex flex-wrap gap-2 text-sm",
+  EDITORIAL: "flex flex-wrap justify-center gap-6 text-sm",
+  VITRINE: "flex flex-wrap gap-2",
+};
+
+const tituloSecaoClassePorVariante: Record<Variante, string> = {
+  MINIMALISTA: "text-base font-medium",
+  EDITORIAL: "font-heading text-center text-2xl",
+  VITRINE: "text-lg font-bold",
+};
+
+const gridProdutosClassePorVariante: Record<Variante, string> = {
+  MINIMALISTA: "grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4",
+  EDITORIAL: "grid grid-cols-2 gap-8 sm:grid-cols-3",
+  VITRINE: "grid grid-cols-2 gap-4 sm:grid-cols-3",
+};
+
+const verTudoLinkClassePorVariante: Record<Variante, string> = {
+  MINIMALISTA: "text-muted-foreground hover:text-foreground text-xs",
+  EDITORIAL: "text-muted-foreground hover:text-foreground text-center text-sm",
+  VITRINE: "text-sm font-medium text-[var(--loja-primary)]",
+};
+
+function ConteudoHero({
+  variante,
+  slug,
+  titulo,
+  textoBotao,
+  linkBotao,
+  alinhamento,
+}: {
+  variante: Variante;
+  slug: string;
+  titulo?: string;
+  textoBotao?: string;
+  linkBotao?: string;
+  alinhamento?: AlinhamentoTexto;
+}) {
+  if (!titulo && !textoBotao) return null;
+  return (
+    <>
+      {variante === "MINIMALISTA" && (
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+      )}
+      {variante === "EDITORIAL" && <div className="bg-background/70 absolute inset-0" />}
+      {variante === "VITRINE" && <div className="absolute inset-0 bg-[var(--loja-primary)]/70" />}
+      <div className={cn("relative flex flex-col gap-3 p-4", classeAlinhamento(alinhamento))}>
+        {titulo && (
+          <span
+            className={
+              variante === "MINIMALISTA"
+                ? "text-sm font-medium text-white"
+                : variante === "EDITORIAL"
+                  ? "font-heading max-w-lg text-2xl italic text-[var(--loja-primary)]"
+                  : "text-lg font-bold"
+            }
+          >
+            {titulo}
+          </span>
+        )}
+        {textoBotao && (
+          <Link
+            href={linkBotao || `/loja/${slug}/produtos`}
+            className="bg-background text-foreground rounded-md px-4 py-2 text-sm font-medium"
+          >
+            {textoBotao}
+          </Link>
+        )}
+      </div>
+    </>
+  );
+}
+
+function SecaoHero({
+  variante,
+  config,
+  slug,
+}: {
+  variante: Variante;
+  config: Extract<SecaoTema, { tipo: "HERO" }>["config"];
+  slug: string;
+}) {
+  // Sem banner cadastrado, ainda assim mostra título/botão se preenchidos —
+  // vira uma seção de hero "só texto" em vez de sumir por completo. Com
+  // banner, o texto/botão sobrepõe a mídia via renderOverlay do carrossel.
+  if (config.banners.length === 0) {
+    return (
+      <section className={variante === "MINIMALISTA" ? "px-6 pt-6" : undefined}>
+        <div className={heroClassePorVariante[variante]}>
+          <ConteudoHero
+            variante={variante}
+            slug={slug}
+            titulo={config.titulo}
+            textoBotao={config.textoBotao}
+            linkBotao={config.linkBotao}
+            alinhamento={config.alinhamento}
+          />
+        </div>
+      </section>
+    );
+  }
+
+  // BannerCarousel usa `id` como key de navegação/loop; banners recém-
+  // adicionados no editor (antes do primeiro save) ainda não têm id salvo.
+  const banners = config.banners.map((banner, i) => ({ ...banner, id: banner.id ?? `${i}` }));
+
+  return (
+    <section className={variante === "MINIMALISTA" ? "px-6 pt-6" : undefined}>
+      <BannerCarousel
+        banners={banners}
+        className={heroClassePorVariante[variante]}
+        renderOverlay={(banner) => (
+          <ConteudoHero
+            variante={variante}
+            slug={slug}
+            titulo={banner.titulo || config.titulo}
+            textoBotao={config.textoBotao}
+            linkBotao={config.linkBotao}
+            alinhamento={config.alinhamento}
+          />
+        )}
+      />
+    </section>
+  );
+}
+
+function SecaoColecaoDestaque({
+  variante,
+  config,
+  slug,
+  categorias,
+  destaques,
+}: {
+  variante: Variante;
+  config: Extract<SecaoTema, { tipo: "COLECAO_DESTAQUE" }>["config"];
+  slug: string;
+  categorias: Categoria[];
+  destaques: Produto[];
+}) {
+  const produtos = config.categoriaId
+    ? destaques.filter((p) => p.categoria?.id === config.categoriaId)
+    : destaques;
+
+  return (
+    <>
+      {categorias.length > 0 && (
+        <section className="flex flex-col gap-4 px-6">
+          <div className={categoriasWrapperClassePorVariante[variante]}>
+            {categorias.map((categoria) => (
+              <Link
+                key={categoria.id}
+                href={`/loja/${slug}/produtos?categoria=${categoria.id}`}
+                className={categoriaLinkClassePorVariante[variante]}
+              >
+                {categoria.nome}
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {produtos.length > 0 && (
+        <section className="flex flex-col gap-4 px-6">
+          <div
+            className={cn(
+              "flex items-baseline gap-4",
+              config.alinhamento === "CENTRO"
+                ? "flex-col items-center"
+                : config.alinhamento === "DIREITA"
+                  ? "flex-row-reverse justify-end"
+                  : "justify-between",
+            )}
+          >
+            <h2 className={cn(tituloSecaoClassePorVariante[variante], classeAlinhamento(config.alinhamento))}>
+              {config.titulo}
+            </h2>
+            {config.linkVerTudo && (
+              <Link href={`/loja/${slug}/produtos`} className={verTudoLinkClassePorVariante[variante]}>
+                Ver todos
+              </Link>
+            )}
+          </div>
+          <div className={gridProdutosClassePorVariante[variante]}>
+            {produtos.map((produto) => (
+              <ProductCard
+                key={produto.id}
+                produto={produto}
+                slug={slug}
+                variante={variante.toLowerCase() as "minimalista" | "editorial" | "vitrine"}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+    </>
+  );
+}
+
+function SecaoTexto({ config }: { config: Extract<SecaoTema, { tipo: "TEXTO" }>["config"] }) {
+  return (
+    <section className={cn("flex flex-col gap-2 px-6", classeAlinhamento(config.alinhamento))}>
+      {config.titulo && <h2 className="text-base font-medium">{config.titulo}</h2>}
+      <p className="text-muted-foreground text-sm whitespace-pre-line">{config.corpo}</p>
+    </section>
+  );
+}
+
+function SecaoBarraAnuncio({ config }: { config: Extract<SecaoTema, { tipo: "BARRA_ANUNCIO" }>["config"] }) {
+  if (!config.texto) return null;
+  return (
+    <div className="bg-foreground text-background px-6 py-2 text-center text-xs">{config.texto}</div>
+  );
+}
+
+/**
+ * Monta a home pública da loja a partir de temaConfig.secoes, despachando
+ * cada seção para o componente correspondente e aplicando a aparência do
+ * `template` ativo (variante) em cada uma — mesmo "skin" que antes vivia
+ * hardcoded em cada template-*.tsx, agora combinável com a composição de
+ * seções escolhida pelo lojista no editor de tema.
+ */
+export function ThemeRenderer({
+  secoes,
+  template,
+  slug,
+  categorias,
+  destaques,
+}: {
+  secoes: SecaoTema[];
+  template: Variante;
+  slug: string;
+  categorias: Categoria[];
+  destaques: Produto[];
+}) {
+  return (
+    <div className="flex flex-1 flex-col gap-12 pb-12">
+      {secoes.map((secao) => {
+        if (!secao.visivel) return null;
+
+        switch (secao.tipo) {
+          case "BARRA_ANUNCIO":
+            return <SecaoBarraAnuncio key={secao.id} config={secao.config} />;
+          case "CABECALHO":
+          case "RODAPE":
+            // Renderizados por SiteHeader/SiteFooter no layout, não aqui.
+            return null;
+          case "HERO":
+            return (
+              <SecaoHero key={secao.id} variante={template} config={secao.config} slug={slug} />
+            );
+          case "COLECAO_DESTAQUE":
+            return (
+              <SecaoColecaoDestaque
+                key={secao.id}
+                variante={template}
+                config={secao.config}
+                slug={slug}
+                categorias={categorias}
+                destaques={destaques}
+              />
+            );
+          case "TEXTO":
+            return <SecaoTexto key={secao.id} config={secao.config} />;
+          default:
+            return null;
+        }
+      })}
+    </div>
+  );
+}

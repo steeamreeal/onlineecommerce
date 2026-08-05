@@ -8,8 +8,17 @@ import { SiteFooter } from "@/components/store/site-footer";
 import { CartSheet } from "@/components/store/cart-sheet";
 import { WhatsappFloatButton } from "@/components/store/whatsapp-float-button";
 import { trpc } from "@/lib/trpc/client";
+import type { SecaoTema, TemaConfig } from "@/lib/tema-loja";
 
 const VARIAVEIS_COR_LOJA = ["--loja-primary", "--primary", "--primary-foreground", "--ring"] as const;
+
+function encontrarSecao<T extends SecaoTema["tipo"]>(
+  temaConfig: TemaConfig | null,
+  tipo: T,
+): Extract<SecaoTema, { tipo: T }> | null {
+  const secao = temaConfig?.secoes.find((s) => s.tipo === tipo);
+  return (secao as Extract<SecaoTema, { tipo: T }> | undefined) ?? null;
+}
 
 export default function LojaLayoutClient({
   children,
@@ -54,15 +63,32 @@ export default function LojaLayoutClient({
   if (isError) notFound();
   if (isLoading || !config) return null;
 
+  const temaConfig = (config.temaConfig as TemaConfig | null) ?? null;
+  const secaoCabecalho = encontrarSecao(temaConfig, "CABECALHO");
+  const secaoRodape = encontrarSecao(temaConfig, "RODAPE");
+
   return (
     <CartProvider slug={slug}>
       <div
         className="flex min-h-full flex-1 flex-col"
         style={{ "--loja-primary": config.corPrimaria || "var(--primary)" } as React.CSSProperties}
       >
-        <SiteHeader slug={slug} config={config} />
+        <SiteHeader
+          slug={slug}
+          config={config}
+          mostrarBusca={secaoCabecalho?.config.mostrarBusca}
+          mostrarConta={secaoCabecalho?.config.mostrarConta}
+          posicaoLogo={secaoCabecalho?.config.posicaoLogo}
+        />
         <main className="flex flex-1 flex-col">{children}</main>
-        <SiteFooter config={config} />
+        <SiteFooter
+          config={config}
+          mostrarRedesSociais={secaoRodape?.config.mostrarRedesSociais}
+          mostrarPoliticas={secaoRodape?.config.mostrarPoliticas}
+          mostrarNewsletter={secaoRodape?.config.mostrarNewsletter}
+          mostrarFormasPagamento={secaoRodape?.config.mostrarFormasPagamento}
+          colunas={secaoRodape?.config.colunas}
+        />
       </div>
       <CartSheet slug={slug} />
       <WhatsappFloatButton config={config} />

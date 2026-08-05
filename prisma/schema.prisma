@@ -54,6 +54,7 @@ model Loja {
   corPrimaria    String?
   template       TemplateLoja @default(MINIMALISTA)
   banners        Json?
+  temaConfig     Json?
   whatsapp       String?
   instagram      String?
   facebook       String?
