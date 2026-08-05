@@ -21,6 +21,13 @@ const INTERVALO_AUTOPLAY_MS = 5000;
  * mobile), setas para navegação manual e autoplay que pausa enquanto o
  * usuário interage (hover ou arrastando) e retoma depois. Com 1 banner só,
  * renderiza a mídia direto, sem nenhum controle de navegação.
+ *
+ * Loop infinito: um clone do primeiro banner é renderizado no fim da
+ * trilha. Arrastar até ele (gesto real do usuário, scroll-snap nativo)
+ * "chega" visualmente no primeiro banner; assim que o snap termina, a
+ * trilha salta sem animação de volta ao slide real 0, então o próximo
+ * arrasto se comporta normalmente. Sem esse clone, não haveria nada além
+ * do último slide para o dedo puxar — o navegador simplesmente trava lá.
  */
 export function BannerCarousel({
   banners,
@@ -49,8 +56,20 @@ export function BannerCarousel({
     if (navegandoProgramaticamente.current) return;
     const trilha = trilhaRef.current;
     if (!trilha) return;
-    const indice = Math.round(trilha.scrollLeft / trilha.clientWidth);
-    if (indice !== indiceAtual) setIndiceAtual(indice);
+
+    const indiceScroll = Math.round(trilha.scrollLeft / trilha.clientWidth);
+
+    // Chegou no clone do primeiro banner (posição banners.length, o último
+    // item da trilha): salta sem animação de volta ao slide real 0.
+    if (indiceScroll === banners.length) {
+      setIndiceAtual(0);
+      navegandoProgramaticamente.current = true;
+      trilha.scrollTo({ left: 0, behavior: "instant" });
+      navegandoProgramaticamente.current = false;
+      return;
+    }
+
+    if (indiceScroll !== indiceAtual) setIndiceAtual(indiceScroll);
   }
 
   function irPara(indice: number) {
@@ -98,6 +117,10 @@ export function BannerCarousel({
             {renderOverlay?.(banner)}
           </div>
         ))}
+        <div aria-hidden className={`${className} shrink-0 snap-start`} style={{ width: "100%" }}>
+          <BannerMidia banner={banners[0]} />
+          {renderOverlay?.(banners[0])}
+        </div>
       </div>
 
       <button
