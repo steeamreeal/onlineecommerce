@@ -73,7 +73,7 @@ export function BannersLojaForm() {
               <img
                 src={banner.url}
                 alt={banner.titulo || `Banner ${index + 1}`}
-                className="aspect-[2/1] w-full rounded-md border object-cover"
+                className="aspect-[3/1] w-full rounded-md border object-cover"
               />
               <button
                 type="button"
@@ -92,7 +92,7 @@ export function BannersLojaForm() {
         ))}
 
         {listaAtual.length < LIMITE_BANNERS && (
-          <label className="border-input hover:bg-accent flex aspect-[2/1] w-40 cursor-pointer flex-col items-center justify-center gap-1 rounded-md border border-dashed text-xs has-disabled:pointer-events-none has-disabled:opacity-50">
+          <label className="border-input hover:bg-accent flex aspect-[3/1] w-40 cursor-pointer flex-col items-center justify-center gap-1 rounded-md border border-dashed text-xs has-disabled:pointer-events-none has-disabled:opacity-50">
             <Upload className="size-4" />
             {enviandoImagem ? "Enviando..." : "Adicionar banner"}
             <input

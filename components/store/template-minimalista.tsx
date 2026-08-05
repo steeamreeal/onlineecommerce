@@ -22,7 +22,7 @@ export function TemplateMinimalista({
       {banners.length > 0 && (
         <section className="px-6 pt-6">
           <div
-            className="bg-muted relative flex aspect-[2/1] items-end overflow-hidden rounded-md"
+            className="bg-muted relative flex aspect-[3/1] items-end overflow-hidden rounded-md"
             style={
               banners[0]?.url
                 ? { backgroundImage: `url(${banners[0].url})`, backgroundSize: "cover", backgroundPosition: "center" }
