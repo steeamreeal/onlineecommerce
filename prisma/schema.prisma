@@ -244,6 +244,12 @@ model Cliente {
   enderecos EnderecoCliente[]
   pedidos   Pedido[]
 
+  // Histórico de compras anteriores ao site (WhatsApp/Instagram), informado
+  // manualmente pelo lojista — não tem Pedido real associado. O resumo de
+  // compras exibido no painel soma isso aos pedidos feitos pelo site.
+  totalGastoAnterior     Decimal?  @db.Decimal(10, 2)
+  ultimaCompraAnterior   DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

@@ -16,6 +16,8 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { trpc } from "@/lib/trpc/client";
 import { NovoClienteDialog } from "@/components/dashboard/novo-cliente-dialog";
+import { ImportarClientesDialog } from "@/components/dashboard/importar-clientes-dialog";
+import { ExportarClientesButton } from "@/components/dashboard/exportar-clientes-button";
 import type { EnderecoCliente } from "@prisma/client";
 
 const formatoMoeda = new Intl.NumberFormat("pt-BR", {
@@ -86,7 +88,11 @@ export function ClientesLista() {
             Consulte o cadastro e o histórico de compras dos seus clientes.
           </p>
         </div>
-        <NovoClienteDialog onCriado={() => utils.clientes.listar.invalidate()} />
+        <div className="flex gap-2">
+          <ExportarClientesButton />
+          <ImportarClientesDialog onImportado={() => utils.clientes.listar.invalidate()} />
+          <NovoClienteDialog onCriado={() => utils.clientes.listar.invalidate()} />
+        </div>
       </div>
 
       <div className="relative max-w-sm">

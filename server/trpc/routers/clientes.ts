@@ -19,6 +19,8 @@ const clienteInputBase = {
   email: z.string().email().optional(),
   documento: z.string().optional(),
   enderecos: z.array(enderecoSchema).default([]),
+  totalGastoAnterior: z.number().nonnegative().optional(),
+  ultimaCompraAnterior: z.coerce.date().optional(),
 };
 
 export const clientesRouter = router({
@@ -44,6 +46,43 @@ export const clientesRouter = router({
       });
     }),
 
+  // Traz todos os clientes com totalGasto/ultimaCompra já calculados, para
+  // exportação em CSV — evita repetir a query N+1 que resumoCompras faz
+  // por cliente (chamada uma vez por linha na tabela do painel).
+  exportar: storeProcedure.query(async ({ ctx }) => {
+    const clientes = await ctx.prisma.cliente.findMany({
+      where: { lojaId: ctx.lojaId },
+      include: {
+        enderecos: true,
+        pedidos: {
+          where: { status: { not: "CANCELADO" } },
+          select: { valorTotal: true, createdAt: true },
+        },
+      },
+      orderBy: { nome: "asc" },
+    });
+
+    return clientes.map((cliente) => {
+      const totalGastoPedidos = cliente.pedidos.reduce((soma, p) => soma + Number(p.valorTotal), 0);
+      const totalGasto = totalGastoPedidos + Number(cliente.totalGastoAnterior ?? 0);
+      const datas = cliente.pedidos.map((p) => p.createdAt);
+      if (cliente.ultimaCompraAnterior) datas.push(cliente.ultimaCompraAnterior);
+      const ultimaCompra = datas.sort((a, b) => b.getTime() - a.getTime()).at(0);
+      const enderecoPrincipal = cliente.enderecos.find((e) => e.principal) ?? cliente.enderecos[0];
+
+      return {
+        nome: cliente.nome,
+        telefone: cliente.telefone,
+        email: cliente.email,
+        documento: cliente.documento,
+        cidade: enderecoPrincipal?.cidade ?? null,
+        estado: enderecoPrincipal?.estado ?? null,
+        totalGasto,
+        ultimaCompra,
+      };
+    });
+  }),
+
   buscarPorId: storeProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
@@ -61,21 +100,33 @@ export const clientesRouter = router({
     }),
 
   // Total gasto, ticket médio e última compra ignoram pedidos CANCELADO,
-  // igual ao comportamento do mock que este router substitui.
+  // igual ao comportamento do mock que este router substitui. totalGasto e
+  // ultimaCompra somam/comparam com o histórico anterior ao site (informado
+  // manualmente pelo lojista), mas ticketMedio considera só pedidos reais —
+  // não temos a contagem de compras anteriores, só o valor agregado.
   resumoCompras: storeProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
+      const cliente = await ctx.prisma.cliente.findFirst({
+        where: { id: input.id, lojaId: ctx.lojaId },
+        select: { totalGastoAnterior: true, ultimaCompraAnterior: true },
+      });
+      if (!cliente) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Cliente não encontrado." });
+      }
+
       const pedidos = await ctx.prisma.pedido.findMany({
         where: { clienteId: input.id, lojaId: ctx.lojaId, status: { not: "CANCELADO" } },
         select: { valorTotal: true, createdAt: true },
       });
       const totalPedidos = pedidos.length;
-      const totalGasto = pedidos.reduce((soma, p) => soma + Number(p.valorTotal), 0);
-      const ticketMedio = totalPedidos > 0 ? totalGasto / totalPedidos : 0;
-      const ultimaCompra = pedidos
-        .map((p) => p.createdAt)
-        .sort((a, b) => b.getTime() - a.getTime())
-        .at(0);
+      const totalGastoPedidos = pedidos.reduce((soma, p) => soma + Number(p.valorTotal), 0);
+      const ticketMedio = totalPedidos > 0 ? totalGastoPedidos / totalPedidos : 0;
+      const totalGasto = totalGastoPedidos + Number(cliente.totalGastoAnterior ?? 0);
+
+      const datas = pedidos.map((p) => p.createdAt);
+      if (cliente.ultimaCompraAnterior) datas.push(cliente.ultimaCompraAnterior);
+      const ultimaCompra = datas.sort((a, b) => b.getTime() - a.getTime()).at(0);
 
       return { totalPedidos, totalGasto, ticketMedio, ultimaCompra };
     }),
@@ -90,6 +141,8 @@ export const clientesRouter = router({
           telefone: input.telefone,
           email: input.email,
           documento: input.documento,
+          totalGastoAnterior: input.totalGastoAnterior,
+          ultimaCompraAnterior: input.ultimaCompraAnterior,
           enderecos: {
             create: input.enderecos.map(({ rua, numero, bairro, cidade, estado, cep, principal }) => ({
               rua,
@@ -140,6 +193,8 @@ export const clientesRouter = router({
             telefone: input.telefone,
             email: input.email,
             documento: input.documento,
+            totalGastoAnterior: input.totalGastoAnterior,
+            ultimaCompraAnterior: input.ultimaCompraAnterior,
           },
         });
 
@@ -182,6 +237,63 @@ export const clientesRouter = router({
           include: { enderecos: true },
         });
       });
+    }),
+
+  // Importação em massa (CSV) — pula clientes cujo telefone ou email já
+  // existir na loja, para não duplicar cadastro em reimportações. Não
+  // aceita endereços (fora de escopo do CSV); quem precisar de endereço
+  // completa depois manualmente.
+  importarVarios: storeProcedure
+    .input(
+      z.object({
+        clientes: z
+          .array(
+            z.object({
+              nome: z.string().min(1),
+              telefone: z.string().optional(),
+              email: z.string().email().optional().or(z.literal("")),
+              documento: z.string().optional(),
+              cidade: z.string().optional(),
+              estado: z.string().optional(),
+              totalGastoAnterior: z.number().nonnegative().optional(),
+              ultimaCompraAnterior: z.coerce.date().optional(),
+            }),
+          )
+          .min(1)
+          .max(1000, "No máximo 1000 clientes por importação."),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const existentes = await ctx.prisma.cliente.findMany({
+        where: { lojaId: ctx.lojaId },
+        select: { telefone: true, email: true },
+      });
+      const telefonesExistentes = new Set(existentes.map((c) => c.telefone).filter(Boolean));
+      const emailsExistentes = new Set(existentes.map((c) => c.email).filter(Boolean));
+
+      const novos = input.clientes.filter((c) => {
+        const duplicadoTelefone = c.telefone && telefonesExistentes.has(c.telefone);
+        const duplicadoEmail = c.email && emailsExistentes.has(c.email);
+        return !duplicadoTelefone && !duplicadoEmail;
+      });
+
+      if (novos.length === 0) {
+        return { importados: 0, ignorados: input.clientes.length };
+      }
+
+      await ctx.prisma.cliente.createMany({
+        data: novos.map((c) => ({
+          lojaId: ctx.lojaId,
+          nome: c.nome,
+          telefone: c.telefone || undefined,
+          email: c.email || undefined,
+          documento: c.documento || undefined,
+          totalGastoAnterior: c.totalGastoAnterior,
+          ultimaCompraAnterior: c.ultimaCompraAnterior,
+        })),
+      });
+
+      return { importados: novos.length, ignorados: input.clientes.length - novos.length };
     }),
 
   remover: storeProcedure
