@@ -20,12 +20,14 @@ const lora = Lora({
   subsets: ["latin"],
 });
 
+// `icons` não é definido aqui: app/favicon.ico (convenção de arquivo) já
+// cobre o painel/admin/auth por padrão. Definir `icons.icon` explícito
+// neste metadata (herdado por toda rota) impedia app/(public-store)/loja/
+// [slug]/icon.tsx — a convenção de ícone por rota da loja — de aparecer no
+// <head>, então a logo do lojista nunca virava favicon da vitrine pública.
 export const metadata: Metadata = {
   title: "Online E-commerce",
   description: "Plataforma SaaS para lojistas venderem online",
-  icons: {
-    icon: "/logo-zyron.png",
-  },
 };
 
 export default function RootLayout({
