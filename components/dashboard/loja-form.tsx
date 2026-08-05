@@ -319,7 +319,8 @@ export function LojaForm() {
       <section className="flex flex-col gap-4">
         <h2 className="text-lg font-medium">Banners</h2>
         <p className="text-muted-foreground text-sm">
-          Até 3 banners. O primeiro é usado como destaque na página inicial da loja. Proporção recomendada: 3:1 (ex.: 1800×600px).
+          Até 3 banners (imagem ou vídeo). O primeiro é usado como destaque na página inicial da
+          loja. Proporção recomendada: 3:1 (ex.: 1800×600px). Vídeos em MP4/WEBM, até 20MB.
         </p>
         <BannersLojaForm />
       </section>

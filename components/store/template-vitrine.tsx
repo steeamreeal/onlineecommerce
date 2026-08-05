@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ProductCard } from "@/components/store/product-card";
 import type { RouterOutputs } from "@/lib/trpc/types";
 
-type Banner = { id: string; url: string; titulo?: string };
+type Banner = { id: string; url: string; titulo?: string; tipo?: "IMAGEM" | "VIDEO" };
 type Categoria = RouterOutputs["lojaPublica"]["categorias"][number];
 type Produto = RouterOutputs["lojaPublica"]["produtos"][number];
 
@@ -22,11 +22,21 @@ export function TemplateVitrine({
       <section
         className="relative flex aspect-[3/1] items-center justify-center overflow-hidden bg-[var(--loja-primary)] px-6 text-center text-white"
         style={
-          banners[0]?.url
+          banners[0]?.url && banners[0]?.tipo !== "VIDEO"
             ? { backgroundImage: `url(${banners[0].url})`, backgroundSize: "cover", backgroundPosition: "center" }
             : undefined
         }
       >
+        {banners[0]?.url && banners[0]?.tipo === "VIDEO" && (
+          <video
+            src={banners[0].url}
+            className="absolute inset-0 size-full object-cover"
+            autoPlay
+            muted
+            loop
+            playsInline
+          />
+        )}
         {banners[0]?.url && (
           <div className="absolute inset-0 bg-[var(--loja-primary)]/70" />
         )}

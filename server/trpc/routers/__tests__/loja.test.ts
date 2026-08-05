@@ -193,7 +193,7 @@ describe("lojaRouter.atualizarBanners", () => {
 
     expect(update).toHaveBeenCalledWith({
       where: { id: LOJA_ID },
-      data: { banners: [banner] },
+      data: { banners: [{ ...banner, tipo: "IMAGEM" }] },
       select: { banners: true },
     });
   });

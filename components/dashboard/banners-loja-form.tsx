@@ -7,9 +7,10 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc/client";
-import { enviarBannerLoja } from "@/lib/supabase/storage";
+import { enviarBannerLoja, enviarVideoBannerLoja } from "@/lib/supabase/storage";
 
-type Banner = { id?: string; url: string; titulo: string };
+type TipoBanner = "IMAGEM" | "VIDEO";
+type Banner = { id?: string; url: string; titulo: string; tipo: TipoBanner };
 
 const LIMITE_BANNERS = 3;
 
@@ -19,7 +20,10 @@ export function BannersLojaForm() {
   const [banners, setBanners] = useState<Banner[] | null>(null);
   const [enviandoImagem, setEnviandoImagem] = useState(false);
 
-  const listaAtual = banners ?? (loja?.banners as Banner[] | null) ?? [];
+  type BannerSalvo = Omit<Banner, "tipo"> & { tipo?: TipoBanner };
+  const bannersSalvos = (loja?.banners as BannerSalvo[] | null) ?? [];
+  const listaAtual: Banner[] =
+    banners ?? bannersSalvos.map((b) => ({ ...b, tipo: b.tipo ?? "IMAGEM" }));
 
   const salvar = trpc.loja.atualizarBanners.useMutation({
     onSuccess: () => {
@@ -36,15 +40,19 @@ export function BannersLojaForm() {
     e.target.value = "";
     if (!arquivo || !loja) return;
 
+    const ehVideo = arquivo.type.startsWith("video/");
+
     setEnviandoImagem(true);
     try {
-      const url = await enviarBannerLoja(loja.id, arquivo);
-      setBanners([...listaAtual, { url, titulo: "" }]);
+      const url = ehVideo
+        ? await enviarVideoBannerLoja(loja.id, arquivo)
+        : await enviarBannerLoja(loja.id, arquivo);
+      setBanners([...listaAtual, { url, titulo: "", tipo: ehVideo ? "VIDEO" : "IMAGEM" }]);
     } catch (error) {
       const mensagem =
         error instanceof Error && error.message
           ? error.message
-          : "Não foi possível enviar a imagem. Tente novamente.";
+          : "Não foi possível enviar o arquivo. Tente novamente.";
       toast.error(mensagem);
     } finally {
       setEnviandoImagem(false);
@@ -60,7 +68,9 @@ export function BannersLojaForm() {
   }
 
   function salvarBanners() {
-    salvar.mutate({ banners: listaAtual.map((b) => ({ id: b.id, url: b.url, titulo: b.titulo })) });
+    salvar.mutate({
+      banners: listaAtual.map((b) => ({ id: b.id, url: b.url, titulo: b.titulo, tipo: b.tipo })),
+    });
   }
 
   return (
@@ -69,12 +79,23 @@ export function BannersLojaForm() {
         {listaAtual.map((banner, index) => (
           <div key={banner.id ?? banner.url} className="flex w-40 flex-col gap-2">
             <div className="relative">
-              {/* eslint-disable-next-line @next/next/no-img-element -- URL dinâmica do Supabase Storage, sem domínio fixo para next/image */}
-              <img
-                src={banner.url}
-                alt={banner.titulo || `Banner ${index + 1}`}
-                className="aspect-[3/1] w-full rounded-md border object-cover"
-              />
+              {banner.tipo === "VIDEO" ? (
+                <video
+                  src={banner.url}
+                  className="aspect-[3/1] w-full rounded-md border object-cover"
+                  muted
+                  loop
+                  playsInline
+                  autoPlay
+                />
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element -- URL dinâmica do Supabase Storage, sem domínio fixo para next/image
+                <img
+                  src={banner.url}
+                  alt={banner.titulo || `Banner ${index + 1}`}
+                  className="aspect-[3/1] w-full rounded-md border object-cover"
+                />
+              )}
               <button
                 type="button"
                 onClick={() => removerBanner(index)}
@@ -94,10 +115,10 @@ export function BannersLojaForm() {
         {listaAtual.length < LIMITE_BANNERS && (
           <label className="border-input hover:bg-accent flex aspect-[3/1] w-40 cursor-pointer flex-col items-center justify-center gap-1 rounded-md border border-dashed text-xs has-disabled:pointer-events-none has-disabled:opacity-50">
             <Upload className="size-4" />
-            {enviandoImagem ? "Enviando..." : "Adicionar banner"}
+            {enviandoImagem ? "Enviando..." : "Adicionar imagem ou vídeo"}
             <input
               type="file"
-              accept="image/*"
+              accept="image/*,video/mp4,video/webm"
               className="hidden"
               disabled={enviandoImagem || isLoading || !loja}
               onChange={handleUploadImagem}

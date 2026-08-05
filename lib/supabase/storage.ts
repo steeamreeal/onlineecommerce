@@ -11,17 +11,25 @@ export const BUCKET_LOGOS_LOJA = "logos-loja";
 const TAMANHO_MAXIMO_BYTES = 5 * 1024 * 1024; // 5 MB
 const TIPOS_ACEITOS = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
+const TAMANHO_MAXIMO_VIDEO_BYTES = 20 * 1024 * 1024; // 20 MB
+const TIPOS_VIDEO_ACEITOS = ["video/mp4", "video/webm"];
+
 function extensaoArquivo(nomeArquivo: string): string {
   const partes = nomeArquivo.split(".");
   return partes.length > 1 ? partes[partes.length - 1] : "jpg";
 }
 
-async function enviarImagem(bucket: string, lojaId: string, arquivo: File): Promise<string> {
-  if (!TIPOS_ACEITOS.includes(arquivo.type)) {
-    throw new Error("Envie uma imagem em formato JPG, PNG, WEBP ou GIF.");
+async function enviarArquivo(
+  bucket: string,
+  lojaId: string,
+  arquivo: File,
+  opcoes: { tiposAceitos: string[]; tamanhoMaximoBytes: number; mensagemTipoInvalido: string; mensagemTamanhoInvalido: string },
+): Promise<string> {
+  if (!opcoes.tiposAceitos.includes(arquivo.type)) {
+    throw new Error(opcoes.mensagemTipoInvalido);
   }
-  if (arquivo.size > TAMANHO_MAXIMO_BYTES) {
-    throw new Error("A imagem deve ter no máximo 5 MB.");
+  if (arquivo.size > opcoes.tamanhoMaximoBytes) {
+    throw new Error(opcoes.mensagemTamanhoInvalido);
   }
 
   const supabase = createClient();
@@ -32,11 +40,29 @@ async function enviarImagem(bucket: string, lojaId: string, arquivo: File): Prom
     .upload(caminho, arquivo, { cacheControl: "3600", upsert: false });
 
   if (error) {
-    throw new Error("Não foi possível enviar a imagem. Tente novamente.");
+    throw new Error("Não foi possível enviar o arquivo. Tente novamente.");
   }
 
   const { data } = supabase.storage.from(bucket).getPublicUrl(caminho);
   return data.publicUrl;
+}
+
+async function enviarImagem(bucket: string, lojaId: string, arquivo: File): Promise<string> {
+  return enviarArquivo(bucket, lojaId, arquivo, {
+    tiposAceitos: TIPOS_ACEITOS,
+    tamanhoMaximoBytes: TAMANHO_MAXIMO_BYTES,
+    mensagemTipoInvalido: "Envie uma imagem em formato JPG, PNG, WEBP ou GIF.",
+    mensagemTamanhoInvalido: "A imagem deve ter no máximo 5 MB.",
+  });
+}
+
+async function enviarVideo(bucket: string, lojaId: string, arquivo: File): Promise<string> {
+  return enviarArquivo(bucket, lojaId, arquivo, {
+    tiposAceitos: TIPOS_VIDEO_ACEITOS,
+    tamanhoMaximoBytes: TAMANHO_MAXIMO_VIDEO_BYTES,
+    mensagemTipoInvalido: "Envie um vídeo em formato MP4 ou WEBM.",
+    mensagemTamanhoInvalido: "O vídeo deve ter no máximo 20 MB.",
+  });
 }
 
 /**
@@ -55,6 +81,15 @@ export function enviarFotoProduto(lojaId: string, arquivo: File): Promise<string
  */
 export function enviarBannerLoja(lojaId: string, arquivo: File): Promise<string> {
   return enviarImagem(BUCKET_BANNERS_LOJA, lojaId, arquivo);
+}
+
+/**
+ * Faz upload de um vídeo de banner de loja para o bucket público do
+ * Supabase Storage, dentro de uma pasta por loja (lojaId). Retorna a URL
+ * pública do arquivo.
+ */
+export function enviarVideoBannerLoja(lojaId: string, arquivo: File): Promise<string> {
+  return enviarVideo(BUCKET_BANNERS_LOJA, lojaId, arquivo);
 }
 
 /**
