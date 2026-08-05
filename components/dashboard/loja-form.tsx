@@ -320,7 +320,8 @@ export function LojaForm() {
         <h2 className="text-lg font-medium">Banners</h2>
         <p className="text-muted-foreground text-sm">
           Até 3 banners (imagem ou vídeo). O primeiro é usado como destaque na página inicial da
-          loja. Proporção recomendada: 3:1 (ex.: 1800×600px). Vídeos em MP4/WEBM, até 20MB.
+          loja. Proporção recomendada: 3:1 (ex.: 1800×600px) — no celular a imagem aparece mais
+          alta (2:1). Vídeos em MP4/WEBM, até 20MB.
         </p>
         <BannersLojaForm />
       </section>

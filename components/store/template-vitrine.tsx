@@ -20,7 +20,7 @@ export function TemplateVitrine({
   return (
     <div className="flex flex-1 flex-col gap-10 pb-12">
       <section
-        className="relative flex aspect-[3/1] items-center justify-center overflow-hidden bg-[var(--loja-primary)] px-6 text-center text-white"
+        className="relative flex aspect-[2/1] items-center justify-center overflow-hidden bg-[var(--loja-primary)] px-6 text-center text-white md:aspect-[3/1]"
         style={
           banners[0]?.url && banners[0]?.tipo !== "VIDEO"
             ? { backgroundImage: `url(${banners[0].url})`, backgroundSize: "cover", backgroundPosition: "center" }
