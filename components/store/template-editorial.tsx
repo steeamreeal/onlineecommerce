@@ -20,7 +20,7 @@ export function TemplateEditorial({
   return (
     <div className="flex flex-1 flex-col gap-14 pb-16">
       <section
-        className="bg-accent relative flex aspect-[2/1] items-center justify-center overflow-hidden px-6 text-center md:aspect-[3/1]"
+        className="bg-accent relative flex aspect-[4/5] items-center justify-center overflow-hidden px-6 text-center md:aspect-[3/1]"
         style={
           banners[0]?.url && banners[0]?.tipo !== "VIDEO"
             ? { backgroundImage: `url(${banners[0].url})`, backgroundSize: "cover", backgroundPosition: "center" }
