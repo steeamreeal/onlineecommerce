@@ -21,7 +21,12 @@ export default function LojaPage({ params }: { params: Promise<{ slug: string }>
   const { data: categorias } = trpc.lojaPublica.categorias.useQuery({ slug });
   const { data: produtos } = trpc.lojaPublica.produtos.useQuery({ slug });
 
-  const destaques = (produtos ?? []).filter((produto) => produto.status === "DESTAQUE");
+  // A home mostra a vitrine geral de produtos visíveis. lojaPublica.produtos
+  // já filtra para ATIVO/DESTAQUE no backend — aqui só priorizamos os
+  // marcados como DESTAQUE no topo da grade, sem escondar os demais.
+  const destaques = [...(produtos ?? [])].sort((a, b) =>
+    a.status === b.status ? 0 : a.status === "DESTAQUE" ? -1 : 1,
+  );
   const banners = (config?.banners as Banner[] | null) ?? [];
 
   const Template = templatesPorTipo[config?.template ?? "MINIMALISTA"];
