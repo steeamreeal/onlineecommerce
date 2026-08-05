@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -40,39 +41,43 @@ export function AparenciaMenu() {
         }
       />
       <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel>Tema</DropdownMenuLabel>
-        {TEMA_OPCOES.map((opcao) => (
-          <DropdownMenuItem key={opcao.value} onClick={() => setTheme(opcao.value)}>
-            <opcao.icon className="size-4" />
-            {opcao.label}
-            {montado && theme === opcao.value && <Check className="ml-auto size-4" />}
-          </DropdownMenuItem>
-        ))}
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>Tema</DropdownMenuLabel>
+          {TEMA_OPCOES.map((opcao) => (
+            <DropdownMenuItem key={opcao.value} onClick={() => setTheme(opcao.value)}>
+              <opcao.icon className="size-4" />
+              {opcao.label}
+              {montado && theme === opcao.value && <Check className="ml-auto size-4" />}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuLabel className="flex items-center gap-2">
-          <Palette className="size-3.5" />
-          Cor de destaque
-        </DropdownMenuLabel>
-        <div className="flex items-center gap-2 px-2 py-1.5">
-          {(Object.entries(CORES_DESTAQUE) as [CorDestaque, (typeof CORES_DESTAQUE)[CorDestaque]][]).map(
-            ([valor, config]) => (
-              <button
-                key={valor}
-                type="button"
-                aria-label={config.label}
-                title={config.label}
-                onClick={() => setCor(valor)}
-                className={cn(
-                  "flex size-6 items-center justify-center rounded-full ring-offset-2 ring-offset-popover transition",
-                  cor === valor && "ring-2 ring-foreground",
-                )}
-                style={{ backgroundColor: config.light }}
-              >
-                {cor === valor && <Check className="size-3.5 text-white" />}
-              </button>
-            ),
-          )}
-        </div>
+        <DropdownMenuGroup>
+          <DropdownMenuLabel className="flex items-center gap-2">
+            <Palette className="size-3.5" />
+            Cor de destaque
+          </DropdownMenuLabel>
+          <div className="flex items-center gap-2 px-2 py-1.5">
+            {(Object.entries(CORES_DESTAQUE) as [CorDestaque, (typeof CORES_DESTAQUE)[CorDestaque]][]).map(
+              ([valor, config]) => (
+                <button
+                  key={valor}
+                  type="button"
+                  aria-label={config.label}
+                  title={config.label}
+                  onClick={() => setCor(valor)}
+                  className={cn(
+                    "flex size-6 items-center justify-center rounded-full ring-offset-2 ring-offset-popover transition",
+                    cor === valor && "ring-2 ring-foreground",
+                  )}
+                  style={{ backgroundColor: config.light }}
+                >
+                  {cor === valor && <Check className="size-3.5 text-white" />}
+                </button>
+              ),
+            )}
+          </div>
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );
