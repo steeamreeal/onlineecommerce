@@ -77,6 +77,7 @@ model Loja {
   mpConectadoEm  DateTime?
 
   usuarios     UsuarioLoja[]
+  convites     ConviteUsuarioLoja[]
   produtos     Produto[]
   categorias   Categoria[]
   clientes     Cliente[]
@@ -123,6 +124,26 @@ model UsuarioLoja {
   createdAt DateTime @default(now())
 
   @@unique([usuarioId, lojaId])
+}
+
+// Convite pendente de um e-mail para entrar na equipe de uma loja. Diferente
+// de admin.concederAcessoPlataforma (que exige que o Usuario já exista): aqui
+// a pessoa convidada pode nunca ter feito login — o convite carrega email +
+// papel até que alguém aceite pelo token, criando/vinculando o Usuario nesse
+// momento (ver usuariosLoja.aceitarConvite).
+model ConviteUsuarioLoja {
+  id        String       @id @default(cuid())
+  email     String
+  lojaId    String
+  loja      Loja         @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  papel     PapelUsuario
+  token     String       @unique
+  expiraEm  DateTime
+  aceitoEm  DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@unique([lojaId, email])
 }
 
 // ---------- Catálogo ----------

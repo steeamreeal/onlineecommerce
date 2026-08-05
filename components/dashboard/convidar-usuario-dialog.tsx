@@ -30,7 +30,8 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { PAPEL_USUARIO_LABEL, type PapelUsuario, type UsuarioLoja } from "@/lib/mocks/usuarios";
+import { PAPEL_USUARIO_LABEL } from "@/lib/papel-usuario";
+import { trpc } from "@/lib/trpc/client";
 
 const papelSelectItems = Object.entries(PAPEL_USUARIO_LABEL).map(([value, label]) => ({
   value,
@@ -38,7 +39,6 @@ const papelSelectItems = Object.entries(PAPEL_USUARIO_LABEL).map(([value, label]
 }));
 
 const convidarSchema = z.object({
-  nome: z.string().min(2, "Informe o nome"),
   email: z.string().email("Informe um e-mail válido"),
   papel: z.enum(["ADMINISTRADOR", "GERENTE", "VENDEDOR", "ESTOQUISTA", "SEPARADOR"]),
 });
@@ -48,30 +48,30 @@ type ConvidarFormValues = z.infer<typeof convidarSchema>;
 export function ConvidarUsuarioDialog({
   open,
   onOpenChange,
-  onConvidar,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onConvidar: (usuario: UsuarioLoja) => void;
 }) {
+  const utils = trpc.useUtils();
   const form = useForm<ConvidarFormValues>({
     resolver: zodResolver(convidarSchema),
-    defaultValues: { nome: "", email: "", papel: "VENDEDOR" },
+    defaultValues: { email: "", papel: "VENDEDOR" },
+  });
+
+  const convidar = trpc.usuariosLoja.convidar.useMutation({
+    onSuccess: (_, values) => {
+      utils.usuariosLoja.listar.invalidate();
+      toast.success(`Convite enviado para ${values.email}.`);
+      form.reset();
+      onOpenChange(false);
+    },
+    onError: (erro) => {
+      toast.error(erro.message || "Não foi possível enviar o convite.");
+    },
   });
 
   function onSubmit(values: ConvidarFormValues) {
-    // Mock: sem persistência real ainda (chega no M8, autenticação e papéis reais)
-    const usuario: UsuarioLoja = {
-      id: `user-${crypto.randomUUID()}`,
-      nome: values.nome,
-      email: values.email,
-      papel: values.papel as PapelUsuario,
-      createdAt: new Date().toISOString(),
-    };
-    onConvidar(usuario);
-    toast.success(`Convite enviado para ${values.email}.`);
-    form.reset();
-    onOpenChange(false);
+    convidar.mutate(values);
   }
 
   return (
@@ -85,23 +85,12 @@ export function ConvidarUsuarioDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Convidar usuário</DialogTitle>
-          <DialogDescription>Defina o papel de acesso ao painel da loja.</DialogDescription>
+          <DialogDescription>
+            Enviamos um e-mail de convite com um link para criar acesso ao painel da loja.
+          </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
-            <FormField
-              control={form.control}
-              name="nome"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nome</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
             <FormField
               control={form.control}
               name="email"
@@ -143,7 +132,9 @@ export function ConvidarUsuarioDialog({
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>
-              <Button type="submit">Enviar convite</Button>
+              <Button type="submit" disabled={convidar.isPending}>
+                {convidar.isPending ? "Enviando..." : "Enviar convite"}
+              </Button>
             </DialogFooter>
           </form>
         </Form>
