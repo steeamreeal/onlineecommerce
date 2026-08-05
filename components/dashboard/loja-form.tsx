@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Upload, X } from "lucide-react";
+import { ExternalLink, Upload, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,6 +47,9 @@ export function LojaForm() {
   const [enviandoLogo, setEnviandoLogo] = useState(false);
 
   const logoAtual = logoUrl !== undefined ? logoUrl : (loja?.logoUrl ?? null);
+
+  const plataforma = process.env.NEXT_PUBLIC_PLATFORM_DOMAIN ?? "plataforma.com";
+  const urlLojaPublica = `${plataforma.startsWith("localhost") ? "http" : "https"}://${plataforma}`;
 
   const form = useForm<LojaFormValues>({
     resolver: zodResolver(lojaSchema),
@@ -116,8 +119,19 @@ export function LojaForm() {
                 <FormLabel>URL da loja</FormLabel>
                 <Input value={loja?.slug ?? ""} disabled />
                 <p className="text-muted-foreground text-xs">
-                  plataforma.com/loja/{loja?.slug || "minha-loja"}
+                  {plataforma}/loja/{loja?.slug || "minha-loja"}
                 </p>
+                {loja?.slug && (
+                  <a
+                    href={`${urlLojaPublica}/loja/${loja.slug}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary inline-flex w-fit items-center gap-1.5 text-sm font-medium hover:underline"
+                  >
+                    <ExternalLink className="size-3.5" />
+                    Visitar loja
+                  </a>
+                )}
               </div>
               <FormField
                 control={form.control}
