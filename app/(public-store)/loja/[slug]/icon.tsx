@@ -6,7 +6,11 @@ import { prisma } from "@/server/db/client";
 // favicon.ico global. Repassa os bytes da logo (Supabase Storage) para o
 // navegador em vez de redirecionar, já que o <link rel="icon"> gerado por
 // essa convenção precisa apontar para uma rota do próprio domínio.
-export async function GET(_request: Request, { params }: { params: Promise<{ slug: string }> }) {
+//
+// Convenção de ícone gerado por código do Next App Router: precisa de um
+// export default (não um handler de rota estilo GET) recebendo `params` e
+// retornando Response | ReadableStream | Blob | ArrayBuffer.
+export default async function icon({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const loja = await prisma.loja.findUnique({ where: { slug }, select: { logoUrl: true } });
 
