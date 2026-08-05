@@ -119,6 +119,40 @@ export const adminRouter = router({
       });
     }),
 
+  atualizarLoja: superAdminProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        nome: z.string().min(2),
+        slug: z
+          .string()
+          .min(2)
+          .regex(/^[a-z0-9-]+$/, "Use apenas letras minúsculas, números e hífen"),
+        responsavel: z.string().min(2),
+        emailContato: z.string().email(),
+        planoId: z.string().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const slugEmUso = await ctx.prisma.loja.findFirst({
+        where: { slug: input.slug, id: { not: input.id } },
+      });
+      if (slugEmUso) {
+        throw new TRPCError({ code: "CONFLICT", message: "Este endereço de loja já está em uso." });
+      }
+
+      return ctx.prisma.loja.update({
+        where: { id: input.id },
+        data: {
+          nome: input.nome,
+          slug: input.slug,
+          responsavel: input.responsavel,
+          emailContato: input.emailContato,
+          planoId: input.planoId ?? null,
+        },
+      });
+    }),
+
   bloquearLoja: superAdminProcedure
     .input(z.object({ id: z.string() }))
     .mutation(({ ctx, input }) => {

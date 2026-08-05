@@ -100,6 +100,13 @@ Cobrança híbrida, decidida no M14:
 - `Loja.dominioProprio` é único na plataforma inteira (`@unique` no schema) — a mutation `loja.atualizarDominioProprio` valida colisão com outra loja antes de salvar, já que é o valor usado para resolver o tenant pelo host.
 - **Sem automação de DNS/hosting neste milestone**: a tela de personalização (`components/dashboard/dominio-proprio-form.tsx`) só mostra a instrução de criar um CNAME apontando para a plataforma — não há chamada a nenhuma API de domínios (ex. Vercel Domains API). Quem cadastra o domínio no provedor de hosting real (seja Vercel ou outro) é o admin da plataforma, manualmente, ao ativar o cliente. Se isso for automatizado no futuro, documentar aqui a API escolhida e as credenciais necessárias — sem amarrar a decisão de arquitetura a um provedor de hosting específico só por causa disso.
 
+## E-mails de autenticação do Supabase (recuperação de senha, convite, confirmação)
+
+- `supabase.auth.resetPasswordForEmail` (usado em `app/(auth)/esqueci-senha/page.tsx`) e os demais e-mails do fluxo de Auth (convite, confirmação de cadastro, magic link) **não passam pelo Resend nem por `lib/email/*`** — são enviados pelo serviço de e-mail interno do Supabase Auth, configurado direto no dashboard do projeto Supabase, fora do código.
+- O SMTP padrão do Supabase é limitado (poucos e-mails/hora) e cai com frequência em spam/é bloqueado por Gmail/Outlook — **não confiável para produção**. É preciso configurar SMTP customizado em Supabase Dashboard → Authentication → Emails → SMTP Settings, apontando para o Resend (`smtp.resend.com`, usuário `resend`, senha = `RESEND_API_KEY`).
+- Também conferir em Authentication → URL Configuration que "Site URL" e "Redirect URLs" incluem o domínio de produção e `localhost:3000` (dev) com o path `/redefinir-senha` — redirect não permitido faz o link falhar silenciosamente.
+- Se um lojista/cliente relatar que e-mail de redefinição de senha/convite não chegou, o problema é quase sempre essa configuração no dashboard do Supabase (SMTP não configurado ou redirect URL ausente), não um bug no código da aplicação.
+
 ## Supabase Storage (fotos de produto e banners de loja)
 
 - Buckets usados (ver `lib/supabase/storage.ts`): `fotos-produtos` (fotos de produto) e `banners-loja` (banners da vitrine — até 3 por loja, `Loja.banners`), ambos **públicos para leitura** (as URLs aparecem no site da loja sem autenticação).

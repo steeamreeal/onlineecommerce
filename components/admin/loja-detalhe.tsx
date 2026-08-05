@@ -1,12 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Ban, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Ban, CheckCircle2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LojaStatusBadge } from "@/components/admin/loja-status-badge";
+import { EditarLojaDialog } from "@/components/admin/editar-loja-dialog";
 import { trpc } from "@/lib/trpc/client";
 
 const formatoMoeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -18,6 +20,7 @@ const formatoData = new Intl.DateTimeFormat("pt-BR", {
 
 export function LojaDetalhe({ lojaId }: { lojaId: string }) {
   const utils = trpc.useUtils();
+  const [editarAberto, setEditarAberto] = useState(false);
   const { data: loja, isLoading } = trpc.admin.obterLoja.useQuery({ id: lojaId });
 
   const bloquear = trpc.admin.bloquearLoja.useMutation({
@@ -63,17 +66,36 @@ export function LojaDetalhe({ lojaId }: { lojaId: string }) {
           </div>
           <p className="text-muted-foreground text-sm">/{loja.slug}</p>
         </div>
-        <Button
-          variant={bloqueada ? "default" : "destructive"}
-          disabled={bloquear.isPending || liberar.isPending}
-          onClick={() =>
-            bloqueada ? liberar.mutate({ id: loja.id }) : bloquear.mutate({ id: loja.id })
-          }
-        >
-          {bloqueada ? <CheckCircle2 className="size-4" /> : <Ban className="size-4" />}
-          {bloqueada ? "Liberar loja" : "Bloquear loja"}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setEditarAberto(true)}>
+            <Pencil className="size-4" />
+            Editar dados
+          </Button>
+          <Button
+            variant={bloqueada ? "default" : "destructive"}
+            disabled={bloquear.isPending || liberar.isPending}
+            onClick={() =>
+              bloqueada ? liberar.mutate({ id: loja.id }) : bloquear.mutate({ id: loja.id })
+            }
+          >
+            {bloqueada ? <CheckCircle2 className="size-4" /> : <Ban className="size-4" />}
+            {bloqueada ? "Liberar loja" : "Bloquear loja"}
+          </Button>
+        </div>
       </div>
+
+      <EditarLojaDialog
+        open={editarAberto}
+        onOpenChange={setEditarAberto}
+        loja={{
+          id: loja.id,
+          nome: loja.nome,
+          slug: loja.slug,
+          responsavel: loja.responsavel,
+          emailContato: loja.emailContato,
+          planoId: loja.planoId,
+        }}
+      />
 
       <div className="grid grid-cols-3 gap-6">
         <div className="rounded-lg border p-4">

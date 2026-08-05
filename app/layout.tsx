@@ -23,6 +23,9 @@ const lora = Lora({
 export const metadata: Metadata = {
   title: "Online E-commerce",
   description: "Plataforma SaaS para lojistas venderem online",
+  icons: {
+    icon: "/logo-zyron.png",
+  },
 };
 
 export default function RootLayout({
