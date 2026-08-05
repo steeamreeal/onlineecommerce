@@ -32,25 +32,21 @@ export function BannerCarousel({
   renderOverlay?: (banner: Banner) => ReactNode;
 }) {
   const trilhaRef = useRef<HTMLDivElement>(null);
+  const navegandoProgramaticamente = useRef(false);
   const [indiceAtual, setIndiceAtual] = useState(0);
   const [pausado, setPausado] = useState(false);
 
   useEffect(() => {
     if (banners.length <= 1 || pausado) return;
     const id = setInterval(() => {
-      setIndiceAtual((atual) => (atual + 1) % banners.length);
+      irPara(indiceAtual + 1);
     }, INTERVALO_AUTOPLAY_MS);
     return () => clearInterval(id);
-  }, [banners.length, pausado]);
-
-  useEffect(() => {
-    const trilha = trilhaRef.current;
-    if (!trilha) return;
-    const slide = trilha.children[indiceAtual] as HTMLElement | undefined;
-    slide?.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" });
-  }, [indiceAtual]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reinicia o timer a cada troca de slide, senão o avanço seguinte usaria um indiceAtual desatualizado
+  }, [banners.length, pausado, indiceAtual]);
 
   function handleScroll() {
+    if (navegandoProgramaticamente.current) return;
     const trilha = trilhaRef.current;
     if (!trilha) return;
     const indice = Math.round(trilha.scrollLeft / trilha.clientWidth);
@@ -58,7 +54,18 @@ export function BannerCarousel({
   }
 
   function irPara(indice: number) {
-    setIndiceAtual(((indice % banners.length) + banners.length) % banners.length);
+    const proximo = ((indice % banners.length) + banners.length) % banners.length;
+    setIndiceAtual(proximo);
+
+    const trilha = trilhaRef.current;
+    const slide = trilha?.children[proximo] as HTMLElement | undefined;
+    if (!trilha || !slide) return;
+
+    navegandoProgramaticamente.current = true;
+    slide.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" });
+    window.setTimeout(() => {
+      navegandoProgramaticamente.current = false;
+    }, 600);
   }
 
   if (banners.length === 0) return null;
