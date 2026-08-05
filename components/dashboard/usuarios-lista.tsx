@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -20,14 +20,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ConvidarUsuarioDialog } from "@/components/dashboard/convidar-usuario-dialog";
-import {
-  PAPEL_USUARIO_DESCRICAO,
-  PAPEL_USUARIO_LABEL,
-  usuariosLojaMock,
-  type PapelUsuario,
-  type UsuarioLoja,
-} from "@/lib/mocks/usuarios";
+import { PAPEL_USUARIO_DESCRICAO, PAPEL_USUARIO_LABEL } from "@/lib/papel-usuario";
+import { trpc } from "@/lib/trpc/client";
+import type { PapelUsuario } from "@prisma/client";
 
 const papelSelectItems = Object.entries(PAPEL_USUARIO_LABEL).map(([value, label]) => ({
   value,
@@ -41,19 +39,33 @@ const formatoData = new Intl.DateTimeFormat("pt-BR", {
 });
 
 export function UsuariosLista() {
-  const [usuarios, setUsuarios] = useState<UsuarioLoja[]>(usuariosLojaMock);
   const [dialogAberto, setDialogAberto] = useState(false);
+  const utils = trpc.useUtils();
+  const { data, isLoading } = trpc.usuariosLoja.listar.useQuery();
 
-  function alterarPapel(usuario: UsuarioLoja, papel: PapelUsuario) {
-    // Mock: sem persistência real ainda (chega no M8, autenticação e papéis reais)
-    setUsuarios((atual) =>
-      atual.map((u) => (u.id === usuario.id ? { ...u, papel } : u)),
+  const alterarPapel = trpc.usuariosLoja.alterarPapel.useMutation({
+    onSuccess: () => {
+      utils.usuariosLoja.listar.invalidate();
+      toast.success("Papel atualizado.");
+    },
+    onError: (erro) => toast.error(erro.message || "Não foi possível atualizar o papel."),
+  });
+
+  const cancelarConvite = trpc.usuariosLoja.cancelarConvite.useMutation({
+    onSuccess: () => {
+      utils.usuariosLoja.listar.invalidate();
+      toast.success("Convite cancelado.");
+    },
+    onError: (erro) => toast.error(erro.message || "Não foi possível cancelar o convite."),
+  });
+
+  if (isLoading || !data) {
+    return (
+      <div className="flex flex-col gap-4">
+        <Skeleton className="h-8 w-40" />
+        <Skeleton className="h-40 w-full" />
+      </div>
     );
-    toast.success(`${usuario.nome} agora é ${PAPEL_USUARIO_LABEL[papel]}.`);
-  }
-
-  function convidarUsuario(usuario: UsuarioLoja) {
-    setUsuarios((atual) => [...atual, usuario]);
   }
 
   return (
@@ -75,20 +87,23 @@ export function UsuariosLista() {
               <TableHead>Usuário</TableHead>
               <TableHead>Papel</TableHead>
               <TableHead>Desde</TableHead>
+              <TableHead />
             </TableRow>
           </TableHeader>
           <TableBody>
-            {usuarios.map((usuario) => (
-              <TableRow key={usuario.id}>
+            {data.usuarios.map((vinculo) => (
+              <TableRow key={vinculo.id}>
                 <TableCell>
-                  <div className="font-medium">{usuario.nome}</div>
-                  <div className="text-muted-foreground text-xs">{usuario.email}</div>
+                  <div className="font-medium">{vinculo.usuario.nome}</div>
+                  <div className="text-muted-foreground text-xs">{vinculo.usuario.email}</div>
                 </TableCell>
                 <TableCell>
                   <Select
                     items={papelSelectItems}
-                    value={usuario.papel}
-                    onValueChange={(v) => v && alterarPapel(usuario, v as PapelUsuario)}
+                    value={vinculo.papel}
+                    onValueChange={(v) =>
+                      v && alterarPapel.mutate({ usuarioLojaId: vinculo.id, papel: v as PapelUsuario })
+                    }
                   >
                     <SelectTrigger className="w-[220px]">
                       <SelectValue />
@@ -108,7 +123,33 @@ export function UsuariosLista() {
                   </Select>
                 </TableCell>
                 <TableCell className="text-muted-foreground">
-                  {formatoData.format(new Date(usuario.createdAt))}
+                  {formatoData.format(new Date(vinculo.createdAt))}
+                </TableCell>
+                <TableCell />
+              </TableRow>
+            ))}
+            {data.convites.map((convite) => (
+              <TableRow key={convite.id}>
+                <TableCell>
+                  <div className="font-medium">{convite.email}</div>
+                  <Badge variant="secondary" className="mt-1">
+                    Convite pendente
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                  {PAPEL_USUARIO_LABEL[convite.papel]}
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                  {formatoData.format(new Date(convite.createdAt))}
+                </TableCell>
+                <TableCell>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => cancelarConvite.mutate({ id: convite.id })}
+                  >
+                    <X className="size-4" />
+                  </Button>
                 </TableCell>
               </TableRow>
             ))}
@@ -116,11 +157,7 @@ export function UsuariosLista() {
         </Table>
       </div>
 
-      <ConvidarUsuarioDialog
-        open={dialogAberto}
-        onOpenChange={setDialogAberto}
-        onConvidar={convidarUsuario}
-      />
+      <ConvidarUsuarioDialog open={dialogAberto} onOpenChange={setDialogAberto} />
     </div>
   );
 }

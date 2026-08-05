@@ -1,10 +1,12 @@
-import type { Prisma, StatusPedido } from "@prisma/client";
+import type { PapelUsuario, Prisma, StatusPedido } from "@prisma/client";
 import { emailConfigurado, REMETENTE_PADRAO, resend } from "@/lib/email/resend";
 import {
+  templateConviteLoja,
   templateEstoqueBaixo,
   templatePedidoConfirmado,
   templateStatusAtualizado,
 } from "@/lib/email/templates";
+import { baseUrl } from "@/lib/base-url";
 
 // Aviso de estoque baixo vai para quem administra a loja — não há um campo
 // de "e-mail de contato" dedicado na Loja, então usamos o Administrador mais
@@ -27,6 +29,24 @@ async function enviarEmail(destinatario: string | undefined | null, assunto: str
   } catch (error) {
     console.error("Falha ao enviar e-mail transacional:", error);
   }
+}
+
+// Diferente das outras notificações, o convite é o próprio motivo da
+// mutation (usuariosLoja.convidar) — se o envio falhar aqui, o chamador deve
+// saber (por isso não engole o erro como enviarEmail faz para as demais).
+export async function enviarConviteLoja(params: {
+  email: string;
+  lojaNome: string;
+  papel: PapelUsuario;
+  token: string;
+}) {
+  if (!emailConfigurado) return;
+  const { assunto, html } = templateConviteLoja({
+    lojaNome: params.lojaNome,
+    papel: params.papel,
+    urlConvite: `${baseUrl()}/convite/${params.token}`,
+  });
+  await resend.emails.send({ from: REMETENTE_PADRAO, to: params.email, subject: assunto, html });
 }
 
 export async function notificarPedidoConfirmado(
@@ -92,7 +112,10 @@ export async function notificarEstoqueBaixo(
     estoqueAtual: number;
   },
 ) {
-  const { assunto, html } = templateEstoqueBaixo(params);
+  const { assunto, html } = templateEstoqueBaixo({
+    ...params,
+    urlEstoque: `${baseUrl()}/painel/produtos/estoque`,
+  });
   await enviarEmail(params.lojistaEmail, assunto, html);
   await tx.notificacao.create({
     data: {
