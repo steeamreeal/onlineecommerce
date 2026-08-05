@@ -10,21 +10,19 @@ export async function generateMetadata({
   const { slug } = await params;
   const loja = await prisma.loja.findUnique({
     where: { slug },
-    select: { nome: true, logoUrl: true },
+    select: { nome: true },
   });
 
   if (!loja) return {};
 
-  // app/favicon.ico (convenção estática) e app/(public-store)/loja/[slug]
-  // /icon.tsx (convenção de rota, que gera a logo da loja) coexistem no
-  // <head> em vez de um substituir o outro — o navegador tende a priorizar
-  // o primeiro <link rel="icon"> da lista, que é sempre o favicon.ico.
-  // Redeclarar `icons` aqui explicitamente sobrescreve o favicon herdado
-  // para este segmento (e filhos), fazendo o ícone da loja aparecer sozinho.
-  return {
-    title: loja.nome,
-    icons: loja.logoUrl ? { icon: `/loja/${slug}/icon` } : undefined,
-  };
+  // O favicon dinâmico não entra em `icons` aqui: a URL da convenção de
+  // arquivo (app/(public-store)/loja/[slug]/icon.tsx) tem um sufixo interno
+  // gerado pelo Next (ex.: /loja/slug/icon-1jdiwo) que não deve ser
+  // reconstruído manualmente — declarar a string errada aqui já quebrou o
+  // favicon (404) numa tentativa anterior. O Next já injeta esse link
+  // sozinho; o que falta é neutralizar app/favicon.ico nesta rota, feito em
+  // app/(public-store)/layout.tsx.
+  return { title: loja.nome };
 }
 
 export default function PublicStoreLayout({
