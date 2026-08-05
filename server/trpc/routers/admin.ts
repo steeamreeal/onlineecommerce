@@ -1,9 +1,13 @@
+import { randomBytes } from "crypto";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, adminProcedure, superAdminProcedure } from "../trpc";
+import { enviarConviteLoja } from "@/lib/email/notificacoes";
 
 const statusLojaSchema = z.enum(["ATIVO", "BLOQUEADO", "CANCELADO", "TESTE"]);
 const papelAdminSchema = z.enum(["SUPER_ADMIN", "SUPORTE", "FINANCEIRO"]);
+
+const CONVITE_VALIDADE_HORAS = 72;
 
 export const adminRouter = router({
   listarLojas: adminProcedure
@@ -151,6 +155,42 @@ export const adminRouter = router({
           planoId: input.planoId ?? null,
         },
       });
+    }),
+
+  // Destrava o primeiro acesso de uma loja recém-criada: como
+  // usuariosLoja.convidar exige ser ADMINISTRADOR da própria loja, uma loja
+  // sem ninguém vinculado ainda fica sem ninguém que possa convidar — o dono
+  // da plataforma preenche essa lacuna convidando o primeiro Administrador.
+  convidarAdministrador: superAdminProcedure
+    .input(z.object({ lojaId: z.string(), email: z.string().email() }))
+    .mutation(async ({ ctx, input }) => {
+      const email = input.email.toLowerCase();
+
+      const loja = await ctx.prisma.loja.findUnique({ where: { id: input.lojaId } });
+      if (!loja) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Loja não encontrada." });
+      }
+
+      const usuarioExistente = await ctx.prisma.usuario.findUnique({
+        where: { email },
+        include: { lojas: { where: { lojaId: input.lojaId } } },
+      });
+      if (usuarioExistente && usuarioExistente.lojas.length > 0) {
+        throw new TRPCError({ code: "CONFLICT", message: "Este e-mail já tem acesso a esta loja." });
+      }
+
+      const token = randomBytes(32).toString("hex");
+      const expiraEm = new Date(Date.now() + CONVITE_VALIDADE_HORAS * 60 * 60 * 1000);
+
+      const convite = await ctx.prisma.conviteUsuarioLoja.upsert({
+        where: { lojaId_email: { lojaId: input.lojaId, email } },
+        create: { lojaId: input.lojaId, email, papel: "ADMINISTRADOR", token, expiraEm },
+        update: { papel: "ADMINISTRADOR", token, expiraEm, aceitoEm: null },
+      });
+
+      await enviarConviteLoja({ email, lojaNome: loja.nome, papel: "ADMINISTRADOR", token });
+
+      return convite;
     }),
 
   bloquearLoja: superAdminProcedure

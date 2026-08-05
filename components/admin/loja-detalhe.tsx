@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Ban, CheckCircle2, Pencil } from "lucide-react";
+import { ArrowLeft, Ban, CheckCircle2, Pencil, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LojaStatusBadge } from "@/components/admin/loja-status-badge";
 import { EditarLojaDialog } from "@/components/admin/editar-loja-dialog";
+import { ConvidarAdminLojaDialog } from "@/components/admin/convidar-admin-loja-dialog";
 import { trpc } from "@/lib/trpc/client";
 
 const formatoMoeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -21,6 +22,7 @@ const formatoData = new Intl.DateTimeFormat("pt-BR", {
 export function LojaDetalhe({ lojaId }: { lojaId: string }) {
   const utils = trpc.useUtils();
   const [editarAberto, setEditarAberto] = useState(false);
+  const [convidarAberto, setConvidarAberto] = useState(false);
   const { data: loja, isLoading } = trpc.admin.obterLoja.useQuery({ id: lojaId });
 
   const bloquear = trpc.admin.bloquearLoja.useMutation({
@@ -96,10 +98,22 @@ export function LojaDetalhe({ lojaId }: { lojaId: string }) {
           planoId: loja.planoId,
         }}
       />
+      <ConvidarAdminLojaDialog
+        open={convidarAberto}
+        onOpenChange={setConvidarAberto}
+        lojaId={loja.id}
+        emailSugerido={loja.emailContato}
+      />
 
       <div className="grid grid-cols-3 gap-6">
         <div className="rounded-lg border p-4">
-          <h2 className="text-muted-foreground mb-3 text-sm font-medium">Responsável</h2>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-muted-foreground text-sm font-medium">Responsável</h2>
+            <Button variant="ghost" size="sm" onClick={() => setConvidarAberto(true)}>
+              <UserPlus className="size-4" />
+              Convidar acesso
+            </Button>
+          </div>
           <p className="font-medium">{loja.responsavel ?? "Não informado"}</p>
           <p className="text-muted-foreground text-sm">{loja.emailContato ?? "—"}</p>
         </div>
