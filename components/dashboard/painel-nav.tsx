@@ -9,6 +9,7 @@ import {
   ShoppingCart,
   Settings,
   Tag,
+  Tags,
   Truck,
   Users,
 } from "lucide-react";
@@ -17,6 +18,7 @@ import { cn } from "@/lib/utils";
 const itens = [
   { href: "/painel", label: "Dashboard", icon: LayoutDashboard },
   { href: "/painel/produtos", label: "Produtos", icon: Package },
+  { href: "/painel/categorias", label: "Categorias", icon: Tags },
   { href: "/painel/pedidos", label: "Pedidos", icon: ShoppingCart },
   { href: "/painel/clientes", label: "Clientes", icon: Users },
   { href: "/painel/cupons", label: "Cupons", icon: Tag },
