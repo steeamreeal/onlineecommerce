@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ProductCard } from "@/components/store/product-card";
-import { BannerMidia } from "@/components/store/banner-midia";
+import { BannerCarousel } from "@/components/store/banner-carousel";
 import type { RouterOutputs } from "@/lib/trpc/types";
 
 type Banner = {
@@ -27,13 +27,26 @@ export function TemplateEditorial({
 }) {
   return (
     <div className="flex flex-1 flex-col gap-14 pb-16">
-      <section className="bg-accent relative flex aspect-[4/5] items-center justify-center overflow-hidden px-6 text-center md:aspect-[3/1]">
-        <BannerMidia banner={banners[0]} />
-        {banners[0]?.url && <div className="bg-background/70 absolute inset-0" />}
-        <p className="font-heading relative max-w-lg text-2xl italic text-[var(--loja-primary)]">
-          {banners[0]?.titulo ?? "Uma seleção pensada para você"}
-        </p>
-      </section>
+      {banners.length > 0 ? (
+        <BannerCarousel
+          banners={banners}
+          className="bg-accent relative flex aspect-[4/5] items-center justify-center overflow-hidden px-6 text-center md:aspect-[3/1]"
+          renderOverlay={(banner) => (
+            <>
+              <div className="bg-background/70 absolute inset-0" />
+              <p className="font-heading relative max-w-lg text-2xl italic text-[var(--loja-primary)]">
+                {banner.titulo || "Uma seleção pensada para você"}
+              </p>
+            </>
+          )}
+        />
+      ) : (
+        <section className="bg-accent relative flex aspect-[4/5] items-center justify-center overflow-hidden px-6 text-center md:aspect-[3/1]">
+          <p className="font-heading relative max-w-lg text-2xl italic text-[var(--loja-primary)]">
+            Uma seleção pensada para você
+          </p>
+        </section>
+      )}
 
       <section className="flex flex-col gap-4 px-6">
         <div className="flex flex-wrap justify-center gap-6 text-sm">

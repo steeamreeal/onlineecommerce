@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ProductCard } from "@/components/store/product-card";
-import { BannerMidia } from "@/components/store/banner-midia";
+import { BannerCarousel } from "@/components/store/banner-carousel";
 import type { RouterOutputs } from "@/lib/trpc/types";
 
 type Banner = {
@@ -27,15 +27,22 @@ export function TemplateVitrine({
 }) {
   return (
     <div className="flex flex-1 flex-col gap-10 pb-12">
-      <section className="relative flex aspect-[4/5] items-center justify-center overflow-hidden bg-[var(--loja-primary)] px-6 text-center text-white md:aspect-[3/1]">
-        <BannerMidia banner={banners[0]} />
-        {banners[0]?.url && (
-          <div className="absolute inset-0 bg-[var(--loja-primary)]/70" />
-        )}
-        <p className="relative text-lg font-bold">
-          {banners[0]?.titulo ?? "Confira as novidades da loja"}
-        </p>
-      </section>
+      {banners.length > 0 ? (
+        <BannerCarousel
+          banners={banners}
+          className="relative flex aspect-[4/5] items-center justify-center overflow-hidden bg-[var(--loja-primary)] px-6 text-center text-white md:aspect-[3/1]"
+          renderOverlay={(banner) => (
+            <>
+              <div className="absolute inset-0 bg-[var(--loja-primary)]/70" />
+              <p className="relative text-lg font-bold">{banner.titulo || "Confira as novidades da loja"}</p>
+            </>
+          )}
+        />
+      ) : (
+        <section className="relative flex aspect-[4/5] items-center justify-center overflow-hidden bg-[var(--loja-primary)] px-6 text-center text-white md:aspect-[3/1]">
+          <p className="relative text-lg font-bold">Confira as novidades da loja</p>
+        </section>
+      )}
 
       <section className="flex flex-col gap-4 px-6">
         <div className="flex flex-wrap gap-2">

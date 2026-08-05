@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ProductCard } from "@/components/store/product-card";
-import { BannerMidia } from "@/components/store/banner-midia";
+import { BannerCarousel } from "@/components/store/banner-carousel";
 import type { RouterOutputs } from "@/lib/trpc/types";
 
 type Banner = {
@@ -29,21 +29,18 @@ export function TemplateMinimalista({
     <div className="flex flex-1 flex-col gap-12 pb-12">
       {banners.length > 0 && (
         <section className="px-6 pt-6">
-          <div className="bg-muted relative flex aspect-[4/5] items-end overflow-hidden rounded-md md:aspect-[3/1]">
-            <BannerMidia banner={banners[0]} />
-            {banners[0]?.titulo && (
-              <>
-                {banners[0]?.url && (
+          <BannerCarousel
+            banners={banners}
+            className="bg-muted relative flex aspect-[4/5] items-end overflow-hidden rounded-md md:aspect-[3/1]"
+            renderOverlay={(banner) =>
+              banner.titulo ? (
+                <>
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                )}
-                <span
-                  className={`relative m-4 text-sm font-medium ${banners[0]?.url ? "text-white" : ""}`}
-                >
-                  {banners[0].titulo}
-                </span>
-              </>
-            )}
-          </div>
+                  <span className="relative m-4 text-sm font-medium text-white">{banner.titulo}</span>
+                </>
+              ) : null
+            }
+          />
         </section>
       )}
 
