@@ -26,6 +26,7 @@ export const lojaPublicaRouter = router({
         corPrimaria: loja.corPrimaria,
         template: loja.template,
         banners: loja.banners,
+        temaConfig: loja.temaConfig,
         whatsapp: loja.whatsapp,
         instagram: loja.instagram,
         facebook: loja.facebook,

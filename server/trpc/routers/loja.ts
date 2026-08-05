@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, storeProcedure, roleProcedure } from "../trpc";
+import { temaConfigSchema } from "@/lib/tema-loja";
 
 export const lojaRouter = router({
   atual: storeProcedure.query(({ ctx }) => {
@@ -19,6 +20,7 @@ export const lojaRouter = router({
         template: true,
         corPrimaria: true,
         banners: true,
+        temaConfig: true,
         whatsapp: true,
         instagram: true,
         facebook: true,
@@ -140,6 +142,20 @@ export const lojaRouter = router({
         where: { id: ctx.lojaId },
         data: { banners: input.banners },
         select: { banners: true },
+      });
+    }),
+
+  // Editor de tema: sobrescreve temaConfig inteiro a cada save, mesmo padrão
+  // de atualizarBanners (Json puro, sem diff por id). O template continua
+  // sendo trocado por atualizarPersonalizacao — temaConfig só guarda a
+  // composição de seções e o estilo (cor/fonte), não qual template está ativo.
+  atualizarTema: roleProcedure(["ADMINISTRADOR"])
+    .input(temaConfigSchema)
+    .mutation(async ({ ctx, input }) => {
+      return ctx.prisma.loja.update({
+        where: { id: ctx.lojaId },
+        data: { temaConfig: input },
+        select: { temaConfig: true },
       });
     }),
 });

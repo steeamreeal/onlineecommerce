@@ -6,6 +6,7 @@ import {
   CreditCard,
   LayoutDashboard,
   Package,
+  Paintbrush,
   ShoppingCart,
   Settings,
   Tag,
@@ -23,6 +24,7 @@ const itens = [
   { href: "/painel/clientes", label: "Clientes", icon: Users },
   { href: "/painel/cupons", label: "Cupons", icon: Tag },
   { href: "/painel/frete", label: "Frete", icon: Truck },
+  { href: "/painel/tema", label: "Tema", icon: Paintbrush },
   { href: "/painel/assinatura", label: "Assinatura", icon: CreditCard },
   { href: "/painel/configuracoes", label: "Configurações", icon: Settings },
 ];
