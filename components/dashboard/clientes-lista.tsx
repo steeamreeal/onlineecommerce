@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { trpc } from "@/lib/trpc/client";
+import { NovoClienteDialog } from "@/components/dashboard/novo-cliente-dialog";
 import type { EnderecoCliente } from "@prisma/client";
 
 const formatoMoeda = new Intl.NumberFormat("pt-BR", {
@@ -70,6 +71,7 @@ export function ClientesLista() {
   const [busca, setBusca] = useState("");
   const buscaDebounced = busca.trim() || undefined;
 
+  const utils = trpc.useUtils();
   const { data: clientes = [], isLoading } = trpc.clientes.listar.useQuery({
     busca: buscaDebounced,
   });
@@ -77,11 +79,14 @@ export function ClientesLista() {
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-8">
-      <div>
-        <h1 className="text-2xl font-semibold">Clientes</h1>
-        <p className="text-muted-foreground text-sm">
-          Consulte o cadastro e o histórico de compras dos seus clientes.
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">Clientes</h1>
+          <p className="text-muted-foreground text-sm">
+            Consulte o cadastro e o histórico de compras dos seus clientes.
+          </p>
+        </div>
+        <NovoClienteDialog onCriado={() => utils.clientes.listar.invalidate()} />
       </div>
 
       <div className="relative max-w-sm">

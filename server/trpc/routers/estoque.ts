@@ -108,4 +108,83 @@ export const estoqueRouter = router({
         return { movimento, variacao: variacaoAtualizada };
       });
     }),
+
+  // Importação em massa (CSV/Excel exportado como CSV): cada linha casa por
+  // nome do produto + cor/tamanho/modelo (case-insensitive) e SUBSTITUI o
+  // saldo da variação pelo valor da planilha — diferente de
+  // registrarMovimento, que soma/subtrai. Cada troca de saldo também vira um
+  // MovimentoEstoque (ENTRADA ou SAIDA, pela diferença) para manter o
+  // histórico consistente. Linhas sem variação correspondente são
+  // ignoradas e reportadas em `naoEncontrados`, sem interromper o restante.
+  importar: storeProcedure
+    .input(
+      z.object({
+        linhas: z
+          .array(
+            z.object({
+              produto: z.string().min(1),
+              cor: z.string().optional(),
+              tamanho: z.string().optional(),
+              modelo: z.string().optional(),
+              quantidade: z.number().int().min(0),
+            }),
+          )
+          .min(1)
+          .max(2000),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const variacoes = await ctx.prisma.variacaoProduto.findMany({
+        where: { produto: { lojaId: ctx.lojaId } },
+        include: { produto: { select: { nome: true } } },
+      });
+
+      const normalizar = (v: string | null | undefined) => (v ?? "").trim().toLowerCase();
+      const chaveDe = (nome: string, cor?: string | null, tamanho?: string | null, modelo?: string | null) =>
+        [normalizar(nome), normalizar(cor), normalizar(tamanho), normalizar(modelo)].join("|");
+
+      const porChave = new Map(
+        variacoes.map((v) => [chaveDe(v.produto.nome, v.cor, v.tamanho, v.modelo), v]),
+      );
+
+      const naoEncontrados: string[] = [];
+      const atualizacoes: { variacaoId: string; novoSaldo: number; saldoAnterior: number }[] = [];
+
+      for (const linha of input.linhas) {
+        const variacao = porChave.get(chaveDe(linha.produto, linha.cor, linha.tamanho, linha.modelo));
+        if (!variacao) {
+          naoEncontrados.push(
+            [linha.produto, linha.cor, linha.tamanho, linha.modelo].filter(Boolean).join(" / "),
+          );
+          continue;
+        }
+        atualizacoes.push({
+          variacaoId: variacao.id,
+          novoSaldo: linha.quantidade,
+          saldoAnterior: variacao.estoque,
+        });
+      }
+
+      let atualizados = 0;
+      await ctx.prisma.$transaction(async (tx) => {
+        for (const { variacaoId, novoSaldo, saldoAnterior } of atualizacoes) {
+          if (novoSaldo === saldoAnterior) continue;
+          await tx.variacaoProduto.update({
+            where: { id: variacaoId },
+            data: { estoque: novoSaldo },
+          });
+          await tx.movimentoEstoque.create({
+            data: {
+              variacaoId,
+              quantidade: Math.abs(novoSaldo - saldoAnterior),
+              tipo: novoSaldo > saldoAnterior ? "ENTRADA" : "SAIDA",
+              motivo: "Importação de planilha",
+            },
+          });
+          atualizados++;
+        }
+      });
+
+      return { atualizados, naoEncontrados };
+    }),
 });

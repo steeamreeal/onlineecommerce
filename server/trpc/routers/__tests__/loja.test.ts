@@ -90,6 +90,95 @@ describe("lojaRouter.atualizarPersonalizacao", () => {
   });
 });
 
+describe("lojaRouter.atualizarIdentidade", () => {
+  const identidade = {
+    corPrimaria: "#c2703d",
+    logoUrl: "https://exemplo.com/logo.png",
+    whatsapp: "(11) 91234-5678",
+    instagram: "@minhaloja",
+    facebook: "",
+    endereco: "Rua das Flores, 120",
+    horarioAtend: "Seg. a sex., 9h às 18h",
+    politicas: "Trocas em até 7 dias.",
+  };
+
+  it("atualiza os campos de identidade/contato escopados pela lojaId do contexto", async () => {
+    const update = vi.fn().mockResolvedValue({});
+    const client = criarPrismaMock({
+      loja: { findUnique: vi.fn().mockResolvedValue({ statusPlano: "ATIVO" }), findFirst: vi.fn(), update },
+    });
+    const caller = criarCaller(client);
+
+    await caller.atualizarIdentidade(identidade);
+
+    expect(update).toHaveBeenCalledWith({
+      where: { id: LOJA_ID },
+      data: {
+        corPrimaria: "#c2703d",
+        logoUrl: "https://exemplo.com/logo.png",
+        whatsapp: "(11) 91234-5678",
+        instagram: "@minhaloja",
+        facebook: null,
+        endereco: "Rua das Flores, 120",
+        horarioAtend: "Seg. a sex., 9h às 18h",
+        politicas: "Trocas em até 7 dias.",
+      },
+      select: {
+        corPrimaria: true,
+        logoUrl: true,
+        whatsapp: true,
+        instagram: true,
+        facebook: true,
+        endereco: true,
+        horarioAtend: true,
+        politicas: true,
+      },
+    });
+  });
+
+  it("aceita logoUrl nulo para remover a logo", async () => {
+    const update = vi.fn().mockResolvedValue({});
+    const client = criarPrismaMock({
+      loja: { findUnique: vi.fn().mockResolvedValue({ statusPlano: "ATIVO" }), findFirst: vi.fn(), update },
+    });
+    const caller = criarCaller(client);
+
+    await caller.atualizarIdentidade({ ...identidade, logoUrl: null });
+
+    expect(update.mock.calls[0][0].data.logoUrl).toBeNull();
+  });
+
+  it("nunca atualiza a loja de outro tenant: where.id é sempre a lojaId do contexto", async () => {
+    const update = vi.fn().mockResolvedValue({});
+    const client = criarPrismaMock({
+      loja: { findUnique: vi.fn().mockResolvedValue({ statusPlano: "ATIVO" }), findFirst: vi.fn(), update },
+    });
+    const caller = criarCaller(client);
+
+    await caller.atualizarIdentidade(identidade);
+
+    const chamada = update.mock.calls[0][0];
+    expect(chamada.where.id).toBe(LOJA_ID);
+    expect(chamada.where.id).not.toBe(OUTRA_LOJA_ID);
+  });
+
+  it("rejeita corPrimaria fora do formato hex", async () => {
+    const client = criarPrismaMock();
+    const caller = criarCaller(client);
+
+    await expect(
+      caller.atualizarIdentidade({ ...identidade, corPrimaria: "laranja" }),
+    ).rejects.toThrow();
+  });
+
+  it("rejeita usuário sem papel ADMINISTRADOR (roleProcedure)", async () => {
+    const client = criarPrismaMock();
+    const caller = criarCaller(client, "VENDEDOR");
+
+    await expect(caller.atualizarIdentidade(identidade)).rejects.toThrow(TRPCError);
+  });
+});
+
 describe("lojaRouter.atualizarBanners", () => {
   const banner = { url: "https://exemplo.com/banner.jpg", titulo: "Coleção Verão" };
 
