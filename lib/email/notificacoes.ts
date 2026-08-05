@@ -41,12 +41,12 @@ export async function enviarConviteLoja(params: {
   token: string;
 }) {
   if (!emailConfigurado) return;
-  const { assunto, html } = templateConviteLoja({
+  const { assunto, html, text } = templateConviteLoja({
     lojaNome: params.lojaNome,
     papel: params.papel,
     urlConvite: `${baseUrl()}/convite/${params.token}`,
   });
-  await resend.emails.send({ from: REMETENTE_PADRAO, to: params.email, subject: assunto, html });
+  await resend.emails.send({ from: REMETENTE_PADRAO, to: params.email, subject: assunto, html, text });
 }
 
 export async function notificarPedidoConfirmado(

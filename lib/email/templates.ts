@@ -119,5 +119,15 @@ export function templateConviteLoja(params: {
         </p>
       `,
     }),
+    // Um alternativo em texto simples reduz a chance do Gmail classificar
+    // como Promoções, que penaliza e-mails só-HTML — mesmo conteúdo, sem
+    // marcação.
+    text: [
+      `Você foi convidado para fazer parte da equipe da loja ${params.lojaNome}, com o papel de ${papelLabel}.`,
+      "",
+      `Acesse o link para aceitar o convite e criar seu acesso: ${params.urlConvite}`,
+      "",
+      "Este convite expira em 72 horas. Se você não esperava este e-mail, pode ignorá-lo.",
+    ].join("\n"),
   };
 }
