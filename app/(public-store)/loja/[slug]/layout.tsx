@@ -10,15 +10,16 @@ export async function generateMetadata({
   const { slug } = await params;
   const loja = await prisma.loja.findUnique({
     where: { slug },
-    select: { nome: true, logoUrl: true },
+    select: { nome: true },
   });
 
   if (!loja) return {};
 
-  return {
-    title: loja.nome,
-    icons: loja.logoUrl ? { icon: loja.logoUrl } : undefined,
-  };
+  // O favicon dinâmico não entra aqui: app/favicon.ico (convenção estática)
+  // vence qualquer `icons` retornado por generateMetadata, então a logo da
+  // loja é servida via icon.tsx nesta mesma pasta (convenção de arquivo,
+  // que tem prioridade sobre o favicon.ico global).
+  return { title: loja.nome };
 }
 
 export default function PublicStoreLayout({
