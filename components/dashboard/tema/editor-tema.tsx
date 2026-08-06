@@ -432,7 +432,23 @@ export function EditorTema() {
           template={template}
           categorias={listaCategorias}
           onChangeSecao={atualizarSecao}
-          onChangeEstilo={(estilo) => setTema((atual) => (atual ? { ...atual, estilo } : atual))}
+          onChangeEstilo={(estilo) =>
+            setTema((atual) => {
+              if (!atual) return atual;
+              // Cor de fundo da página e do cabeçalho ficam sincronizadas: ao
+              // mudar uma, a outra acompanha automaticamente, pra loja não
+              // ficar com cabeçalho destoando do resto da página por engano.
+              const corFundoMudou = estilo.corFundo !== atual.estilo.corFundo;
+              const secoes = corFundoMudou
+                ? atual.secoes.map((secao) =>
+                    secao.tipo === "CABECALHO"
+                      ? { ...secao, config: { ...secao.config, corFundo: estilo.corFundo } }
+                      : secao
+                  )
+                : atual.secoes;
+              return { ...atual, estilo, secoes };
+            })
+          }
           onChangeTemplate={setTemplate}
           onFechar={() => {
             setSelecaoId(null);
