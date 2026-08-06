@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, ShoppingBag, User } from "lucide-react";
+import { Menu, Search, ShoppingBag, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc/client";
 import { ThemeRenderer } from "@/components/store/theme-renderer";
@@ -19,6 +19,7 @@ function PreviewCabecalho({
   mostrarBusca,
   mostrarConta,
   posicaoLogo,
+  corFundo,
   viewport,
 }: {
   nome: string;
@@ -28,8 +29,10 @@ function PreviewCabecalho({
   mostrarBusca: boolean;
   mostrarConta: boolean;
   posicaoLogo: "ESQUERDA" | "CENTRO";
+  corFundo: string | undefined;
   viewport: "DESKTOP" | "MOBILE";
 }) {
+  const estiloFundo = corFundo ? { backgroundColor: corFundo } : undefined;
   const logo =
     exibicaoLogo === "LOGO" && logoUrl ? (
       // eslint-disable-next-line @next/next/no-img-element -- URL dinâmica do Supabase Storage
@@ -63,9 +66,9 @@ function PreviewCabecalho({
 
   if (viewport === "MOBILE") {
     return (
-      <div className="flex flex-col border-b">
-        <div className="flex items-center justify-between gap-4 px-6 py-4">
-          <div className="w-8" />
+      <div className="flex flex-col border-b" style={estiloFundo}>
+        <div className="grid grid-cols-3 items-center gap-3 px-6 py-4">
+          <Menu className="text-muted-foreground size-4" />
           <div className="flex justify-center">{logo}</div>
           <div className="flex items-center justify-end gap-4">{acoes}</div>
         </div>
@@ -76,7 +79,7 @@ function PreviewCabecalho({
 
   if (posicaoLogo === "CENTRO") {
     return (
-      <div className="flex items-center gap-4 border-b px-6 py-4">
+      <div className="flex items-center gap-4 border-b px-6 py-4" style={estiloFundo}>
         <div className="flex flex-1 items-center gap-4">{busca}</div>
         {logo}
         <div className="flex flex-1 items-center justify-end gap-4">{acoes}</div>
@@ -85,7 +88,7 @@ function PreviewCabecalho({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-4 border-b px-6 py-4">
+    <div className="flex flex-wrap items-center gap-4 border-b px-6 py-4" style={estiloFundo}>
       {logo}
       {busca}
       {acoes}
@@ -244,6 +247,7 @@ export function PreviewTema({
               mostrarBusca={cabecalho.config.mostrarBusca ?? true}
               mostrarConta={cabecalho.config.mostrarConta ?? true}
               posicaoLogo={cabecalho.config.posicaoLogo ?? "ESQUERDA"}
+              corFundo={cabecalho.config.corFundo}
               viewport={viewport}
             />
           </button>

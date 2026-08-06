@@ -78,6 +78,10 @@ export const secaoCabecalhoSchema = secaoBaseSchema.extend({
     // ALTURA_LOGO_MIN_PX/ALTURA_LOGO_MAX_PX) — só tem efeito quando
     // exibicaoLogo é "LOGO".
     tamanhoLogo: z.number().min(0).max(100).default(40),
+    corFundo: z
+      .string()
+      .regex(/^#[0-9A-Fa-f]{6}$/, "Informe uma cor no formato #RRGGBB")
+      .optional(),
   }),
 });
 
