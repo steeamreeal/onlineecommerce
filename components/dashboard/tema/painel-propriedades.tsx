@@ -949,14 +949,14 @@ function FormularioSecao({
             <div className="flex items-center justify-between">
               <Label>Espaçamento entre linhas do cabeçalho</Label>
               <span className="text-muted-foreground text-xs">
-                {secao.config.espacamentoLinhas ?? 20}
+                {secao.config.espacamentoLinhas ?? 8}
               </span>
             </div>
             <input
               type="range"
               min={0}
               max={100}
-              value={secao.config.espacamentoLinhas ?? 20}
+              value={secao.config.espacamentoLinhas ?? 8}
               onChange={(e) =>
                 onChange({
                   ...secao,

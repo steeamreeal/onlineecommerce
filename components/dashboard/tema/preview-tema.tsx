@@ -87,7 +87,7 @@ function PreviewCabecalho({
 
   const nav = (categorias ?? []).length > 0 && (
     <div
-      className="flex flex-wrap items-center justify-center gap-4 px-6 pb-3 text-sm"
+      className="flex flex-wrap items-center justify-center gap-4 border-t px-6 pb-2 text-sm"
       style={{ paddingTop: espacamentoCabecalhoEmPx(espacamentoLinhas), fontSize: tamanhoFonteEmPx(tamanhoFonteCategorias) }}
     >
       {(categorias ?? []).map((categoria) => (
@@ -101,7 +101,7 @@ function PreviewCabecalho({
   if (posicaoLogo === "CENTRO") {
     return (
       <div className="border-b" style={estiloFundo}>
-        <div className="flex items-center gap-4 px-6 pt-4 pb-2">
+        <div className="flex items-center gap-4 px-6 py-3">
           <div className="flex flex-1 items-center gap-4">{busca}</div>
           {logo}
           <div className="flex flex-1 items-center justify-end gap-4">{acoes}</div>
@@ -113,7 +113,7 @@ function PreviewCabecalho({
 
   return (
     <div className="border-b" style={estiloFundo}>
-      <div className="flex flex-wrap items-center gap-4 px-6 pt-4 pb-2">
+      <div className="flex flex-wrap items-center gap-4 px-6 py-3">
         {logo}
         {busca}
         {acoes}
@@ -280,7 +280,7 @@ export function PreviewTema({
               mostrarBusca={cabecalho.config.mostrarBusca ?? true}
               mostrarConta={cabecalho.config.mostrarConta ?? true}
               posicaoLogo={cabecalho.config.posicaoLogo ?? "ESQUERDA"}
-              espacamentoLinhas={cabecalho.config.espacamentoLinhas ?? 20}
+              espacamentoLinhas={cabecalho.config.espacamentoLinhas ?? 8}
               tamanhoFonteCategorias={cabecalho.config.tamanhoFonteCategorias ?? 30}
               categorias={categorias}
               corFundo={cabecalho.config.corFundo}
