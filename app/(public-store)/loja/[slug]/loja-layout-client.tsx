@@ -88,6 +88,7 @@ export default function LojaLayoutClient({
           exibicaoLogo={secaoCabecalho?.config.exibicaoLogo}
           tamanhoLogo={secaoCabecalho?.config.tamanhoLogo}
           espacamentoLinhas={secaoCabecalho?.config.espacamentoLinhas}
+          tamanhoFonteCategorias={secaoCabecalho?.config.tamanhoFonteCategorias}
           corFundo={secaoCabecalho?.config.corFundo}
           corTexto={secaoCabecalho?.config.corTexto}
         />
