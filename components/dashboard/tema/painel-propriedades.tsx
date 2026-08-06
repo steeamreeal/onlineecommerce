@@ -460,12 +460,64 @@ function FormularioSecao({
   switch (secao.tipo) {
     case "BARRA_ANUNCIO":
       return (
-        <CampoTexto
-          label="Texto do anúncio"
-          value={secao.config.texto}
-          placeholder="Frete grátis acima de R$ 200"
-          onChange={(texto) => onChange({ ...secao, config: { texto } })}
-        />
+        <div className="flex flex-col gap-4">
+          <CampoTexto
+            label="Texto do anúncio"
+            value={secao.config.texto}
+            placeholder="Frete grátis acima de R$ 200"
+            onChange={(texto) => onChange({ ...secao, config: { ...secao.config, texto } })}
+          />
+          <div className="flex flex-col gap-2">
+            <Label>Cor de fundo</Label>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={secao.config.corFundo ?? "#1c1917"}
+                onChange={(e) =>
+                  onChange({ ...secao, config: { ...secao.config, corFundo: e.target.value } })
+                }
+                className="h-9 w-12 rounded-md border"
+              />
+              <Input
+                value={secao.config.corFundo ?? ""}
+                placeholder="Padrão do tema"
+                onChange={(e) =>
+                  onChange({
+                    ...secao,
+                    config: { ...secao.config, corFundo: e.target.value || undefined },
+                  })
+                }
+              />
+            </div>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label>Cor do texto</Label>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={secao.config.corTexto ?? "#ffffff"}
+                onChange={(e) =>
+                  onChange({ ...secao, config: { ...secao.config, corTexto: e.target.value } })
+                }
+                className="h-9 w-12 rounded-md border"
+              />
+              <Input
+                value={secao.config.corTexto ?? ""}
+                placeholder="Padrão do tema"
+                onChange={(e) =>
+                  onChange({
+                    ...secao,
+                    config: { ...secao.config, corTexto: e.target.value || undefined },
+                  })
+                }
+              />
+            </div>
+          </div>
+          <SeletorAlinhamento
+            value={secao.config.alinhamento ?? "CENTRO"}
+            onChange={(alinhamento) => onChange({ ...secao, config: { ...secao.config, alinhamento } })}
+          />
+        </div>
       );
 
     case "CABECALHO":

@@ -183,7 +183,22 @@ export function PreviewTema({
             )}
           >
             {barraAnuncio.visivel && barraAnuncio.config.texto && (
-              <div className="bg-foreground text-background px-6 py-2 text-center text-xs">
+              <div
+                className={cn(
+                  "px-6 py-2 text-xs",
+                  !barraAnuncio.config.corFundo && "bg-foreground",
+                  !barraAnuncio.config.corTexto && "text-background",
+                  barraAnuncio.config.alinhamento === "ESQUERDA"
+                    ? "text-left"
+                    : barraAnuncio.config.alinhamento === "DIREITA"
+                      ? "text-right"
+                      : "text-center",
+                )}
+                style={{
+                  backgroundColor: barraAnuncio.config.corFundo,
+                  color: barraAnuncio.config.corTexto,
+                }}
+              >
                 {barraAnuncio.config.texto}
               </div>
             )}

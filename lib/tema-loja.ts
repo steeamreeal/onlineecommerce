@@ -50,6 +50,15 @@ export const secaoBarraAnuncioSchema = secaoBaseSchema.extend({
   tipo: z.literal("BARRA_ANUNCIO"),
   config: z.object({
     texto: z.string().trim().max(200),
+    corFundo: z
+      .string()
+      .regex(/^#[0-9A-Fa-f]{6}$/, "Informe uma cor no formato #RRGGBB")
+      .optional(),
+    corTexto: z
+      .string()
+      .regex(/^#[0-9A-Fa-f]{6}$/, "Informe uma cor no formato #RRGGBB")
+      .optional(),
+    alinhamento: alinhamentoTextoSchema.default("CENTRO"),
   }),
 });
 
@@ -237,7 +246,7 @@ export function criarTemaConfigPadrao(opcoes: {
 }): TemaConfig {
   return {
     secoes: [
-      { id: criarId(), tipo: "BARRA_ANUNCIO", visivel: false, config: { texto: "" } },
+      { id: criarId(), tipo: "BARRA_ANUNCIO", visivel: false, config: { texto: "", alinhamento: "CENTRO" } },
       {
         id: criarId(),
         tipo: "CABECALHO",

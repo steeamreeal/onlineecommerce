@@ -292,10 +292,26 @@ function SecaoTexto({ config }: { config: Extract<SecaoTema, { tipo: "TEXTO" }>[
   );
 }
 
+const classeAlinhamentoTextoSimples: Record<AlinhamentoTexto, string> = {
+  ESQUERDA: "text-left",
+  CENTRO: "text-center",
+  DIREITA: "text-right",
+};
+
 function SecaoBarraAnuncio({ config }: { config: Extract<SecaoTema, { tipo: "BARRA_ANUNCIO" }>["config"] }) {
   if (!config.texto) return null;
   return (
-    <div className="bg-foreground text-background px-6 py-2 text-center text-xs">{config.texto}</div>
+    <div
+      className={cn(
+        "px-6 py-2 text-xs",
+        !config.corFundo && "bg-foreground",
+        !config.corTexto && "text-background",
+        classeAlinhamentoTextoSimples[config.alinhamento ?? "CENTRO"],
+      )}
+      style={{ backgroundColor: config.corFundo, color: config.corTexto }}
+    >
+      {config.texto}
+    </div>
   );
 }
 
