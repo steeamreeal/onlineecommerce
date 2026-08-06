@@ -1,5 +1,9 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { useCart } from "@/components/store/cart-context";
 import type { RouterOutputs } from "@/lib/trpc/types";
 
 type Produto = RouterOutputs["lojaPublica"]["produtos"][number];
@@ -27,66 +31,146 @@ const precoPromoPorVariante: Record<Variante, string> = {
   editorial: "font-heading font-medium text-[var(--loja-primary)]",
 };
 
+function variacaoLabel(v: { cor?: string | null; tamanho?: string | null; modelo?: string | null }) {
+  return [v.cor, v.tamanho, v.modelo].filter(Boolean).join(" / ") || "Padrão";
+}
+
 export function ProductCard({
   produto,
   slug,
   variante = "minimalista",
+  mostrarPreco = true,
+  expandido = false,
 }: {
   produto: Produto;
   slug: string;
   variante?: Variante;
+  mostrarPreco?: boolean;
+  // Mostra a seleção de variação/adicionar ao carrinho sempre visível, sem
+  // depender de hover — usado no carrossel mobile (toque não tem hover).
+  expandido?: boolean;
 }) {
+  const { adicionarItem } = useCart();
   const precoNormal = Number(produto.precoNormal);
   const precoPromo = produto.precoPromo != null ? Number(produto.precoPromo) : undefined;
   const semEstoque = produto.variacoes.reduce((total, v) => total + v.estoque, 0) === 0;
+  const midias = [...produto.fotos].sort((a, b) => a.ordem - b.ordem);
   // Vídeo não autoplay numa grade de cards — prioriza a primeira imagem como
   // capa; se o produto só tiver vídeo cadastrado, cai pra ele mesmo assim.
-  const capa =
-    [...produto.fotos].sort((a, b) => a.ordem - b.ordem).find((f) => f.tipo === "IMAGEM") ??
-    produto.fotos[0];
+  const capa = midias.find((f) => f.tipo === "IMAGEM") ?? midias[0];
+  // Segunda foto cadastrada no produto — trocada no hover do card (desktop),
+  // igual à referência de mercado (Pandora). Sem segunda foto, o hover não
+  // troca de imagem, só revela a seleção de variação/adicionar ao carrinho.
+  const capaHover = midias.find((f) => f.id !== capa?.id && f.tipo === "IMAGEM");
+
+  const [variacaoId, setVariacaoId] = useState<string | undefined>(
+    produto.variacoes.find((v) => v.estoque > 0)?.id,
+  );
+  const variacaoSelecionada = produto.variacoes.find((v) => v.id === variacaoId);
+  const semVariacoes = produto.variacoes.length === 0;
+  const podeComprar = !semEstoque && (semVariacoes || Boolean(variacaoSelecionada));
+  const preco = precoPromo ?? precoNormal;
+
+  function handleAdicionar(e: React.MouseEvent) {
+    e.preventDefault();
+    if (!podeComprar) return;
+    adicionarItem({
+      produtoId: produto.id,
+      variacaoId: variacaoSelecionada?.id ?? produto.id,
+      quantidade: 1,
+      precoUnitario: preco,
+    });
+  }
 
   return (
-    <Link
-      href={`/loja/${slug}/produtos/${produto.id}`}
-      className={cn(
-        "group flex flex-col gap-2 transition-colors",
-        containerPorVariante[variante],
-      )}
-    >
-      <div className="bg-muted relative aspect-square overflow-hidden rounded-md">
-        {capa &&
-          (capa.tipo === "VIDEO" ? (
-            <video src={capa.url} className="size-full object-cover" muted />
-          ) : (
+    <div className={cn("group flex flex-col gap-2 transition-colors", containerPorVariante[variante])}>
+      <Link href={`/loja/${slug}/produtos/${produto.id}`} className="flex flex-col gap-2">
+        <div className="bg-muted relative aspect-square overflow-hidden rounded-md">
+          {capa &&
+            (capa.tipo === "VIDEO" ? (
+              <video src={capa.url} className="size-full object-cover" muted />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element -- URL dinâmica do Supabase Storage, sem domínio fixo para next/image
+              <img src={capa.url} alt={produto.nome} className="size-full object-cover" />
+            ))}
+          {capaHover && (
             // eslint-disable-next-line @next/next/no-img-element -- URL dinâmica do Supabase Storage, sem domínio fixo para next/image
-            <img src={capa.url} alt={produto.nome} className="size-full object-cover" />
-          ))}
-        {semEstoque && (
-          <span className="bg-background/90 absolute top-2 left-2 rounded-full border px-2 py-0.5 text-xs font-medium">
-            Esgotado
-          </span>
-        )}
-      </div>
-      <div className="flex flex-col gap-0.5">
-        <span
-          className={cn(
-            "line-clamp-2 text-sm",
-            variante === "editorial" ? "font-heading" : "font-medium",
+            <img
+              src={capaHover.url}
+              alt=""
+              aria-hidden
+              className="absolute inset-0 size-full object-cover opacity-0 transition-opacity duration-200 group-hover:opacity-100"
+            />
           )}
-        >
-          {produto.nome}
-        </span>
-        {precoPromo ? (
-          <div className="flex items-baseline gap-2">
-            <span className="text-muted-foreground text-xs line-through">
-              {formatoMoeda.format(precoNormal)}
+          {semEstoque && (
+            <span className="bg-background/90 absolute top-2 left-2 rounded-full border px-2 py-0.5 text-xs font-medium">
+              Esgotado
             </span>
-            <span className={precoPromoPorVariante[variante]}>{formatoMoeda.format(precoPromo)}</span>
-          </div>
-        ) : (
-          <span className="font-semibold">{formatoMoeda.format(precoNormal)}</span>
-        )}
-      </div>
-    </Link>
+          )}
+        </div>
+        <div className="flex flex-col gap-0.5">
+          <span
+            className={cn(
+              "line-clamp-2 text-sm",
+              variante === "editorial" ? "font-heading" : "font-medium",
+            )}
+          >
+            {produto.nome}
+          </span>
+          {mostrarPreco &&
+            (precoPromo ? (
+              <div className="flex items-baseline gap-2">
+                <span className="text-muted-foreground text-xs line-through">
+                  {formatoMoeda.format(precoNormal)}
+                </span>
+                <span className={precoPromoPorVariante[variante]}>{formatoMoeda.format(precoPromo)}</span>
+              </div>
+            ) : (
+              <span className="font-semibold">{formatoMoeda.format(precoNormal)}</span>
+            ))}
+        </div>
+      </Link>
+
+      {/* Revelado só no hover (desktop) — fora do <Link> pra cliques em
+          variação/carrinho não navegarem pra página do produto. */}
+      {!semEstoque && (
+        <div className={cn("flex-col gap-2", expandido ? "flex" : "hidden group-hover:flex")}>
+          {produto.variacoes.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {produto.variacoes.map((variacao) => {
+                const esgotada = variacao.estoque === 0;
+                const selecionada = variacao.id === variacaoId;
+                return (
+                  <button
+                    key={variacao.id}
+                    type="button"
+                    disabled={esgotada}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setVariacaoId(variacao.id);
+                    }}
+                    className={cn(
+                      "rounded-md border px-2 py-1 text-xs transition-colors",
+                      selecionada ? "border-[var(--loja-primary)] bg-[var(--loja-primary)]/5" : "hover:border-[var(--loja-primary)]/40",
+                      esgotada && "text-muted-foreground cursor-not-allowed line-through opacity-50",
+                    )}
+                  >
+                    {variacaoLabel(variacao)}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          <button
+            type="button"
+            disabled={!podeComprar}
+            onClick={handleAdicionar}
+            className="bg-foreground text-background w-full rounded-md py-1.5 text-xs font-medium disabled:opacity-50"
+          >
+            Adicionar ao carrinho
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
