@@ -371,6 +371,7 @@ export function EditorTema() {
         <PreviewTema
           slug={loja.slug}
           nomeLoja={loja.nome}
+          logoUrl={loja.logoUrl}
           secoes={tema.secoes}
           template={template}
           corPrimaria={tema.estilo.corPrimaria}

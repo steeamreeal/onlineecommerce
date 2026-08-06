@@ -37,6 +37,9 @@ export const secaoCabecalhoSchema = secaoBaseSchema.extend({
     mostrarBusca: z.boolean().default(true),
     mostrarConta: z.boolean().default(true),
     posicaoLogo: z.enum(["ESQUERDA", "CENTRO"]).default("ESQUERDA"),
+    // Se "LOGO" mas a loja não tem Loja.logoUrl cadastrada, o renderer cai
+    // para o nome — nunca deixa o cabeçalho sem identidade nenhuma.
+    exibicaoLogo: z.enum(["LOGO", "NOME"]).default("NOME"),
   }),
 });
 
@@ -187,7 +190,7 @@ export function criarTemaConfigPadrao(opcoes: {
         id: criarId(),
         tipo: "CABECALHO",
         visivel: true,
-        config: { mostrarBusca: true, mostrarConta: true, posicaoLogo: "ESQUERDA" },
+        config: { mostrarBusca: true, mostrarConta: true, posicaoLogo: "ESQUERDA", exibicaoLogo: "NOME" },
       },
       {
         id: criarId(),

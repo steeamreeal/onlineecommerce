@@ -12,16 +12,26 @@ import type { SecaoTema, TipoSecaoTema } from "@/lib/tema-loja";
 // representação estática que reflete a config, sem interatividade.
 function PreviewCabecalho({
   nome,
+  logoUrl,
+  exibicaoLogo,
   mostrarBusca,
   mostrarConta,
   posicaoLogo,
 }: {
   nome: string;
+  logoUrl: string | null | undefined;
+  exibicaoLogo: "LOGO" | "NOME";
   mostrarBusca: boolean;
   mostrarConta: boolean;
   posicaoLogo: "ESQUERDA" | "CENTRO";
 }) {
-  const logo = <span className="text-lg font-semibold">{nome}</span>;
+  const logo =
+    exibicaoLogo === "LOGO" && logoUrl ? (
+      // eslint-disable-next-line @next/next/no-img-element -- URL dinâmica do Supabase Storage
+      <img src={logoUrl} alt={nome} className="h-8 w-auto object-contain" />
+    ) : (
+      <span className="text-lg font-semibold">{nome}</span>
+    );
   const busca = mostrarBusca ? (
     <div className="border-input text-muted-foreground relative min-w-[160px] flex-1 rounded-md border px-3 py-1.5 text-sm">
       <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2" />
@@ -115,6 +125,7 @@ function PreviewRodape({
 export function PreviewTema({
   slug,
   nomeLoja,
+  logoUrl,
   secoes,
   template,
   corPrimaria,
@@ -123,6 +134,7 @@ export function PreviewTema({
 }: {
   slug: string;
   nomeLoja: string;
+  logoUrl: string | null | undefined;
   secoes: SecaoTema[];
   template: "MINIMALISTA" | "EDITORIAL" | "VITRINE";
   corPrimaria: string;
@@ -183,6 +195,8 @@ export function PreviewTema({
           >
             <PreviewCabecalho
               nome={nomeLoja}
+              logoUrl={logoUrl}
+              exibicaoLogo={cabecalho.config.exibicaoLogo ?? "NOME"}
               mostrarBusca={cabecalho.config.mostrarBusca ?? true}
               mostrarConta={cabecalho.config.mostrarConta ?? true}
               posicaoLogo={cabecalho.config.posicaoLogo ?? "ESQUERDA"}

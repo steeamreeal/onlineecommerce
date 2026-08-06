@@ -17,19 +17,28 @@ export function SiteHeader({
   mostrarBusca = true,
   mostrarConta = true,
   posicaoLogo = "ESQUERDA",
+  exibicaoLogo = "NOME",
 }: {
   slug: string;
   config: ConfiguracaoLoja;
   mostrarBusca?: boolean;
   mostrarConta?: boolean;
   posicaoLogo?: "ESQUERDA" | "CENTRO";
+  exibicaoLogo?: "LOGO" | "NOME";
 }) {
   const { quantidadeTotal, setAberto } = useCart();
   const { data: categorias } = trpc.lojaPublica.categorias.useQuery({ slug });
 
+  // "LOGO" sem Loja.logoUrl cadastrada cai para o nome — nunca deixa o
+  // cabeçalho sem nenhuma identidade da loja.
   const logo = (
-    <Link href={`/loja/${slug}`} className="text-lg font-semibold">
-      {config.nome}
+    <Link href={`/loja/${slug}`} className="flex items-center">
+      {exibicaoLogo === "LOGO" && config.logoUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element -- URL dinâmica do Supabase Storage, sem domínio fixo para next/image
+        <img src={config.logoUrl} alt={config.nome} className="h-8 w-auto object-contain" />
+      ) : (
+        <span className="text-lg font-semibold">{config.nome}</span>
+      )}
     </Link>
   );
 

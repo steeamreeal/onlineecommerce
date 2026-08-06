@@ -292,11 +292,13 @@ function EditorBannersHero({
 function FormularioSecao({
   secao,
   lojaId,
+  logoUrl,
   categorias,
   onChange,
 }: {
   secao: SecaoTema;
   lojaId: string | undefined;
+  logoUrl: string | null | undefined;
   categorias: { id: string; nome: string }[];
   onChange: (secao: SecaoTema) => void;
 }) {
@@ -314,6 +316,32 @@ function FormularioSecao({
     case "CABECALHO":
       return (
         <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <Label>Exibir no cabeçalho</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {(["NOME", "LOGO"] as const).map((opcao) => (
+                <button
+                  key={opcao}
+                  type="button"
+                  onClick={() => onChange({ ...secao, config: { ...secao.config, exibicaoLogo: opcao } })}
+                  className={cn(
+                    "rounded-md border px-2 py-2 text-xs font-medium transition-colors",
+                    secao.config.exibicaoLogo === opcao
+                      ? "border-primary ring-primary/30 ring-2"
+                      : "hover:border-primary/40",
+                  )}
+                >
+                  {opcao === "NOME" ? "Nome da loja" : "Logo"}
+                </button>
+              ))}
+            </div>
+            {secao.config.exibicaoLogo === "LOGO" && !logoUrl && (
+              <p className="text-muted-foreground text-xs">
+                Nenhuma logo cadastrada ainda — envie uma em Configurações → Loja. Até lá, o nome
+                da loja continua aparecendo no lugar.
+              </p>
+            )}
+          </div>
           <div className="flex flex-col gap-2">
             <Label>Posição da logo</Label>
             <div className="grid grid-cols-2 gap-2">
@@ -657,6 +685,7 @@ export function PainelPropriedades({
         <FormularioSecao
           secao={secaoSelecionada!}
           lojaId={loja?.id}
+          logoUrl={loja?.logoUrl}
           categorias={categorias}
           onChange={onChangeSecao}
         />

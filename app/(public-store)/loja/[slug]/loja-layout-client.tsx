@@ -79,6 +79,7 @@ export default function LojaLayoutClient({
           mostrarBusca={secaoCabecalho?.config.mostrarBusca}
           mostrarConta={secaoCabecalho?.config.mostrarConta}
           posicaoLogo={secaoCabecalho?.config.posicaoLogo}
+          exibicaoLogo={secaoCabecalho?.config.exibicaoLogo}
         />
         <main className="flex flex-1 flex-col">{children}</main>
         <SiteFooter
