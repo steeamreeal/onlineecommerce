@@ -193,6 +193,41 @@ export const adminRouter = router({
       return convite;
     }),
 
+  // Lista quem tem acesso a uma loja (equipe do lojista) — usada na tela de
+  // detalhe da loja no admin, principalmente pro resgate de emergência do
+  // papel de Dono abaixo.
+  listarUsuariosLoja: adminProcedure
+    .input(z.object({ lojaId: z.string() }))
+    .query(({ ctx, input }) => {
+      return ctx.prisma.usuarioLoja.findMany({
+        where: { lojaId: input.lojaId },
+        include: { usuario: { select: { nome: true, email: true } } },
+        orderBy: { createdAt: "asc" },
+      });
+    }),
+
+  // Resgate de emergência: o fluxo normal (usuariosLoja.alterarPapel) só
+  // deixa o próprio Dono transferir esse papel — se o lojista transferir
+  // sem querer pro usuário errado (ex.: um vendedor), ninguém dentro da
+  // loja consegue mais desfazer sozinho. O dono da plataforma pode corrigir
+  // aqui, contornando essa trava. Fora desse caso excepcional, a plataforma
+  // não deveria mexer nos papéis internos de uma loja.
+  definirDonoLoja: superAdminProcedure
+    .input(z.object({ usuarioLojaId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const vinculo = await ctx.prisma.usuarioLoja.findUnique({ where: { id: input.usuarioLojaId } });
+      if (!vinculo) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Usuário não encontrado nesta loja." });
+      }
+      return ctx.prisma.$transaction(async (tx) => {
+        await tx.usuarioLoja.updateMany({
+          where: { lojaId: vinculo.lojaId, papel: "DONO", id: { not: vinculo.id } },
+          data: { papel: "ADMINISTRADOR" },
+        });
+        return tx.usuarioLoja.update({ where: { id: input.usuarioLojaId }, data: { papel: "DONO" } });
+      });
+    }),
+
   bloquearLoja: superAdminProcedure
     .input(z.object({ id: z.string() }))
     .mutation(({ ctx, input }) => {

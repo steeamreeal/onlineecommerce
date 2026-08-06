@@ -2,14 +2,16 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Ban, CheckCircle2, Pencil, UserPlus } from "lucide-react";
+import { ArrowLeft, Ban, CheckCircle2, Crown, Pencil, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import { LojaStatusBadge } from "@/components/admin/loja-status-badge";
 import { EditarLojaDialog } from "@/components/admin/editar-loja-dialog";
 import { ConvidarAdminLojaDialog } from "@/components/admin/convidar-admin-loja-dialog";
+import { PAPEL_USUARIO_LABEL } from "@/lib/papel-usuario";
 import { trpc } from "@/lib/trpc/client";
 
 const formatoMoeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -24,6 +26,15 @@ export function LojaDetalhe({ lojaId }: { lojaId: string }) {
   const [editarAberto, setEditarAberto] = useState(false);
   const [convidarAberto, setConvidarAberto] = useState(false);
   const { data: loja, isLoading } = trpc.admin.obterLoja.useQuery({ id: lojaId });
+  const { data: usuariosLoja } = trpc.admin.listarUsuariosLoja.useQuery({ lojaId });
+
+  const definirDono = trpc.admin.definirDonoLoja.useMutation({
+    onSuccess: () => {
+      utils.admin.listarUsuariosLoja.invalidate({ lojaId });
+      toast.success("Dono da loja atualizado.");
+    },
+    onError: (erro) => toast.error(erro.message || "Não foi possível definir o dono da loja."),
+  });
 
   const bloquear = trpc.admin.bloquearLoja.useMutation({
     onSuccess: () => {
@@ -130,6 +141,52 @@ export function LojaDetalhe({ lojaId }: { lojaId: string }) {
           <p className="text-muted-foreground text-sm">{loja.numeroPedidos} pedidos</p>
         </div>
       </div>
+
+      {usuariosLoja && usuariosLoja.length > 0 && (
+        <div className="rounded-lg border p-4">
+          <h2 className="text-muted-foreground mb-3 text-sm font-medium">Equipe da loja</h2>
+          <div className="flex flex-col divide-y">
+            {usuariosLoja.map((vinculo) => {
+              const ehDono = vinculo.papel === "DONO";
+              return (
+                <div key={vinculo.id} className="flex items-center justify-between py-2">
+                  <div>
+                    <p className="font-medium">{vinculo.usuario.nome}</p>
+                    <p className="text-muted-foreground text-sm">{vinculo.usuario.email}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {ehDono ? (
+                      <Badge variant="secondary" className="gap-1">
+                        <Crown className="size-3.5" />
+                        Dono da loja
+                      </Badge>
+                    ) : (
+                      <>
+                        <span className="text-muted-foreground text-sm">
+                          {PAPEL_USUARIO_LABEL[vinculo.papel]}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={definirDono.isPending}
+                          onClick={() => definirDono.mutate({ usuarioLojaId: vinculo.id })}
+                        >
+                          <Crown className="size-4" />
+                          Definir como dono
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-muted-foreground mt-3 text-xs">
+            Use "Definir como dono" só em resgate de emergência — o normal é o próprio dono da loja
+            transferir esse papel pelo painel dele, em Configurações → Usuários.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
