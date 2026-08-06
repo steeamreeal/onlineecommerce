@@ -33,10 +33,11 @@ import {
 import { PAPEL_USUARIO_LABEL } from "@/lib/papel-usuario";
 import { trpc } from "@/lib/trpc/client";
 
-const papelSelectItems = Object.entries(PAPEL_USUARIO_LABEL).map(([value, label]) => ({
-  value,
-  label,
-}));
+// DONO nunca é atribuído por convite — só por transferência entre membros
+// já existentes (ver usuarios-lista.tsx).
+const papelSelectItems = Object.entries(PAPEL_USUARIO_LABEL)
+  .filter(([value]) => value !== "DONO")
+  .map(([value, label]) => ({ value, label }));
 
 const convidarSchema = z.object({
   email: z.string().email("Informe um e-mail válido"),
