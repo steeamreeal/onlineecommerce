@@ -35,9 +35,20 @@ export function CartSheet({ slug }: { slug: string }) {
               Seu carrinho está vazio.
             </div>
           ) : (
-            itensDetalhados.map((item) => (
+            itensDetalhados.map((item) => {
+              const midias = [...item.produto.fotos].sort((a, b) => a.ordem - b.ordem);
+              const capaPadrao = midias.find((f) => f.tipo === "IMAGEM") ?? midias[0];
+              const capa = item.variacao?.foto ?? capaPadrao;
+              return (
               <div key={item.variacaoId} className="flex gap-3 border-b pb-4">
-                <div className="bg-muted size-16 shrink-0 rounded-md" />
+                <div className="bg-muted relative size-16 shrink-0 overflow-hidden rounded-md">
+                  {capa &&
+                    (capa.tipo === "VIDEO" ? (
+                      <video src={capa.url} className="size-full object-cover" muted />
+                    ) : (
+                      <img src={capa.url} alt={item.produto.nome} className="size-full object-cover" />
+                    ))}
+                </div>
                 <div className="flex flex-1 flex-col gap-1">
                   <div className="flex items-start justify-between gap-2">
                     <span className="text-sm font-medium">{item.produto.nome}</span>
@@ -74,7 +85,8 @@ export function CartSheet({ slug }: { slug: string }) {
                   </div>
                 </div>
               </div>
-            ))
+              );
+            })
           )}
         </div>
 

@@ -30,9 +30,39 @@ const FORMAS_PAGAMENTO = [
 type Identificacao = { nome: string; telefone: string; email: string };
 type Entrega = {
   modo: "RETIRADA" | "ENTREGA";
-  endereco: string;
+  cep: string;
+  rua: string;
+  numero: string;
+  bairro: string;
+  cidade: string;
+  estado: string;
   freteId?: string;
 };
+
+const ENTREGA_VAZIA: Entrega = {
+  modo: "RETIRADA",
+  cep: "",
+  rua: "",
+  numero: "",
+  bairro: "",
+  cidade: "",
+  estado: "",
+};
+
+// ViaCEP não exige autenticação/chave — busca pública por CEP, usada só para
+// pré-preencher rua/bairro/cidade/UF; o cliente ainda confirma número e
+// complemento, que o CEP não sabe.
+async function buscarEnderecoPorCep(cep: string) {
+  const resposta = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+  const dados = await resposta.json();
+  if (dados.erro) return null;
+  return {
+    rua: dados.logradouro as string,
+    bairro: dados.bairro as string,
+    cidade: dados.localidade as string,
+    estado: dados.uf as string,
+  };
+}
 type Pagamento = {
   forma: (typeof FORMAS_PAGAMENTO)[number]["value"];
   cupomCodigo: string;
@@ -64,25 +94,11 @@ function OpcaoSelecionavel({
   );
 }
 
-// Endereço completo em uma linha "Rua, número, bairro, cidade/UF" é
-// quebrado nos campos exigidos pelo checkout.criarPedido; parsing best-effort
-// já que o formulário atual usa um único input de texto livre.
-function parseEndereco(texto: string) {
-  const partes = texto.split(",").map((p) => p.trim());
-  return {
-    rua: partes[0] || texto,
-    numero: partes[1] || undefined,
-    bairro: partes[2] || undefined,
-    cidade: partes[3] || "-",
-    estado: partes[4] || "-",
-    cep: "-",
-  };
-}
-
 export function CheckoutWizard({ slug }: { slug: string }) {
   const { itensDetalhados, subtotal, limparCarrinho, hidratado } = useCart();
   const [step, setStep] = useState(0);
   const [linkPagamento, setLinkPagamento] = useState<string | null | undefined>(undefined);
+  const [pedidoId, setPedidoId] = useState<string | null>(null);
   const [erroEnvio, setErroEnvio] = useState<string | null>(null);
 
   const { data: opcoesFrete } = trpc.lojaPublica.frete.useQuery({ slug });
@@ -103,10 +119,32 @@ export function CheckoutWizard({ slug }: { slug: string }) {
     telefone: "",
     email: "",
   });
-  const [entrega, setEntrega] = useState<Entrega>({ modo: "RETIRADA", endereco: "" });
+  const [entrega, setEntrega] = useState<Entrega>(ENTREGA_VAZIA);
+  const [buscandoCep, setBuscandoCep] = useState(false);
+  const [erroCep, setErroCep] = useState<string | null>(null);
   const [pagamento, setPagamento] = useState<Pagamento>({ forma: "PIX", cupomCodigo: "" });
   const [cupomAplicado, setCupomAplicado] = useState<Cupom | null>(null);
   const [erroCupom, setErroCupom] = useState<string | null>(null);
+
+  async function handleCepChange(valor: string) {
+    const cep = valor.replace(/\D/g, "").slice(0, 8);
+    setEntrega((v) => ({ ...v, cep }));
+    setErroCep(null);
+    if (cep.length !== 8) return;
+    setBuscandoCep(true);
+    try {
+      const endereco = await buscarEnderecoPorCep(cep);
+      if (!endereco) {
+        setErroCep("CEP não encontrado.");
+        return;
+      }
+      setEntrega((v) => ({ ...v, ...endereco }));
+    } catch {
+      setErroCep("Não foi possível buscar o CEP. Preencha o endereço manualmente.");
+    } finally {
+      setBuscandoCep(false);
+    }
+  }
 
   const utils = trpc.useUtils();
 
@@ -166,7 +204,14 @@ export function CheckoutWizard({ slug }: { slug: string }) {
     }
     if (step === 1) {
       if (entrega.modo === "RETIRADA") return true;
-      return entrega.endereco.trim().length > 5 && Boolean(entrega.freteId);
+      return (
+        entrega.cep.length === 8 &&
+        entrega.rua.trim().length > 0 &&
+        entrega.numero.trim().length > 0 &&
+        entrega.cidade.trim().length > 0 &&
+        entrega.estado.trim().length > 0 &&
+        Boolean(entrega.freteId)
+      );
     }
     return true;
   }
@@ -182,7 +227,17 @@ export function CheckoutWizard({ slug }: { slug: string }) {
           email: identificacao.email.trim() || undefined,
         },
         modoEntrega: entrega.modo,
-        endereco: entrega.modo === "ENTREGA" ? parseEndereco(entrega.endereco) : undefined,
+        endereco:
+          entrega.modo === "ENTREGA"
+            ? {
+                cep: entrega.cep,
+                rua: entrega.rua.trim(),
+                numero: entrega.numero.trim(),
+                bairro: entrega.bairro.trim() || undefined,
+                cidade: entrega.cidade.trim(),
+                estado: entrega.estado.trim(),
+              }
+            : undefined,
         freteId: entrega.modo === "ENTREGA" ? entrega.freteId : undefined,
         formaPagamento: formaPagamentoEfetiva,
         itens: itensDetalhados.map((item) => ({
@@ -193,6 +248,7 @@ export function CheckoutWizard({ slug }: { slug: string }) {
         cupomCodigo: cupomAplicado?.codigo,
       });
       setLinkPagamento(resultado.linkPagamento);
+      setPedidoId(resultado.pedido.id);
       limparCarrinho();
     } catch (erro) {
       // Erros de validação do checkout (ex.: "loja não configurou o
@@ -237,9 +293,18 @@ export function CheckoutWizard({ slug }: { slug: string }) {
             Pagar agora
           </Button>
         )}
+        {pedidoId && (
+          <Button
+            nativeButton={false}
+            variant="outline"
+            render={<Link href={`/loja/${slug}/pedido/${pedidoId}`} />}
+          >
+            Acompanhar meu pedido
+          </Button>
+        )}
         <Button
           nativeButton={false}
-          variant={linkPagamento ? "outline" : "default"}
+          variant={linkPagamento || pedidoId ? "outline" : "default"}
           render={<Link href={`/loja/${slug}`} />}
         >
           Voltar para a loja
@@ -308,7 +373,7 @@ export function CheckoutWizard({ slug }: { slug: string }) {
             <OpcaoSelecionavel
               className="flex-1 py-3"
               selecionada={entrega.modo === "RETIRADA"}
-              onClick={() => setEntrega({ modo: "RETIRADA", endereco: "" })}
+              onClick={() => setEntrega({ ...ENTREGA_VAZIA, modo: "RETIRADA" })}
             >
               <span className="font-medium">Retirar na loja</span>
               <p className="text-muted-foreground text-xs">Sem custo de frete</p>
@@ -326,13 +391,62 @@ export function CheckoutWizard({ slug }: { slug: string }) {
           {entrega.modo === "ENTREGA" && (
             <>
               <div className="flex flex-col gap-1.5">
-                <Label>Endereço completo</Label>
+                <Label>CEP</Label>
                 <Input
-                  value={entrega.endereco}
-                  onChange={(e) => setEntrega((v) => ({ ...v, endereco: e.target.value }))}
-                  placeholder="Rua, número, bairro, cidade/UF"
+                  value={entrega.cep}
+                  onChange={(e) => handleCepChange(e.target.value)}
+                  placeholder="00000-000"
+                  inputMode="numeric"
+                  maxLength={8}
                 />
+                {buscandoCep && (
+                  <span className="text-muted-foreground text-xs">Buscando endereço...</span>
+                )}
+                {erroCep && <span className="text-destructive text-xs">{erroCep}</span>}
               </div>
+
+              {entrega.rua && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="col-span-2 flex flex-col gap-1.5">
+                    <Label>Rua</Label>
+                    <Input
+                      value={entrega.rua}
+                      onChange={(e) => setEntrega((v) => ({ ...v, rua: e.target.value }))}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label>Número</Label>
+                    <Input
+                      value={entrega.numero}
+                      onChange={(e) => setEntrega((v) => ({ ...v, numero: e.target.value }))}
+                      autoFocus
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label>Bairro</Label>
+                    <Input
+                      value={entrega.bairro}
+                      onChange={(e) => setEntrega((v) => ({ ...v, bairro: e.target.value }))}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label>Cidade</Label>
+                    <Input
+                      value={entrega.cidade}
+                      onChange={(e) => setEntrega((v) => ({ ...v, cidade: e.target.value }))}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label>UF</Label>
+                    <Input
+                      value={entrega.estado}
+                      onChange={(e) => setEntrega((v) => ({ ...v, estado: e.target.value }))}
+                      maxLength={2}
+                    />
+                  </div>
+                </div>
+              )}
+
               <div className="flex flex-col gap-2">
                 <Label>Forma de envio</Label>
                 {opcoesFreteAtivas
@@ -434,7 +548,7 @@ export function CheckoutWizard({ slug }: { slug: string }) {
             <p>
               {entrega.modo === "RETIRADA"
                 ? "Retirada na loja"
-                : `Entrega: ${entrega.endereco} — ${freteEscolhido?.nome ?? ""}`}
+                : `Entrega: ${entrega.rua}, ${entrega.numero} — ${entrega.bairro}, ${entrega.cidade}/${entrega.estado} — ${freteEscolhido?.nome ?? ""}`}
             </p>
           </div>
           {erroEnvio && <span className="text-destructive text-xs">{erroEnvio}</span>}

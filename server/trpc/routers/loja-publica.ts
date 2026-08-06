@@ -100,6 +100,26 @@ export const lojaPublicaRouter = router({
       });
     }),
 
+  // Sem login de cliente final, o id do pedido (UUID) funciona como a
+  // "senha" implícita do link de acompanhamento — por isso nunca listamos
+  // pedidos por telefone/CPF aqui, só busca pontual por id já conhecido.
+  pedidoPorId: publicProcedure
+    .input(z.object({ slug: z.string(), id: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const loja = await resolverLojaPorSlug(ctx.prisma, input.slug);
+      const pedido = await ctx.prisma.pedido.findFirst({
+        where: { id: input.id, lojaId: loja.id },
+        include: {
+          itens: { include: { produto: true, variacao: true } },
+          cliente: { include: { enderecos: true } },
+        },
+      });
+      if (!pedido) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Pedido não encontrado." });
+      }
+      return pedido;
+    }),
+
   validarCupom: publicProcedure
     .input(
       z.object({
