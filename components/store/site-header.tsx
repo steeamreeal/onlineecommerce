@@ -9,7 +9,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { cn } from "@/lib/utils";
 import { useCart } from "@/components/store/cart-context";
 import { trpc } from "@/lib/trpc/client";
-import { alturaLogoEmPx } from "@/lib/tema-loja";
+import { alturaLogoEmPx, espacamentoCabecalhoEmPx } from "@/lib/tema-loja";
 import type { RouterOutputs } from "@/lib/trpc/types";
 
 type ConfiguracaoLoja = RouterOutputs["lojaPublica"]["porSlug"];
@@ -22,6 +22,7 @@ export function SiteHeader({
   posicaoLogo = "ESQUERDA",
   exibicaoLogo = "NOME",
   tamanhoLogo = 40,
+  espacamentoLinhas = 20,
   corFundo,
   corTexto,
 }: {
@@ -32,6 +33,7 @@ export function SiteHeader({
   posicaoLogo?: "ESQUERDA" | "CENTRO";
   exibicaoLogo?: "LOGO" | "NOME";
   tamanhoLogo?: number;
+  espacamentoLinhas?: number;
   corFundo?: string;
   corTexto?: string;
 }) {
@@ -117,7 +119,12 @@ export function SiteHeader({
           <div className="flex flex-1 items-center justify-end gap-4">{acoes}</div>
         </div>
         {(categorias ?? []).length > 0 && (
-          <div className="flex items-center justify-center gap-4 px-6 pt-1 pb-3">{nav}</div>
+          <div
+            className="flex items-center justify-center gap-4 px-6 pb-3"
+            style={{ paddingTop: espacamentoCabecalhoEmPx(espacamentoLinhas) }}
+          >
+            {nav}
+          </div>
         )}
       </div>
     ) : (
@@ -128,7 +135,12 @@ export function SiteHeader({
           {acoes}
         </div>
         {(categorias ?? []).length > 0 && (
-          <div className="flex items-center justify-center gap-4 px-6 pt-1 pb-3">{nav}</div>
+          <div
+            className="flex items-center justify-center gap-4 px-6 pb-3"
+            style={{ paddingTop: espacamentoCabecalhoEmPx(espacamentoLinhas) }}
+          >
+            {nav}
+          </div>
         )}
       </div>
     );

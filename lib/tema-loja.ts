@@ -86,6 +86,19 @@ export function arredondamentoBotaoEmPx(tamanho: number | undefined): number | u
   return (tamanho / 100) * 24;
 }
 
+// Faixa de espaço vertical (px) que o slider 0-100 de espaçamento entre as
+// linhas do cabeçalho cobre.
+export const ESPACAMENTO_CABECALHO_MIN_PX = 0;
+export const ESPACAMENTO_CABECALHO_MAX_PX = 48;
+
+export function espacamentoCabecalhoEmPx(espacamento: number | undefined): number {
+  const e = espacamento ?? 20;
+  return (
+    ESPACAMENTO_CABECALHO_MIN_PX +
+    (e / 100) * (ESPACAMENTO_CABECALHO_MAX_PX - ESPACAMENTO_CABECALHO_MIN_PX)
+  );
+}
+
 // Largura mínima de cada card de produto na grade (CSS grid auto-fill) —
 // 0 = cards pequenos, mais colunas; 100 = cards grandes, menos colunas.
 const TAMANHO_IMAGEM_MIN_PX = 130;
@@ -202,6 +215,10 @@ export const secaoCabecalhoSchema = secaoBaseSchema.extend({
     // ALTURA_LOGO_MIN_PX/ALTURA_LOGO_MAX_PX) — só tem efeito quando
     // exibicaoLogo é "LOGO".
     tamanhoLogo: z.number().min(0).max(100).default(40),
+    // Escala 0-100 mapeada para o espaço vertical (px) entre a linha de
+    // logo/busca e a linha de categorias no layout desktop (ver
+    // ESPACAMENTO_CABECALHO_MIN_PX/MAX_PX) — sem efeito no mobile.
+    espacamentoLinhas: z.number().min(0).max(100).default(20),
     corFundo: z
       .string()
       .regex(/^#[0-9A-Fa-f]{6}$/, "Informe uma cor no formato #RRGGBB")
@@ -434,6 +451,7 @@ export function criarTemaConfigPadrao(opcoes: {
           posicaoLogo: "ESQUERDA",
           exibicaoLogo: "NOME",
           tamanhoLogo: 40,
+          espacamentoLinhas: 20,
         },
       },
       {
