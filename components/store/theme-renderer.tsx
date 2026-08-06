@@ -284,7 +284,16 @@ function SecaoColecaoDestaque({
     <>
       {produtos.length > 0 && (
         <section className="flex flex-col gap-4 px-6">
-          <div className={cn("flex", classeAlinhamento(config.alinhamento))}>
+          <div
+            className={cn(
+              "flex",
+              config.alinhamento === "CENTRO"
+                ? "justify-center"
+                : config.alinhamento === "DIREITA"
+                  ? "justify-end"
+                  : "justify-start",
+            )}
+          >
             <h2 className={cn(tituloSecaoClassePorVariante[variante], classeAlinhamento(config.alinhamento))}>
               {config.titulo}
             </h2>
