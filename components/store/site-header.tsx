@@ -23,6 +23,7 @@ export function SiteHeader({
   exibicaoLogo = "NOME",
   tamanhoLogo = 40,
   corFundo,
+  corTexto,
 }: {
   slug: string;
   config: ConfiguracaoLoja;
@@ -32,6 +33,7 @@ export function SiteHeader({
   exibicaoLogo?: "LOGO" | "NOME";
   tamanhoLogo?: number;
   corFundo?: string;
+  corTexto?: string;
 }) {
   const { quantidadeTotal, setAberto } = useCart();
   const { data: categorias } = trpc.lojaPublica.categorias.useQuery({ slug });
@@ -52,7 +54,9 @@ export function SiteHeader({
           style={{ height: alturaLogoEmPx(tamanhoLogo) }}
         />
       ) : (
-        <span className="text-lg font-semibold">{config.nome}</span>
+        <span className="text-lg font-semibold" style={corTexto ? { color: corTexto } : undefined}>
+          {config.nome}
+        </span>
       )}
     </Link>
   );
@@ -70,7 +74,8 @@ export function SiteHeader({
         <Link
           key={categoria.id}
           href={`/loja/${slug}/produtos?categoria=${categoria.id}`}
-          className="text-muted-foreground hover:text-foreground"
+          className={cn(!corTexto && "text-muted-foreground hover:text-foreground")}
+          style={corTexto ? { color: corTexto } : undefined}
         >
           {categoria.nome}
         </Link>
@@ -159,7 +164,7 @@ export function SiteHeader({
   return (
     <div
       className={cn("sticky top-0 z-40 border-b", !corFundo && "bg-background")}
-      style={corFundo ? { backgroundColor: corFundo } : undefined}
+      style={{ backgroundColor: corFundo, color: corTexto }}
     >
       {desktop}
       {mobile}

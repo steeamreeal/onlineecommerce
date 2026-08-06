@@ -16,6 +16,8 @@ export function ProductCarousel({
   variante,
   mostrarPreco,
   mostrarComprar = true,
+  corBotao,
+  corTextoBotao,
 }: {
   produtos: Produto[];
   slug: string;
@@ -25,6 +27,8 @@ export function ProductCarousel({
   // "Adicionar ao carrinho") — toque não tem hover pra revelar isso depois,
   // então aqui é tudo ou nada, controlado direto por esse prop.
   mostrarComprar?: boolean;
+  corBotao?: string;
+  corTextoBotao?: string;
 }) {
   const trilhaRef = useRef<HTMLDivElement>(null);
   const [indiceAtual, setIndiceAtual] = useState(0);
@@ -62,6 +66,8 @@ export function ProductCarousel({
               variante={variante}
               mostrarPreco={mostrarPreco}
               expandido={mostrarComprar}
+              corBotao={corBotao}
+              corTextoBotao={corTextoBotao}
             />
           </div>
         ))}
