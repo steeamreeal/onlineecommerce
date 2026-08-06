@@ -328,63 +328,61 @@ function EditorBannersHero({
       <div className="flex flex-col gap-4">
         {banners.map((banner, i) => (
           <div key={banner.id ?? banner.url} className="flex flex-col gap-3 rounded-md border p-3">
-            <div className="flex items-start gap-3">
-              <div className="flex flex-col gap-1">
-                <p className="text-muted-foreground text-xs font-medium">Desktop</p>
-                <div className="relative shrink-0">
-                  {banner.tipo === "VIDEO" ? (
-                    <video src={banner.url} className="aspect-[3/1] w-28 rounded-md border object-cover" muted />
+            <div className="flex flex-col gap-1">
+              <p className="text-muted-foreground text-xs font-medium">Desktop</p>
+              <div className="relative">
+                {banner.tipo === "VIDEO" ? (
+                  <video src={banner.url} className="aspect-[3/1] w-full rounded-md border object-cover" muted />
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element -- URL dinâmica do Supabase Storage
+                  <img src={banner.url} alt="" className="aspect-[3/1] w-full rounded-md border object-cover" />
+                )}
+                <button
+                  type="button"
+                  onClick={() => onChange(banners.filter((_, idx) => idx !== i))}
+                  className="bg-destructive text-destructive-foreground absolute -top-1.5 -right-1.5 rounded-full p-1"
+                  aria-label="Remover banner"
+                >
+                  <X className="size-3.5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <p className="text-muted-foreground text-xs font-medium">
+                Mobile <span className="font-normal">(opcional)</span>
+              </p>
+              {banner.urlMobile ? (
+                <div className="relative w-32">
+                  {banner.tipoMobile === "VIDEO" ? (
+                    <video src={banner.urlMobile} className="aspect-[4/5] w-full rounded-md border object-cover" muted />
                   ) : (
                     // eslint-disable-next-line @next/next/no-img-element -- URL dinâmica do Supabase Storage
-                    <img src={banner.url} alt="" className="aspect-[3/1] w-28 rounded-md border object-cover" />
+                    <img src={banner.urlMobile} alt="" className="aspect-[4/5] w-full rounded-md border object-cover" />
                   )}
                   <button
                     type="button"
-                    onClick={() => onChange(banners.filter((_, idx) => idx !== i))}
-                    className="bg-destructive text-destructive-foreground absolute -top-1.5 -right-1.5 rounded-full p-0.5"
+                    onClick={() => atualizarBanner(i, { urlMobile: undefined, tipoMobile: undefined })}
+                    className="bg-destructive text-destructive-foreground absolute -top-1.5 -right-1.5 rounded-full p-1"
+                    aria-label="Remover versão mobile"
                   >
-                    <X className="size-3" />
+                    <X className="size-3.5" />
                   </button>
                 </div>
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <p className="text-muted-foreground text-xs font-medium">
-                  Mobile <span className="font-normal">(opcional)</span>
-                </p>
-                {banner.urlMobile ? (
-                  <div className="relative w-16">
-                    {banner.tipoMobile === "VIDEO" ? (
-                      <video src={banner.urlMobile} className="aspect-[4/5] w-full rounded-md border object-cover" muted />
-                    ) : (
-                      // eslint-disable-next-line @next/next/no-img-element -- URL dinâmica do Supabase Storage
-                      <img src={banner.urlMobile} alt="" className="aspect-[4/5] w-full rounded-md border object-cover" />
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => atualizarBanner(i, { urlMobile: undefined, tipoMobile: undefined })}
-                      className="bg-destructive text-destructive-foreground absolute -top-1.5 -right-1.5 rounded-full p-0.5"
-                      aria-label="Remover versão mobile"
-                    >
-                      <X className="size-3" />
-                    </button>
-                  </div>
-                ) : (
-                  <label className="border-input hover:bg-accent flex aspect-[4/5] w-16 cursor-pointer flex-col items-center justify-center gap-1 rounded-md border border-dashed text-[9px] has-disabled:pointer-events-none has-disabled:opacity-50">
-                    <Upload className="size-3" />
-                    {enviandoMobileIndex === i ? "..." : "Add"}
-                    <input
-                      type="file"
-                      accept="image/*,video/mp4,video/webm"
-                      className="hidden"
-                      disabled={enviandoMobileIndex !== null || !lojaId}
-                      onChange={(e) => handleUploadMobile(i, e)}
-                    />
-                  </label>
-                )}
-              </div>
-
-              <p className="text-muted-foreground pt-1 text-xs">
+              ) : (
+                <label className="border-input hover:bg-accent flex aspect-[4/5] w-32 cursor-pointer flex-col items-center justify-center gap-1 rounded-md border border-dashed text-[10px] has-disabled:pointer-events-none has-disabled:opacity-50">
+                  <Upload className="size-4" />
+                  {enviandoMobileIndex === i ? "Enviando..." : "Adicionar"}
+                  <input
+                    type="file"
+                    accept="image/*,video/mp4,video/webm"
+                    className="hidden"
+                    disabled={enviandoMobileIndex !== null || !lojaId}
+                    onChange={(e) => handleUploadMobile(i, e)}
+                  />
+                </label>
+              )}
+              <p className="text-muted-foreground text-xs">
                 Conteúdo exclusivo deste banner — não aparece nos outros. Sem imagem mobile, usa a
                 de desktop também no celular.
               </p>

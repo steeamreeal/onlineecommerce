@@ -24,7 +24,6 @@ import { enviarLogoLoja } from "@/lib/supabase/storage";
 import { CORES_PRIMARIAS_SUGERIDAS } from "@/lib/cores-loja";
 import { DominioProprioForm } from "@/components/dashboard/dominio-proprio-form";
 import { TemplateLojaForm } from "@/components/dashboard/template-loja-form";
-import { BannersLojaForm } from "@/components/dashboard/banners-loja-form";
 
 const lojaSchema = z.object({
   corPrimaria: z
@@ -313,19 +312,6 @@ export function LojaForm() {
           </div>
         </form>
       </Form>
-
-      <Separator />
-
-      <section className="flex flex-col gap-4">
-        <h2 className="text-lg font-medium">Banners</h2>
-        <p className="text-muted-foreground text-sm">
-          Até 3 banners (imagem ou vídeo). O primeiro é usado como destaque na página inicial da
-          loja. Proporção recomendada: 3:1 no computador (ex.: 1800×600px) e 4:5 no celular
-          (ex.: 900×1125px) — envie uma versão mobile separada em cada banner se quiser uma
-          imagem diferente para telas pequenas. Vídeos em MP4/WEBM, até 20MB.
-        </p>
-        <BannersLojaForm />
-      </section>
 
       <Separator />
 
