@@ -1025,10 +1025,39 @@ function FormularioSecao({
             checked={secao.config.linkVerTudo}
             onChange={(linkVerTudo) => onChange({ ...secao, config: { ...secao.config, linkVerTudo } })}
           />
+          <CampoSwitch
+            label="Mostrar preço dos produtos"
+            checked={secao.config.mostrarPreco ?? true}
+            onChange={(mostrarPreco) => onChange({ ...secao, config: { ...secao.config, mostrarPreco } })}
+          />
           <SeletorAlinhamento
             value={secao.config.alinhamento ?? "ESQUERDA"}
             onChange={(alinhamento) => onChange({ ...secao, config: { ...secao.config, alinhamento } })}
           />
+          <div className="flex flex-col gap-2">
+            <Label>Layout no mobile</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {(["GRADE", "CARROSSEL"] as const).map((layout) => (
+                <button
+                  key={layout}
+                  type="button"
+                  onClick={() => onChange({ ...secao, config: { ...secao.config, layoutMobile: layout } })}
+                  className={cn(
+                    "rounded-md border px-2 py-2 text-xs font-medium transition-colors",
+                    (secao.config.layoutMobile ?? "GRADE") === layout
+                      ? "border-primary ring-primary/30 ring-2"
+                      : "hover:border-primary/40",
+                  )}
+                >
+                  {layout === "GRADE" ? "Grade" : "Carrossel"}
+                </button>
+              ))}
+            </div>
+            <p className="text-muted-foreground text-xs">
+              Carrossel mostra um produto por vez, com variação e "Adicionar ao carrinho" já
+              visíveis — só afeta o mobile, o desktop sempre usa grade.
+            </p>
+          </div>
         </div>
       );
 

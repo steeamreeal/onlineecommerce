@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ProductCard } from "@/components/store/product-card";
+import { ProductCarousel } from "@/components/store/product-carousel";
 import { BannerCarousel } from "@/components/store/banner-carousel";
 import { cn } from "@/lib/utils";
 import { FONTE_CSS_VAR, tamanhoFonteEmPx, paddingBotaoEmPx, arredondamentoBotaoEmPx } from "@/lib/tema-loja";
@@ -327,11 +328,13 @@ function SecaoColecaoDestaque({
   config,
   slug,
   destaques,
+  viewport,
 }: {
   variante: Variante;
   config: Extract<SecaoTema, { tipo: "COLECAO_DESTAQUE" }>["config"];
   slug: string;
   destaques: Produto[];
+  viewport?: "DESKTOP" | "MOBILE";
 }) {
   let produtos = config.categoriaId
     ? destaques.filter((p) => p.categoria?.id === config.categoriaId)
@@ -349,6 +352,17 @@ function SecaoColecaoDestaque({
   if (config.quantidade) {
     produtos = produtos.slice(0, config.quantidade);
   }
+
+  const mostrarPreco = config.mostrarPreco ?? true;
+  const variantLower = variante.toLowerCase() as "minimalista" | "editorial" | "vitrine";
+  const layoutCarrossel = config.layoutMobile === "CARROSSEL";
+  // No preview do editor (viewport definido) a simulação de mobile é um
+  // container estreito, não a largura real da janela — as classes
+  // max-md:/md: do Tailwind não reagem a isso, então a decisão de qual
+  // bloco (grade ou carrossel) aparece precisa ser explícita ali. No site
+  // público (viewport undefined) os dois blocos existem e o CSS decide.
+  const exibirGrade = viewport ? viewport === "DESKTOP" || !layoutCarrossel : true;
+  const exibirCarrossel = layoutCarrossel && (viewport ? viewport === "MOBILE" : true);
 
   return (
     <>
@@ -368,16 +382,24 @@ function SecaoColecaoDestaque({
               {config.titulo}
             </h2>
           </div>
-          <div className={gridProdutosClassePorVariante[variante]}>
-            {produtos.map((produto) => (
-              <ProductCard
-                key={produto.id}
-                produto={produto}
-                slug={slug}
-                variante={variante.toLowerCase() as "minimalista" | "editorial" | "vitrine"}
-              />
-            ))}
-          </div>
+          {exibirGrade && (
+            <div className={cn(gridProdutosClassePorVariante[variante], layoutCarrossel && "max-md:hidden")}>
+              {produtos.map((produto) => (
+                <ProductCard
+                  key={produto.id}
+                  produto={produto}
+                  slug={slug}
+                  variante={variantLower}
+                  mostrarPreco={mostrarPreco}
+                />
+              ))}
+            </div>
+          )}
+          {exibirCarrossel && (
+            <div className={viewport ? undefined : "md:hidden"}>
+              <ProductCarousel produtos={produtos} slug={slug} variante={variantLower} mostrarPreco={mostrarPreco} />
+            </div>
+          )}
           {config.linkVerTudo && (
             <div
               className={cn(
@@ -492,6 +514,7 @@ export function ThemeRenderer({
                 config={secao.config}
                 slug={slug}
                 destaques={destaques}
+                viewport={viewport}
               />
             );
           case "TEXTO":

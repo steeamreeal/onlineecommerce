@@ -200,6 +200,11 @@ export const secaoColecaoDestaqueSchema = secaoBaseSchema.extend({
     produtosSelecionados: z.array(z.string()).optional(),
     linkVerTudo: z.boolean().default(true),
     alinhamento: alinhamentoTextoSchema.default("ESQUERDA"),
+    mostrarPreco: z.boolean().default(true),
+    // No mobile, "CARROSSEL" mostra um produto por vez (estilo Pandora: foto
+    // grande, variação e adicionar ao carrinho já visíveis), em vez da
+    // grade normal. Desktop sempre usa grade, independente dessa opção.
+    layoutMobile: z.enum(["GRADE", "CARROSSEL"]).default("GRADE"),
   }),
 });
 
@@ -369,7 +374,13 @@ export function criarTemaConfigPadrao(opcoes: {
         id: criarId(),
         tipo: "COLECAO_DESTAQUE",
         visivel: true,
-        config: { titulo: "Produtos", linkVerTudo: true, alinhamento: "ESQUERDA" },
+        config: {
+          titulo: "Produtos",
+          linkVerTudo: true,
+          alinhamento: "ESQUERDA",
+          mostrarPreco: true,
+          layoutMobile: "GRADE",
+        },
       },
       {
         id: criarId(),

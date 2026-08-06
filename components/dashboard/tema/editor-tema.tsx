@@ -70,7 +70,13 @@ function novaSecao(tipo: TipoSecaoTema): SecaoTema {
         id,
         tipo,
         visivel: true,
-        config: { titulo: "Produtos", linkVerTudo: true, alinhamento: "ESQUERDA" },
+        config: {
+          titulo: "Produtos",
+          linkVerTudo: true,
+          alinhamento: "ESQUERDA",
+          mostrarPreco: true,
+          layoutMobile: "GRADE",
+        },
       };
     case "TEXTO":
       return { id, tipo, visivel: true, config: { corpo: "", alinhamento: "ESQUERDA" } };
