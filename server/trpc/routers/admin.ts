@@ -179,7 +179,15 @@ export const adminRouter = router({
         throw new TRPCError({ code: "CONFLICT", message: "Este e-mail já tem acesso a esta loja." });
       }
 
-      const token = randomBytes(32).toString("hex");
+      // Reenviar convite (mesmo e-mail, ainda não aceito) reaproveita o token
+      // existente — só renova prazo/papel. Gerar um token novo invalidaria
+      // silenciosamente o link já enviado por e-mail antes de expirar de
+      // verdade (quem clicasse no link antigo via "convite inválido").
+      const conviteExistente = await ctx.prisma.conviteUsuarioLoja.findUnique({
+        where: { lojaId_email: { lojaId: input.lojaId, email } },
+      });
+      const token =
+        conviteExistente && !conviteExistente.aceitoEm ? conviteExistente.token : randomBytes(32).toString("hex");
       const expiraEm = new Date(Date.now() + CONVITE_VALIDADE_HORAS * 60 * 60 * 1000);
 
       const convite = await ctx.prisma.conviteUsuarioLoja.upsert({
