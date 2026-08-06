@@ -195,3 +195,12 @@ export function useCart() {
   if (!context) throw new Error("useCart deve ser usado dentro de um CartProvider");
   return context;
 }
+
+// Versão que não derruba a árvore quando não há CartProvider por perto —
+// usada por componentes reaproveitados fora do site público (ex.:
+// ProductCard no preview do editor de tema, que roda sem CartProvider de
+// propósito: a prévia é estática, e o slug ali pode nem ser de uma loja
+// publicada ainda, então nunca faz sentido escrever num carrinho real).
+export function useCartOpcional() {
+  return useContext(CartContext);
+}

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { useCart } from "@/components/store/cart-context";
+import { useCartOpcional } from "@/components/store/cart-context";
 import type { RouterOutputs } from "@/lib/trpc/types";
 
 type Produto = RouterOutputs["lojaPublica"]["produtos"][number];
@@ -50,7 +50,12 @@ export function ProductCard({
   // depender de hover — usado no carrossel mobile (toque não tem hover).
   expandido?: boolean;
 }) {
-  const { adicionarItem } = useCart();
+  // Opcional (não obrigatório) porque esse card também é renderizado no
+  // preview do editor de tema, que roda sem CartProvider de propósito — lá
+  // o bloco de variação/adicionar ao carrinho abaixo simplesmente não
+  // aparece, em vez de derrubar a página inteira com "useCart deve ser
+  // usado dentro de um CartProvider".
+  const cart = useCartOpcional();
   const precoNormal = Number(produto.precoNormal);
   const precoPromo = produto.precoPromo != null ? Number(produto.precoPromo) : undefined;
   const semEstoque = produto.variacoes.reduce((total, v) => total + v.estoque, 0) === 0;
@@ -73,8 +78,8 @@ export function ProductCard({
 
   function handleAdicionar(e: React.MouseEvent) {
     e.preventDefault();
-    if (!podeComprar) return;
-    adicionarItem({
+    if (!podeComprar || !cart) return;
+    cart.adicionarItem({
       produtoId: produto.id,
       variacaoId: variacaoSelecionada?.id ?? produto.id,
       quantidade: 1,
@@ -132,8 +137,10 @@ export function ProductCard({
       </Link>
 
       {/* Revelado só no hover (desktop) — fora do <Link> pra cliques em
-          variação/carrinho não navegarem pra página do produto. */}
-      {!semEstoque && (
+          variação/carrinho não navegarem pra página do produto. Sem
+          CartProvider por perto (preview do editor de tema), cart é null e
+          esse bloco não aparece. */}
+      {!semEstoque && cart && (
         <div className={cn("flex-col gap-2", expandido ? "flex" : "hidden group-hover:flex")}>
           {produto.variacoes.length > 0 && (
             <div className="flex flex-wrap gap-1">
