@@ -39,6 +39,11 @@ export function ProductCard({
   const precoNormal = Number(produto.precoNormal);
   const precoPromo = produto.precoPromo != null ? Number(produto.precoPromo) : undefined;
   const semEstoque = produto.variacoes.reduce((total, v) => total + v.estoque, 0) === 0;
+  // Vídeo não autoplay numa grade de cards — prioriza a primeira imagem como
+  // capa; se o produto só tiver vídeo cadastrado, cai pra ele mesmo assim.
+  const capa =
+    [...produto.fotos].sort((a, b) => a.ordem - b.ordem).find((f) => f.tipo === "IMAGEM") ??
+    produto.fotos[0];
 
   return (
     <Link
@@ -49,6 +54,13 @@ export function ProductCard({
       )}
     >
       <div className="bg-muted relative aspect-square overflow-hidden rounded-md">
+        {capa &&
+          (capa.tipo === "VIDEO" ? (
+            <video src={capa.url} className="size-full object-cover" muted />
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element -- URL dinâmica do Supabase Storage, sem domínio fixo para next/image
+            <img src={capa.url} alt={produto.nome} className="size-full object-cover" />
+          ))}
         {semEstoque && (
           <span className="bg-background/90 absolute top-2 left-2 rounded-full border px-2 py-0.5 text-xs font-medium">
             Esgotado

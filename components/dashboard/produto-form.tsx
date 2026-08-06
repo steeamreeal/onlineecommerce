@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Trash2, Upload, X } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { TRPCClientError } from "@trpc/client";
 
@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/form";
 import { Separator } from "@/components/ui/separator";
 import { trpc } from "@/lib/trpc/client";
-import { enviarFotoProduto } from "@/lib/supabase/storage";
+import { MidiasProdutoForm, type MidiaProduto } from "@/components/dashboard/midias-produto-form";
 import type { RouterOutputs } from "@/lib/trpc/types";
 
 type ProdutoExistente = RouterOutputs["produtos"]["buscarPorId"];
@@ -79,8 +79,6 @@ const produtoSchema = z.object({
 });
 
 export type ProdutoFormValues = z.infer<typeof produtoSchema>;
-
-type Foto = { id?: string; url: string; ordem: number };
 
 const statusSelectItems = [
   { value: "ATIVO", label: "Ativo" },
@@ -138,10 +136,9 @@ export function ProdutoForm({ produto }: { produto?: ProdutoExistente }) {
   const utils = trpc.useUtils();
   const editando = Boolean(produto);
   const { data: loja } = trpc.loja.atual.useQuery();
-  const [fotos, setFotos] = useState<Foto[]>(
-    produto?.fotos.map((f) => ({ id: f.id, url: f.url, ordem: f.ordem })) ?? [],
+  const [midias, setMidias] = useState<MidiaProduto[]>(
+    produto?.fotos.map((f) => ({ id: f.id, url: f.url, ordem: f.ordem, tipo: f.tipo })) ?? [],
   );
-  const [enviandoFoto, setEnviandoFoto] = useState(false);
 
   const criar = trpc.produtos.criar.useMutation();
   const atualizar = trpc.produtos.atualizar.useMutation();
@@ -156,32 +153,6 @@ export function ProdutoForm({ produto }: { produto?: ProdutoExistente }) {
     name: "variacoes",
   });
 
-  async function handleUploadFoto(e: React.ChangeEvent<HTMLInputElement>) {
-    const arquivo = e.target.files?.[0];
-    e.target.value = "";
-    if (!arquivo || !loja) return;
-
-    setEnviandoFoto(true);
-    try {
-      const url = await enviarFotoProduto(loja.id, arquivo);
-      setFotos((atual) => [...atual, { url, ordem: atual.length }]);
-    } catch (error) {
-      const mensagem =
-        error instanceof Error && error.message
-          ? error.message
-          : "Não foi possível enviar a foto. Tente novamente.";
-      toast.error(mensagem);
-    } finally {
-      setEnviandoFoto(false);
-    }
-  }
-
-  function removerFoto(index: number) {
-    setFotos((atual) =>
-      atual.filter((_, i) => i !== index).map((foto, i) => ({ ...foto, ordem: i })),
-    );
-  }
-
   async function onSubmit(values: ProdutoFormValues) {
     const payload = {
       nome: values.nome,
@@ -195,7 +166,7 @@ export function ProdutoForm({ produto }: { produto?: ProdutoExistente }) {
       larguraCm: numeroOuUndefined(values.larguraCm),
       profundidadeCm: numeroOuUndefined(values.profundidadeCm),
       status: values.status,
-      fotos: fotos.map((f) => ({ id: f.id, url: f.url, ordem: f.ordem })),
+      fotos: midias.map((m) => ({ id: m.id, url: m.url, ordem: m.ordem, tipo: m.tipo })),
       variacoes: values.variacoes.map((v) => ({
         id: v.id,
         cor: v.cor || undefined,
@@ -316,41 +287,12 @@ export function ProdutoForm({ produto }: { produto?: ProdutoExistente }) {
 
         <section className="flex flex-col gap-4">
           <div>
-            <h2 className="text-lg font-medium">Fotos</h2>
+            <h2 className="text-lg font-medium">Fotos e vídeos</h2>
             <p className="text-muted-foreground text-sm">
-              A primeira foto é usada como capa do produto.
+              A primeira mídia é usada como capa do produto. Arraste para reordenar.
             </p>
           </div>
-          <div className="flex flex-wrap gap-3">
-            {fotos.map((foto, index) => (
-              <div key={foto.id ?? foto.url} className="relative size-24">
-                {/* eslint-disable-next-line @next/next/no-img-element -- URL dinâmica do Supabase Storage, sem domínio fixo para next/image */}
-                <img
-                  src={foto.url}
-                  alt={`Foto ${index + 1}`}
-                  className="size-24 rounded-md border object-cover"
-                />
-                <button
-                  type="button"
-                  onClick={() => removerFoto(index)}
-                  className="bg-destructive text-destructive-foreground absolute -top-2 -right-2 rounded-full p-1"
-                >
-                  <X className="size-3" />
-                </button>
-              </div>
-            ))}
-            <label className="border-input hover:bg-accent flex size-24 cursor-pointer flex-col items-center justify-center gap-1 rounded-md border border-dashed text-xs has-disabled:pointer-events-none has-disabled:opacity-50">
-              <Upload className="size-4" />
-              {enviandoFoto ? "Enviando..." : "Adicionar"}
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                disabled={enviandoFoto || !loja}
-                onChange={handleUploadFoto}
-              />
-            </label>
-          </div>
+          <MidiasProdutoForm lojaId={loja?.id} midias={midias} onChange={setMidias} />
         </section>
 
         <Separator />

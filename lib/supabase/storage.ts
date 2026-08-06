@@ -75,6 +75,15 @@ export function enviarFotoProduto(lojaId: string, arquivo: File): Promise<string
 }
 
 /**
+ * Faz upload de um vídeo de produto para o mesmo bucket público das fotos de
+ * produto (sem bucket dedicado — evita setup manual extra no Supabase),
+ * dentro de uma pasta por loja (lojaId). Retorna a URL pública do arquivo.
+ */
+export function enviarVideoProduto(lojaId: string, arquivo: File): Promise<string> {
+  return enviarVideo(BUCKET_FOTOS_PRODUTO, lojaId, arquivo);
+}
+
+/**
  * Faz upload de uma imagem de banner de loja para o bucket público do
  * Supabase Storage, dentro de uma pasta por loja (lojaId). Retorna a URL
  * pública do arquivo.

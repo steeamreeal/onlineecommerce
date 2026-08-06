@@ -14,6 +14,7 @@ const fotoSchema = z.object({
   id: z.string().optional(),
   url: z.string().min(1),
   ordem: z.number().int().min(0),
+  tipo: z.enum(["IMAGEM", "VIDEO"]).default("IMAGEM"),
 });
 
 const variacaoSchema = z.object({
@@ -139,7 +140,7 @@ export const produtosRouter = router({
           profundidadeCm: input.profundidadeCm,
           status: input.status,
           categoriaId: input.categoriaId,
-          fotos: { create: input.fotos.map(({ url, ordem }) => ({ url, ordem })) },
+          fotos: { create: input.fotos.map(({ url, ordem, tipo }) => ({ url, ordem, tipo })) },
           variacoes: {
             create: input.variacoes.map(({ cor, tamanho, modelo, estoque }) => ({
               cor,
@@ -228,15 +229,16 @@ export const produtosRouter = router({
         for (const foto of fotosParaManter) {
           await tx.fotoProduto.updateMany({
             where: { id: foto.id, produtoId: input.id },
-            data: { url: foto.url, ordem: foto.ordem },
+            data: { url: foto.url, ordem: foto.ordem, tipo: foto.tipo },
           });
         }
         if (fotosParaCriar.length > 0) {
           await tx.fotoProduto.createMany({
-            data: fotosParaCriar.map(({ url, ordem }) => ({
+            data: fotosParaCriar.map(({ url, ordem, tipo }) => ({
               produtoId: input.id,
               url,
               ordem,
+              tipo,
             })),
           });
         }

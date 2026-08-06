@@ -109,9 +109,9 @@ Cobrança híbrida, decidida no M14:
 
 ## Supabase Storage (fotos de produto, banners e logo de loja)
 
-- Buckets usados (ver `lib/supabase/storage.ts`): `fotos-produtos` (fotos de produto), `banners-loja` (banners da vitrine — até 3 por loja, `Loja.banners`) e `logos-loja` (logo da loja, `Loja.logoUrl`), todos **públicos para leitura** (as URLs aparecem no site da loja sem autenticação).
+- Buckets usados (ver `lib/supabase/storage.ts`): `fotos-produtos` (fotos **e vídeos** de produto — `FotoProduto.tipo`), `banners-loja` (banners da vitrine — até 3 por loja, `Loja.banners`) e `logos-loja` (logo da loja, `Loja.logoUrl`), todos **públicos para leitura** (as URLs aparecem no site da loja sem autenticação).
 - Upload feito direto do client autenticado (`createBrowserClient`), nunca com a `SUPABASE_SERVICE_ROLE_KEY` no browser.
 - Setup manual necessário no dashboard do Supabase para cada bucket (não versionado em migration):
   1. Criar o bucket (`fotos-produtos`, `banners-loja` ou `logos-loja`) com acesso público de leitura.
   2. Policy de `INSERT`/`UPDATE`/`DELETE` restrita a usuários autenticados (`auth.role() = 'authenticated'`); a pasta do arquivo já é prefixada por `lojaId` para organização, mas o isolamento real de escrita por tenant fica a cargo da regra de negócio na aplicação (o tRPC só aceita salvar a foto/banner se pertencer à loja do usuário).
-  3. Limite de tamanho de arquivo sugerido: 5MB por imagem.
+  3. Limite de tamanho de arquivo sugerido: 5MB por imagem, 20MB por vídeo (mesmo limite já usado em banners).

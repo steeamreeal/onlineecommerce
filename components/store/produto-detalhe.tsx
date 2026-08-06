@@ -25,6 +25,9 @@ export function ProdutoDetalhe({ produto, slug }: { produto: Produto; slug: stri
   const [variacaoId, setVariacaoId] = useState<string | undefined>(
     produto.variacoes.find((v) => v.estoque > 0)?.id,
   );
+  const midias = [...produto.fotos].sort((a, b) => a.ordem - b.ordem);
+  const [midiaSelecionadaId, setMidiaSelecionadaId] = useState<string | undefined>(midias[0]?.id);
+  const midiaSelecionada = midias.find((m) => m.id === midiaSelecionadaId) ?? midias[0];
 
   const { data: relacionadosBrutos } = trpc.lojaPublica.produtos.useQuery({
     slug,
@@ -68,11 +71,37 @@ export function ProdutoDetalhe({ produto, slug }: { produto: Produto; slug: stri
 
       <div className="grid gap-8 md:grid-cols-2">
         <div className="flex flex-col gap-3">
-          <div className="bg-muted aspect-square rounded-lg" />
-          {produto.fotos.length > 1 && (
+          <div className="bg-muted aspect-square overflow-hidden rounded-lg">
+            {midiaSelecionada?.tipo === "VIDEO" ? (
+              <video
+                src={midiaSelecionada.url}
+                className="size-full object-cover"
+                controls
+                playsInline
+              />
+            ) : midiaSelecionada ? (
+              // eslint-disable-next-line @next/next/no-img-element -- URL dinâmica do Supabase Storage, sem domínio fixo para next/image
+              <img src={midiaSelecionada.url} alt={produto.nome} className="size-full object-cover" />
+            ) : null}
+          </div>
+          {midias.length > 1 && (
             <div className="flex gap-2">
-              {produto.fotos.map((foto) => (
-                <div key={foto.id} className="bg-muted size-16 rounded-md" />
+              {midias.map((midia) => (
+                <button
+                  key={midia.id}
+                  type="button"
+                  onClick={() => setMidiaSelecionadaId(midia.id)}
+                  className={`bg-muted size-16 shrink-0 overflow-hidden rounded-md border-2 ${
+                    midia.id === midiaSelecionada?.id ? "border-foreground" : "border-transparent"
+                  }`}
+                >
+                  {midia.tipo === "VIDEO" ? (
+                    <video src={midia.url} className="size-full object-cover" muted />
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element -- URL dinâmica do Supabase Storage, sem domínio fixo para next/image
+                    <img src={midia.url} alt="" className="size-full object-cover" />
+                  )}
+                </button>
               ))}
             </div>
           )}

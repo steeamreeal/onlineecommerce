@@ -193,12 +193,18 @@ model Produto {
   @@index([lojaId, status])
 }
 
+enum TipoMidiaProduto {
+  IMAGEM
+  VIDEO
+}
+
 model FotoProduto {
-  id        String  @id @default(cuid())
+  id        String           @id @default(cuid())
   produtoId String
-  produto   Produto @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+  produto   Produto          @relation(fields: [produtoId], references: [id], onDelete: Cascade)
   url       String
-  ordem     Int     @default(0)
+  ordem     Int              @default(0)
+  tipo      TipoMidiaProduto @default(IMAGEM)
 }
 
 model VariacaoProduto {
