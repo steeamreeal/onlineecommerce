@@ -43,7 +43,7 @@ function CartaoMidia({
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className="group relative aspect-4/3 w-56 touch-none"
+      className="group relative aspect-4/3 w-[28rem] touch-none"
     >
       {midia.tipo === "VIDEO" ? (
         <video src={midia.url} className="size-full rounded-md border object-cover" muted />
@@ -164,8 +164,8 @@ export function MidiasProdutoForm({
         </SortableContext>
       </DndContext>
 
-      <label className="border-input hover:bg-accent flex aspect-4/3 w-56 cursor-pointer flex-col items-center justify-center gap-1 rounded-md border border-dashed text-xs has-disabled:pointer-events-none has-disabled:opacity-50">
-        <Upload className="size-4" />
+      <label className="border-input hover:bg-accent flex aspect-4/3 w-[28rem] cursor-pointer flex-col items-center justify-center gap-2 rounded-md border border-dashed text-sm has-disabled:pointer-events-none has-disabled:opacity-50">
+        <Upload className="size-6" />
         {enviando ? "Enviando..." : "Adicionar"}
         <input
           type="file"
