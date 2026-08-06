@@ -240,9 +240,22 @@ function SecaoColecaoDestaque({
   slug: string;
   destaques: Produto[];
 }) {
-  const produtos = config.categoriaId
+  let produtos = config.categoriaId
     ? destaques.filter((p) => p.categoria?.id === config.categoriaId)
     : destaques;
+
+  // Com categoria + seleção manual, usa exatamente os produtos escolhidos
+  // pelo lojista, na ordem escolhida — em vez do filtro automático acima.
+  // Produtos removidos/inativados desde a seleção somem sozinhos aqui
+  // (não estão mais em `destaques`), sem precisar de limpeza manual.
+  if (config.categoriaId && config.produtosSelecionados && config.produtosSelecionados.length > 0) {
+    const porId = new Map(produtos.map((p) => [p.id, p]));
+    produtos = config.produtosSelecionados.map((id) => porId.get(id)).filter((p): p is Produto => Boolean(p));
+  }
+
+  if (config.quantidade) {
+    produtos = produtos.slice(0, config.quantidade);
+  }
 
   return (
     <>

@@ -88,7 +88,12 @@ export function BannerCarousel({
     if (!trilha || !slide) return;
 
     navegandoProgramaticamente.current = true;
-    slide.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" });
+    // Rola só a trilha horizontal do carrossel (scrollTo com left calculado
+    // manualmente), nunca slide.scrollIntoView — esse método sobe até o
+    // ancestral scrollável mais próximo, que pode ser a própria página (ou,
+    // no editor de tema, o painel de preview), puxando o scroll vertical de
+    // volta pro topo a cada troca de slide do autoplay.
+    trilha.scrollTo({ left: slide.offsetLeft, behavior: "smooth" });
     window.setTimeout(() => {
       navegandoProgramaticamente.current = false;
     }, 600);

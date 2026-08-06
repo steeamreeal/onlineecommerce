@@ -97,6 +97,16 @@ export const secaoColecaoDestaqueSchema = secaoBaseSchema.extend({
   config: z.object({
     titulo: z.string().trim().max(80),
     categoriaId: z.string().optional(),
+    // Quantos produtos mostrar — vazio/undefined mostra todos que passarem
+    // no filtro (categoria, se houver). Aplica independente de categoriaId
+    // estar definido ou não.
+    quantidade: z.number().int().min(1).max(50).optional(),
+    // Com categoriaId definido, o lojista pode escolher manualmente quais
+    // produtos daquela categoria aparecem (e em que ordem) em vez do filtro
+    // automático por categoria — lista de Produto.id. Ignorado se
+    // categoriaId não estiver definido (nesse caso não há categoria fixa
+    // para os produtos pertencerem).
+    produtosSelecionados: z.array(z.string()).optional(),
     linkVerTudo: z.boolean().default(true),
     alinhamento: alinhamentoTextoSchema.default("ESQUERDA"),
   }),

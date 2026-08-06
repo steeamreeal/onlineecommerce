@@ -272,6 +272,65 @@ function EditorColunasRodape({
   );
 }
 
+function SeletorProdutosCategoria({
+  categoriaId,
+  produtosSelecionados,
+  onChange,
+}: {
+  categoriaId: string;
+  produtosSelecionados: string[] | undefined;
+  onChange: (produtosSelecionados: string[] | undefined) => void;
+}) {
+  const { data: produtos, isLoading } = trpc.produtos.listar.useQuery({ categoriaId });
+  const selecionados = produtosSelecionados ?? [];
+
+  function alternar(id: string) {
+    const proximos = selecionados.includes(id)
+      ? selecionados.filter((p) => p !== id)
+      : [...selecionados, id];
+    onChange(proximos.length > 0 ? proximos : undefined);
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <Label>
+        Produtos desta categoria{" "}
+        <span className="font-normal">
+          (opcional — vazio mostra os destaques automáticos da categoria)
+        </span>
+      </Label>
+      {isLoading ? (
+        <p className="text-muted-foreground text-xs">Carregando produtos...</p>
+      ) : !produtos || produtos.length === 0 ? (
+        <p className="text-muted-foreground text-xs">Nenhum produto cadastrado nessa categoria.</p>
+      ) : (
+        <div className="flex max-h-56 flex-col gap-1 overflow-y-auto rounded-md border p-2">
+          {produtos.map((produto) => (
+            <label
+              key={produto.id}
+              className="hover:bg-accent flex items-center gap-2 rounded-sm px-1.5 py-1 text-sm"
+            >
+              <input
+                type="checkbox"
+                checked={selecionados.includes(produto.id)}
+                onChange={() => alternar(produto.id)}
+                className="accent-primary"
+              />
+              <span className="truncate">{produto.nome}</span>
+            </label>
+          ))}
+        </div>
+      )}
+      {selecionados.length > 0 && (
+        <p className="text-muted-foreground text-xs">
+          {selecionados.length} produto{selecionados.length > 1 ? "s" : ""} selecionado
+          {selecionados.length > 1 ? "s" : ""}, na ordem marcada.
+        </p>
+      )}
+    </div>
+  );
+}
+
 function EditorBannersHero({
   lojaId,
   banners,
@@ -684,7 +743,13 @@ function FormularioSecao({
               onValueChange={(v) =>
                 onChange({
                   ...secao,
-                  config: { ...secao.config, categoriaId: !v || v === "_todas" ? undefined : v },
+                  config: {
+                    ...secao.config,
+                    categoriaId: !v || v === "_todas" ? undefined : v,
+                    // Seleção manual é sempre relativa a UMA categoria — trocar
+                    // ou limpar a categoria invalida a seleção anterior.
+                    produtosSelecionados: undefined,
+                  },
                 })
               }
             >
@@ -701,6 +766,40 @@ function FormularioSecao({
               </SelectContent>
             </Select>
           </div>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <Label>Quantidade de produtos</Label>
+              <span className="text-muted-foreground text-xs">
+                {secao.config.quantidade ?? "Todos"}
+              </span>
+            </div>
+            <input
+              type="range"
+              min={1}
+              max={24}
+              value={secao.config.quantidade ?? 24}
+              onChange={(e) => {
+                const valor = Number(e.target.value);
+                onChange({
+                  ...secao,
+                  config: { ...secao.config, quantidade: valor >= 24 ? undefined : valor },
+                });
+              }}
+              className="accent-primary"
+            />
+            <p className="text-muted-foreground text-xs">
+              Arraste até o fim para mostrar todos os produtos, sem limite.
+            </p>
+          </div>
+          {secao.config.categoriaId && (
+            <SeletorProdutosCategoria
+              categoriaId={secao.config.categoriaId}
+              produtosSelecionados={secao.config.produtosSelecionados}
+              onChange={(produtosSelecionados) =>
+                onChange({ ...secao, config: { ...secao.config, produtosSelecionados } })
+              }
+            />
+          )}
           <CampoSwitch
             label='Mostrar link "Ver tudo"'
             checked={secao.config.linkVerTudo}
