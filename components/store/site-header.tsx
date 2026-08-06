@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Menu, Search, ShoppingBag, User } from "lucide-react";
+import { Menu, ShoppingBag, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useCart } from "@/components/store/cart-context";
+import { BuscaProdutos } from "@/components/store/busca-produtos";
 import { trpc } from "@/lib/trpc/client";
 import { alturaLogoEmPx, espacamentoCabecalhoEmPx, tamanhoFonteEmPx } from "@/lib/tema-loja";
 import type { RouterOutputs } from "@/lib/trpc/types";
@@ -65,12 +65,7 @@ export function SiteHeader({
     </Link>
   );
 
-  const busca = mostrarBusca ? (
-    <form action={`/loja/${slug}/produtos`} className="relative min-w-[200px] flex-1">
-      <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
-      <Input name="busca" placeholder="Buscar produtos" className="pl-9" />
-    </form>
-  ) : null;
+  const busca = mostrarBusca ? <BuscaProdutos slug={slug} /> : null;
 
   const nav = (
     <nav className="flex items-center gap-4 text-sm" style={{ fontSize: tamanhoFonteEmPx(tamanhoFonteCategorias) }}>
