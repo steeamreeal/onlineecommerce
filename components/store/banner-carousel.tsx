@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 type TipoMidia = "IMAGEM" | "VIDEO";
 type AlinhamentoTexto = "ESQUERDA" | "CENTRO" | "DIREITA";
 type PosicaoVertical = "INICIO" | "CENTRO" | "FIM";
+type FonteTema = "INTER" | "POPPINS" | "PLAYFAIR_DISPLAY" | "MERRIWEATHER" | "MONTSERRAT" | "DM_SANS";
 type Banner = {
   id: string;
   url: string;
@@ -20,6 +21,14 @@ type Banner = {
   linkBotao?: string;
   alinhamentoHorizontal?: AlinhamentoTexto;
   alinhamentoVertical?: PosicaoVertical;
+  fonteTitulo?: FonteTema;
+  tamanhoTitulo?: number;
+  fonteBotao?: FonteTema;
+  tamanhoFonteBotao?: number;
+  tamanhoBotao?: number;
+  arredondamentoBotao?: number;
+  mostrarFundo?: boolean;
+  alinhamentoBotao?: AlinhamentoTexto;
 };
 
 const INTERVALO_AUTOPLAY_MS = 5000;
