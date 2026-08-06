@@ -156,6 +156,7 @@ export function PreviewTema({
   template,
   corPrimaria,
   corFundo,
+  corTexto,
   secaoSelecionadaId,
   onSelecionarSecao,
   viewport = "DESKTOP",
@@ -167,6 +168,7 @@ export function PreviewTema({
   template: "MINIMALISTA" | "EDITORIAL" | "VITRINE";
   corPrimaria: string;
   corFundo?: string;
+  corTexto?: string;
   secaoSelecionadaId: string | null;
   onSelecionarSecao: (id: string, tipo: TipoSecaoTema) => void;
   viewport?: "DESKTOP" | "MOBILE";
@@ -195,7 +197,9 @@ export function PreviewTema({
           "min-h-full w-full overflow-hidden rounded-md border bg-background shadow-sm transition-[max-width]",
           viewport === "MOBILE" ? "max-w-sm" : "max-w-3xl",
         )}
-        style={{ "--loja-primary": corPrimaria, backgroundColor: corFundo } as React.CSSProperties}
+        style={
+          { "--loja-primary": corPrimaria, backgroundColor: corFundo, color: corTexto } as React.CSSProperties
+        }
       >
         {barraAnuncio && (
           <button

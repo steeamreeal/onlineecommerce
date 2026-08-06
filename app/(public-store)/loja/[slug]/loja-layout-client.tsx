@@ -75,6 +75,7 @@ export default function LojaLayoutClient({
           {
             "--loja-primary": config.corPrimaria || "var(--primary)",
             backgroundColor: temaConfig?.estilo.corFundo,
+            color: temaConfig?.estilo.corTexto,
           } as React.CSSProperties
         }
       >

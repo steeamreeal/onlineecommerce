@@ -1433,6 +1433,28 @@ function FormularioEstilo({
           Fundo de toda a página da loja — diferente da cor de fundo do cabeçalho, que afeta só ele.
         </p>
       </div>
+
+      <div className="flex flex-col gap-2">
+        <Label>Cor do texto da página</Label>
+        <div className="flex items-center gap-2">
+          <input
+            type="color"
+            value={estilo.corTexto ?? "#000000"}
+            onChange={(e) => onChangeEstilo({ ...estilo, corTexto: e.target.value })}
+            className="h-9 w-12 rounded-md border"
+          />
+          <Input
+            value={estilo.corTexto ?? ""}
+            placeholder="Padrão do tema"
+            onChange={(e) =>
+              onChangeEstilo({ ...estilo, corTexto: e.target.value || undefined })
+            }
+          />
+        </div>
+        <p className="text-muted-foreground text-xs">
+          Use para ajustar a legibilidade do texto quando a cor de fundo da página for escura.
+        </p>
+      </div>
     </div>
   );
 }
