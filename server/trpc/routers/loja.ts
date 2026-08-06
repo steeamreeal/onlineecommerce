@@ -2,6 +2,12 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, storeProcedure, roleProcedure } from "../trpc";
 import { temaConfigSchema } from "@/lib/tema-loja";
+import {
+  adicionarDominioNaVercel,
+  removerDominioDaVercel,
+  statusDominioNaVercel,
+  VercelDomainsIndisponivelError,
+} from "@/lib/vercel-domains";
 
 export const lojaRouter = router({
   atual: storeProcedure.query(({ ctx }) => {
@@ -77,6 +83,14 @@ export const lojaRouter = router({
   // Domínio próprio é opcional e único na plataforma inteira (não só por
   // loja) — precisa checar colisão com outra loja antes de salvar, já que
   // é o valor usado pelo middleware para resolver o tenant pelo host.
+  //
+  // Além de salvar no banco, cadastra o domínio no projeto da Vercel via API
+  // (lib/vercel-domains.ts) — antes disso era um passo manual do admin da
+  // plataforma em Settings → Domains a cada loja nova. Se a Vercel rejeitar
+  // o domínio (já usado em outro projeto, inválido), a mutation falha inteira
+  // e nada é salvo — o lojista só vê "salvo" quando de fato está ativo.
+  // Se a integração não estiver configurada (sem VERCEL_API_TOKEN), cai de
+  // volta pro fluxo manual antigo: salva no banco e o admin cadastra à mão.
   atualizarDominioProprio: roleProcedure(["ADMINISTRADOR"])
     .input(z.object({ dominioProprio: z.string().trim().toLowerCase().min(1).nullable() }))
     .mutation(async ({ ctx, input }) => {
@@ -95,12 +109,62 @@ export const lojaRouter = router({
         }
       }
 
+      const lojaAtual = await ctx.prisma.loja.findUniqueOrThrow({
+        where: { id: ctx.lojaId },
+        select: { dominioProprio: true },
+      });
+      const dominioAnterior = lojaAtual.dominioProprio;
+
+      if (dominio && dominio !== dominioAnterior) {
+        try {
+          await adicionarDominioNaVercel(dominio);
+        } catch (erro) {
+          if (erro instanceof VercelDomainsIndisponivelError) {
+            // Integração não configurada nesta instalação — segue com o
+            // fluxo manual antigo em vez de bloquear o lojista.
+          } else {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: erro instanceof Error ? erro.message : "Não foi possível cadastrar o domínio.",
+            });
+          }
+        }
+      }
+
+      // Domínio trocado ou removido: limpa o antigo da Vercel para não deixar
+      // domínio órfão vinculado ao projeto. Melhor esforço — se a remoção
+      // falhar (ex.: já não existia lá), não bloqueia o salvamento.
+      if (dominioAnterior && dominioAnterior !== dominio) {
+        await removerDominioDaVercel(dominioAnterior).catch(() => {});
+      }
+
       return ctx.prisma.loja.update({
         where: { id: ctx.lojaId },
         data: { dominioProprio: dominio },
         select: { dominioProprio: true },
       });
     }),
+
+  // Consulta se o DNS do domínio próprio já está apontando corretamente
+  // para a Vercel — usado pela tela de domínio próprio pra mostrar ao
+  // lojista o status real em vez de só a instrução estática de CNAME.
+  statusDominioProprio: roleProcedure(["ADMINISTRADOR"]).query(async ({ ctx }) => {
+    const loja = await ctx.prisma.loja.findUniqueOrThrow({
+      where: { id: ctx.lojaId },
+      select: { dominioProprio: true },
+    });
+    if (!loja.dominioProprio) return null;
+
+    try {
+      return await statusDominioNaVercel(loja.dominioProprio);
+    } catch (erro) {
+      if (erro instanceof VercelDomainsIndisponivelError) return null;
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: erro instanceof Error ? erro.message : "Não foi possível consultar o status do domínio.",
+      });
+    }
+  }),
 
   atualizarPersonalizacao: roleProcedure(["ADMINISTRADOR"])
     .input(

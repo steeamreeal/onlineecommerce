@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Check, Copy } from "lucide-react";
+import { Check, Copy, Loader2, CircleCheck, CircleAlert } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { trpc } from "@/lib/trpc/client";
+import { cn } from "@/lib/utils";
 
 function LinhaCopiavel({ label, valor }: { label: string; valor: string }) {
   const [copiado, setCopiado] = useState(false);
@@ -68,9 +69,20 @@ export function DominioProprioForm() {
     values: { dominioProprio: loja?.dominioProprio ?? "" },
   });
 
+  // Consulta se o DNS já está apontando certo pra Vercel — só existe quando
+  // a integração automática está configurada nesta instalação (senão a
+  // query volta null e a tela cai para as instruções manuais de sempre).
+  // Poll leve enquanto o domínio ainda não propagou, pra não deixar o
+  // lojista precisando ficar recarregando a página pra saber se já ativou.
+  const statusDominio = trpc.loja.statusDominioProprio.useQuery(undefined, {
+    enabled: Boolean(loja?.dominioProprio),
+    refetchInterval: (query) => (query.state.data?.configurado ? false : 15000),
+  });
+
   const salvar = trpc.loja.atualizarDominioProprio.useMutation({
     onSuccess: (resultado) => {
       utils.loja.atual.invalidate();
+      utils.loja.statusDominioProprio.invalidate();
       toast.success(
         resultado.dominioProprio
           ? "Domínio salvo. Configure o DNS para ativá-lo."
@@ -120,7 +132,34 @@ export function DominioProprioForm() {
 
         {dominioAtivo && (
           <div className="bg-muted flex flex-col gap-4 rounded-lg border p-4 text-sm">
-            <p className="font-medium">Como ativar {dominioAtivo}</p>
+            <div className="flex items-center justify-between gap-2">
+              <p className="font-medium">Como ativar {dominioAtivo}</p>
+              {statusDominio.data && (
+                <span
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
+                    statusDominio.data.configurado
+                      ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
+                      : "bg-amber-500/15 text-amber-700 dark:text-amber-400",
+                  )}
+                >
+                  {statusDominio.data.configurado ? (
+                    <>
+                      <CircleCheck className="size-3.5" /> Ativo
+                    </>
+                  ) : (
+                    <>
+                      {statusDominio.isFetching ? (
+                        <Loader2 className="size-3.5 animate-spin" />
+                      ) : (
+                        <CircleAlert className="size-3.5" />
+                      )}
+                      Aguardando DNS
+                    </>
+                  )}
+                </span>
+              )}
+            </div>
 
             {ehDominioRaiz && (
               <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-amber-700 dark:text-amber-400">
@@ -155,10 +194,9 @@ export function DominioProprioForm() {
                 minutos até 24 horas — em geral é bem mais rápido que isso.
               </li>
               <li>
-                Avise a equipe da plataforma que o DNS foi configurado. A ativação final do
-                domínio (liberar o certificado de segurança/HTTPS e o roteamento) é feita
-                manualmente por aqui, então o site só passa a abrir em {dominioAtivo} depois
-                dessa confirmação.
+                {statusDominio.data
+                  ? `Pronto — assim que o DNS propagar, o selo acima muda para "Ativo" sozinho e ${dominioAtivo} passa a abrir sua loja automaticamente, sem precisar de mais nenhum passo.`
+                  : "Avise a equipe da plataforma que o DNS foi configurado — a ativação final é feita manualmente por lá."}
               </li>
             </ol>
 
