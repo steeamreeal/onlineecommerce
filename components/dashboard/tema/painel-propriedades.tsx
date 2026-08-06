@@ -305,20 +305,29 @@ function SeletorProdutosCategoria({
         <p className="text-muted-foreground text-xs">Nenhum produto cadastrado nessa categoria.</p>
       ) : (
         <div className="flex max-h-56 flex-col gap-1 overflow-y-auto rounded-md border p-2">
-          {produtos.map((produto) => (
-            <label
-              key={produto.id}
-              className="hover:bg-accent flex items-center gap-2 rounded-sm px-1.5 py-1 text-sm"
-            >
-              <input
-                type="checkbox"
-                checked={selecionados.includes(produto.id)}
-                onChange={() => alternar(produto.id)}
-                className="accent-primary"
-              />
-              <span className="truncate">{produto.nome}</span>
-            </label>
-          ))}
+          {produtos.map((produto) => {
+            const foto = produto.fotos.find((f) => f.tipo === "IMAGEM");
+            return (
+              <label
+                key={produto.id}
+                className="hover:bg-accent flex items-center gap-2 rounded-sm px-1.5 py-1 text-sm"
+              >
+                <input
+                  type="checkbox"
+                  checked={selecionados.includes(produto.id)}
+                  onChange={() => alternar(produto.id)}
+                  className="accent-primary"
+                />
+                <span className="bg-muted size-8 shrink-0 overflow-hidden rounded-sm">
+                  {foto && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={foto.url} alt="" className="size-full object-cover" />
+                  )}
+                </span>
+                <span className="truncate">{produto.nome}</span>
+              </label>
+            );
+          })}
         </div>
       )}
       {selecionados.length > 0 && (
@@ -754,7 +763,12 @@ function FormularioSecao({
               }
             >
               <SelectTrigger>
-                <SelectValue />
+                <SelectValue placeholder="Carregando categorias...">
+                  {secao.config.categoriaId
+                    ? (categorias.find((c) => c.id === secao.config.categoriaId)?.nome ??
+                      "Carregando categorias...")
+                    : "Todos os destaques"}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="_todas">Todos os destaques</SelectItem>
@@ -1017,14 +1031,14 @@ export function PainelPropriedades({
 
   if (!mostrandoEstilo && !secaoSelecionada) {
     return (
-      <aside className="text-muted-foreground flex w-80 shrink-0 items-center justify-center border-l p-6 text-center text-sm">
+      <aside className="text-muted-foreground flex w-[420px] shrink-0 items-center justify-center border-l p-6 text-center text-sm">
         Selecione uma seção no preview ou na lista à esquerda para editar.
       </aside>
     );
   }
 
   return (
-    <aside className="flex w-80 shrink-0 flex-col gap-4 overflow-y-auto border-l p-4">
+    <aside className="flex w-[420px] shrink-0 flex-col gap-4 overflow-y-auto border-l p-4">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold">
           {mostrandoEstilo ? "Configurações do tema" : NOMES_TIPO_SECAO[secaoSelecionada!.tipo]}

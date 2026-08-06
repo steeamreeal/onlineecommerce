@@ -261,24 +261,10 @@ function SecaoColecaoDestaque({
     <>
       {produtos.length > 0 && (
         <section className="flex flex-col gap-4 px-6">
-          <div
-            className={cn(
-              "flex items-baseline gap-4",
-              config.alinhamento === "CENTRO"
-                ? "flex-col items-center"
-                : config.alinhamento === "DIREITA"
-                  ? "flex-row-reverse justify-end"
-                  : "justify-between",
-            )}
-          >
+          <div className={cn("flex", classeAlinhamento(config.alinhamento))}>
             <h2 className={cn(tituloSecaoClassePorVariante[variante], classeAlinhamento(config.alinhamento))}>
               {config.titulo}
             </h2>
-            {config.linkVerTudo && (
-              <Link href={`/loja/${slug}/produtos`} className={verTudoLinkClassePorVariante[variante]}>
-                Ver todos
-              </Link>
-            )}
           </div>
           <div className={gridProdutosClassePorVariante[variante]}>
             {produtos.map((produto) => (
@@ -290,6 +276,22 @@ function SecaoColecaoDestaque({
               />
             ))}
           </div>
+          {config.linkVerTudo && (
+            <div
+              className={cn(
+                "flex",
+                config.alinhamento === "CENTRO"
+                  ? "justify-center"
+                  : config.alinhamento === "DIREITA"
+                    ? "justify-end"
+                    : "justify-start",
+              )}
+            >
+              <Link href={`/loja/${slug}/produtos`} className={verTudoLinkClassePorVariante[variante]}>
+                Ver todos
+              </Link>
+            </div>
+          )}
         </section>
       )}
     </>
