@@ -2,8 +2,9 @@ import Link from "next/link";
 import { ProductCard } from "@/components/store/product-card";
 import { BannerCarousel } from "@/components/store/banner-carousel";
 import { cn } from "@/lib/utils";
+import { FONTE_CSS_VAR, tamanhoFonteEmPx, paddingBotaoEmPx, arredondamentoBotaoEmPx } from "@/lib/tema-loja";
 import type { RouterOutputs } from "@/lib/trpc/types";
-import type { AlinhamentoTexto, PosicaoVertical, SecaoTema } from "@/lib/tema-loja";
+import type { AlinhamentoTexto, PosicaoVertical, SecaoTema, FonteTema } from "@/lib/tema-loja";
 
 type Variante = "MINIMALISTA" | "EDITORIAL" | "VITRINE";
 type Categoria = RouterOutputs["lojaPublica"]["categorias"][number];
@@ -21,10 +22,21 @@ function classeAlinhamento(alinhamento: AlinhamentoTexto | undefined): string {
   return classeTextoPorAlinhamento[alinhamento ?? "ESQUERDA"];
 }
 
-const classePosicaoVertical: Record<PosicaoVertical, string> = {
-  INICIO: "items-start justify-start",
-  CENTRO: "items-center justify-center",
-  FIM: "items-end justify-end",
+// Eixos independentes do wrapper (flex-row) do conteúdo sobreposto ao
+// banner: items-* é o eixo cruzado (vertical), justify-* é o eixo
+// principal (horizontal). Antes disso vir de um único mapa combinado
+// (bug: justify-* também variava com alinhamentoVertical, ignorando
+// alinhamentoHorizontal — só 3 das 9 posições da grade ficavam certas).
+const classeItemsVertical: Record<PosicaoVertical, string> = {
+  INICIO: "items-start",
+  CENTRO: "items-center",
+  FIM: "items-end",
+};
+
+const classeJustifyHorizontal: Record<AlinhamentoTexto, string> = {
+  ESQUERDA: "justify-start",
+  CENTRO: "justify-center",
+  DIREITA: "justify-end",
 };
 
 // Aparência de cada seção por template — mesmas classes que antes viviam
@@ -80,6 +92,12 @@ function ConteudoHero({
   linkBotao,
   alinhamentoHorizontal,
   alinhamentoVertical,
+  fonteTitulo,
+  tamanhoTitulo,
+  fonteBotao,
+  tamanhoFonteBotao,
+  tamanhoBotao,
+  arredondamentoBotao,
 }: {
   variante: Variante;
   slug: string;
@@ -88,13 +106,23 @@ function ConteudoHero({
   linkBotao?: string;
   alinhamentoHorizontal?: AlinhamentoTexto;
   alinhamentoVertical?: PosicaoVertical;
+  fonteTitulo?: FonteTema;
+  tamanhoTitulo?: number;
+  fonteBotao?: FonteTema;
+  tamanhoFonteBotao?: number;
+  tamanhoBotao?: number;
+  arredondamentoBotao?: number;
 }) {
   if (!titulo && !textoBotao) return null;
+
+  const paddingBotao = paddingBotaoEmPx(tamanhoBotao);
+
   return (
     <div
       className={cn(
         "pointer-events-none absolute inset-0 flex p-4",
-        classePosicaoVertical[alinhamentoVertical ?? "FIM"],
+        classeItemsVertical[alinhamentoVertical ?? "FIM"],
+        classeJustifyHorizontal[alinhamentoHorizontal ?? "ESQUERDA"],
       )}
     >
       <div
@@ -111,6 +139,10 @@ function ConteudoHero({
               variante === "EDITORIAL" ? "font-heading text-xl italic" : "text-sm",
               variante === "VITRINE" ? "text-foreground" : "text-white",
             )}
+            style={{
+              fontFamily: fonteTitulo ? FONTE_CSS_VAR[fonteTitulo] : undefined,
+              fontSize: tamanhoFonteEmPx(tamanhoTitulo),
+            }}
           >
             {titulo}
           </span>
@@ -119,6 +151,13 @@ function ConteudoHero({
           <Link
             href={linkBotao || `/loja/${slug}/produtos`}
             className="bg-background text-foreground w-fit rounded-md px-4 py-2 text-sm font-medium"
+            style={{
+              fontFamily: fonteBotao ? FONTE_CSS_VAR[fonteBotao] : undefined,
+              fontSize: tamanhoFonteEmPx(tamanhoFonteBotao),
+              paddingInline: paddingBotao?.paddingInline,
+              paddingBlock: paddingBotao?.paddingBlock,
+              borderRadius: arredondamentoBotaoEmPx(arredondamentoBotao),
+            }}
           >
             {textoBotao}
           </Link>
@@ -177,6 +216,12 @@ function SecaoHero({
               linkBotao={banner.linkBotao}
               alinhamentoHorizontal={banner.alinhamentoHorizontal}
               alinhamentoVertical={banner.alinhamentoVertical}
+              fonteTitulo={banner.fonteTitulo}
+              tamanhoTitulo={banner.tamanhoTitulo}
+              fonteBotao={banner.fonteBotao}
+              tamanhoFonteBotao={banner.tamanhoFonteBotao}
+              tamanhoBotao={banner.tamanhoBotao}
+              arredondamentoBotao={banner.arredondamentoBotao}
             />
           </>
         )}

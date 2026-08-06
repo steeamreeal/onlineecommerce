@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { prisma } from "@/server/db/client";
+import { CLASSE_FONTES_TEMA } from "@/lib/fontes-tema";
 import LojaLayoutClient from "./loja-layout-client";
 
 export async function generateMetadata({
@@ -32,5 +33,12 @@ export default function PublicStoreLayout({
   children: React.ReactNode;
   params: Promise<{ slug: string }>;
 }) {
-  return <LojaLayoutClient params={params}>{children}</LojaLayoutClient>;
+  return (
+    // display:contents — só propaga as CSS vars de fonte (herança normal
+    // de custom property independe de geração de caixa), sem virar mais um
+    // container no meio da árvore flex de LojaLayoutClient.
+    <div className={`${CLASSE_FONTES_TEMA} contents`}>
+      <LojaLayoutClient params={params}>{children}</LojaLayoutClient>
+    </div>
+  );
 }
