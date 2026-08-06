@@ -123,16 +123,27 @@ export function ProductCard({
   return (
     <div
       onMouseEnter={atualizarSetas}
-      className={cn("group flex flex-col gap-2 transition-colors", containerPorVariante[variante])}
+      className={cn(
+        "group flex flex-col gap-2 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md",
+        containerPorVariante[variante],
+      )}
     >
       <Link href={`/loja/${slug}/produtos/${produto.id}`} className="flex flex-col gap-2">
         <div className="bg-muted relative aspect-square overflow-hidden rounded-md">
           {capa &&
             (capa.tipo === "VIDEO" ? (
-              <video src={capa.url} className="size-full object-cover" muted />
+              <video
+                src={capa.url}
+                className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
+                muted
+              />
             ) : (
               // eslint-disable-next-line @next/next/no-img-element -- URL dinâmica do Supabase Storage, sem domínio fixo para next/image
-              <img src={capa.url} alt={produto.nome} className="size-full object-cover" />
+              <img
+                src={capa.url}
+                alt={produto.nome}
+                className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
+              />
             ))}
           {!variacaoSelecionada?.foto && capaHover && (
             // eslint-disable-next-line @next/next/no-img-element -- URL dinâmica do Supabase Storage, sem domínio fixo para next/image

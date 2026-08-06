@@ -140,7 +140,7 @@ export function BannerCarousel({
         onTouchEnd={() => setPausado(false)}
         className="flex snap-x snap-mandatory overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
-        {banners.map((banner) => (
+        {banners.map((banner, i) => (
           <div
             key={banner.id}
             className={cn(
@@ -151,7 +151,7 @@ export function BannerCarousel({
             )}
             style={{ width: "100%" }}
           >
-            <BannerMidia banner={banner} viewport={viewport} />
+            <BannerMidia key={indiceAtual === i ? "ativo" : "inativo"} banner={banner} viewport={viewport} ativo={i === indiceAtual} />
             {renderOverlay?.(banner)}
           </div>
         ))}
@@ -165,7 +165,7 @@ export function BannerCarousel({
           )}
           style={{ width: "100%" }}
         >
-          <BannerMidia banner={banners[0]} viewport={viewport} />
+          <BannerMidia banner={banners[0]} viewport={viewport} ativo={false} />
           {renderOverlay?.(banners[0])}
         </div>
       </div>

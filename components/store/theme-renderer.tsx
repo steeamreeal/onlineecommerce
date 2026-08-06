@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ProductCard } from "@/components/store/product-card";
 import { ProductCarousel } from "@/components/store/product-carousel";
 import { BannerCarousel } from "@/components/store/banner-carousel";
+import { RevealOnScroll } from "@/components/store/reveal-on-scroll";
 import { cn } from "@/lib/utils";
 import {
   FONTE_CSS_VAR,
@@ -586,28 +587,34 @@ export function ThemeRenderer({
             );
           case "MENU_CATEGORIAS":
             return (
-              <SecaoMenuCategorias
-                key={secao.id}
-                variante={template}
-                config={secao.config}
-                slug={slug}
-                categorias={categorias}
-                viewport={viewport}
-              />
+              <RevealOnScroll key={secao.id}>
+                <SecaoMenuCategorias
+                  variante={template}
+                  config={secao.config}
+                  slug={slug}
+                  categorias={categorias}
+                  viewport={viewport}
+                />
+              </RevealOnScroll>
             );
           case "COLECAO_DESTAQUE":
             return (
-              <SecaoColecaoDestaque
-                key={secao.id}
-                variante={template}
-                config={secao.config}
-                slug={slug}
-                destaques={destaques}
-                viewport={viewport}
-              />
+              <RevealOnScroll key={secao.id}>
+                <SecaoColecaoDestaque
+                  variante={template}
+                  config={secao.config}
+                  slug={slug}
+                  destaques={destaques}
+                  viewport={viewport}
+                />
+              </RevealOnScroll>
             );
           case "TEXTO":
-            return <SecaoTexto key={secao.id} config={secao.config} />;
+            return (
+              <RevealOnScroll key={secao.id}>
+                <SecaoTexto config={secao.config} />
+              </RevealOnScroll>
+            );
           default:
             return null;
         }

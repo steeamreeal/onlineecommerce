@@ -1,3 +1,5 @@
+import { cn } from "@/lib/utils";
+
 type TipoMidia = "IMAGEM" | "VIDEO";
 type Banner = {
   url: string;
@@ -40,14 +42,19 @@ function Midia({
 export function BannerMidia({
   banner,
   viewport,
+  ativo = true,
 }: {
   banner: Banner | undefined;
   viewport?: "DESKTOP" | "MOBILE";
+  // Só o slide visível do carrossel roda o zoom lento (ken-burns) — os
+  // demais (fora de tela) ficam parados, pra não gastar ciclo de animação
+  // à toa e pra reiniciar o efeito do zero sempre que o slide reaparecer.
+  ativo?: boolean;
 }) {
   if (!banner?.url) return null;
 
   const temMobile = Boolean(banner.urlMobile);
-  const classeBase = "absolute inset-0 size-full object-cover";
+  const classeBase = cn("absolute inset-0 size-full object-cover", ativo && "animate-ken-burns");
 
   if (viewport === "MOBILE") {
     return (
