@@ -9,7 +9,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { cn } from "@/lib/utils";
 import { useCart } from "@/components/store/cart-context";
 import { trpc } from "@/lib/trpc/client";
-import { alturaLogoEmPx, espacamentoCabecalhoEmPx } from "@/lib/tema-loja";
+import { alturaLogoEmPx, espacamentoCabecalhoEmPx, tamanhoFonteEmPx } from "@/lib/tema-loja";
 import type { RouterOutputs } from "@/lib/trpc/types";
 
 type ConfiguracaoLoja = RouterOutputs["lojaPublica"]["porSlug"];
@@ -23,6 +23,7 @@ export function SiteHeader({
   exibicaoLogo = "NOME",
   tamanhoLogo = 40,
   espacamentoLinhas = 20,
+  tamanhoFonteCategorias = 30,
   corFundo,
   corTexto,
 }: {
@@ -34,6 +35,7 @@ export function SiteHeader({
   exibicaoLogo?: "LOGO" | "NOME";
   tamanhoLogo?: number;
   espacamentoLinhas?: number;
+  tamanhoFonteCategorias?: number;
   corFundo?: string;
   corTexto?: string;
 }) {
@@ -71,7 +73,7 @@ export function SiteHeader({
   ) : null;
 
   const nav = (
-    <nav className="flex items-center gap-4 text-sm">
+    <nav className="flex items-center gap-4 text-sm" style={{ fontSize: tamanhoFonteEmPx(tamanhoFonteCategorias) }}>
       {(categorias ?? []).map((categoria) => (
         <Link
           key={categoria.id}

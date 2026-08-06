@@ -219,6 +219,9 @@ export const secaoCabecalhoSchema = secaoBaseSchema.extend({
     // logo/busca e a linha de categorias no layout desktop (ver
     // ESPACAMENTO_CABECALHO_MIN_PX/MAX_PX) — sem efeito no mobile.
     espacamentoLinhas: z.number().min(0).max(100).default(20),
+    // Escala 0-100 mapeada para o tamanho de fonte do menu de categorias
+    // (mesma conversão de tamanhoFonteEmPx usada nos textos de outras seções).
+    tamanhoFonteCategorias: z.number().min(0).max(100).default(30),
     corFundo: z
       .string()
       .regex(/^#[0-9A-Fa-f]{6}$/, "Informe uma cor no formato #RRGGBB")
@@ -452,6 +455,7 @@ export function criarTemaConfigPadrao(opcoes: {
           exibicaoLogo: "NOME",
           tamanhoLogo: 40,
           espacamentoLinhas: 20,
+          tamanhoFonteCategorias: 30,
         },
       },
       {

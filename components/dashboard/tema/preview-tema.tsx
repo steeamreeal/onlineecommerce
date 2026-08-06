@@ -4,7 +4,7 @@ import { Menu, Search, ShoppingBag, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc/client";
 import { ThemeRenderer } from "@/components/store/theme-renderer";
-import { alturaLogoEmPx } from "@/lib/tema-loja";
+import { alturaLogoEmPx, espacamentoCabecalhoEmPx, tamanhoFonteEmPx } from "@/lib/tema-loja";
 import type { SecaoTema, TipoSecaoTema } from "@/lib/tema-loja";
 
 // Prévia visual do cabeçalho/rodapé dentro do editor — não reaproveita
@@ -19,6 +19,9 @@ function PreviewCabecalho({
   mostrarBusca,
   mostrarConta,
   posicaoLogo,
+  espacamentoLinhas,
+  tamanhoFonteCategorias,
+  categorias,
   corFundo,
   corTexto,
   viewport,
@@ -30,6 +33,9 @@ function PreviewCabecalho({
   mostrarBusca: boolean;
   mostrarConta: boolean;
   posicaoLogo: "ESQUERDA" | "CENTRO";
+  espacamentoLinhas: number;
+  tamanhoFonteCategorias: number;
+  categorias: { id: string; nome: string }[] | undefined;
   corFundo: string | undefined;
   corTexto: string | undefined;
   viewport: "DESKTOP" | "MOBILE";
@@ -79,21 +85,40 @@ function PreviewCabecalho({
     );
   }
 
+  const nav = (categorias ?? []).length > 0 && (
+    <div
+      className="flex flex-wrap items-center justify-center gap-4 px-6 pb-3 text-sm"
+      style={{ paddingTop: espacamentoCabecalhoEmPx(espacamentoLinhas), fontSize: tamanhoFonteEmPx(tamanhoFonteCategorias) }}
+    >
+      {(categorias ?? []).map((categoria) => (
+        <span key={categoria.id} className="text-muted-foreground">
+          {categoria.nome}
+        </span>
+      ))}
+    </div>
+  );
+
   if (posicaoLogo === "CENTRO") {
     return (
-      <div className="flex items-center gap-4 border-b px-6 py-4" style={estiloFundo}>
-        <div className="flex flex-1 items-center gap-4">{busca}</div>
-        {logo}
-        <div className="flex flex-1 items-center justify-end gap-4">{acoes}</div>
+      <div className="border-b" style={estiloFundo}>
+        <div className="flex items-center gap-4 px-6 pt-4 pb-2">
+          <div className="flex flex-1 items-center gap-4">{busca}</div>
+          {logo}
+          <div className="flex flex-1 items-center justify-end gap-4">{acoes}</div>
+        </div>
+        {nav}
       </div>
     );
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-4 border-b px-6 py-4" style={estiloFundo}>
-      {logo}
-      {busca}
-      {acoes}
+    <div className="border-b" style={estiloFundo}>
+      <div className="flex flex-wrap items-center gap-4 px-6 pt-4 pb-2">
+        {logo}
+        {busca}
+        {acoes}
+      </div>
+      {nav}
     </div>
   );
 }
@@ -255,6 +280,9 @@ export function PreviewTema({
               mostrarBusca={cabecalho.config.mostrarBusca ?? true}
               mostrarConta={cabecalho.config.mostrarConta ?? true}
               posicaoLogo={cabecalho.config.posicaoLogo ?? "ESQUERDA"}
+              espacamentoLinhas={cabecalho.config.espacamentoLinhas ?? 20}
+              tamanhoFonteCategorias={cabecalho.config.tamanhoFonteCategorias ?? 30}
+              categorias={categorias}
               corFundo={cabecalho.config.corFundo}
               corTexto={cabecalho.config.corTexto}
               viewport={viewport}
