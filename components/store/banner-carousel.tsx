@@ -9,16 +9,7 @@ type TipoMidia = "IMAGEM" | "VIDEO";
 type AlinhamentoTexto = "ESQUERDA" | "CENTRO" | "DIREITA";
 type PosicaoVertical = "INICIO" | "CENTRO" | "FIM";
 type FonteTema = "INTER" | "POPPINS" | "PLAYFAIR_DISPLAY" | "MERRIWEATHER" | "MONTSERRAT" | "DM_SANS";
-type Banner = {
-  id: string;
-  url: string;
-  titulo?: string;
-  tipo?: TipoMidia;
-  urlMobile?: string;
-  tipoMobile?: TipoMidia;
-  link?: string;
-  textoBotao?: string;
-  linkBotao?: string;
+type ConteudoBannerEstilo = {
   alinhamentoHorizontal?: AlinhamentoTexto;
   alinhamentoVertical?: PosicaoVertical;
   fonteTitulo?: FonteTema;
@@ -29,6 +20,19 @@ type Banner = {
   arredondamentoBotao?: number;
   mostrarFundo?: boolean;
   alinhamentoBotao?: AlinhamentoTexto;
+  posicaoLivre?: { x: number; y: number };
+};
+type Banner = ConteudoBannerEstilo & {
+  id: string;
+  url: string;
+  titulo?: string;
+  tipo?: TipoMidia;
+  urlMobile?: string;
+  tipoMobile?: TipoMidia;
+  link?: string;
+  textoBotao?: string;
+  linkBotao?: string;
+  mobile?: ConteudoBannerEstilo;
 };
 
 const INTERVALO_AUTOPLAY_MS = 5000;

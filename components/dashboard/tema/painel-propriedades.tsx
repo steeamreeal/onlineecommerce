@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   X,
   Upload,
@@ -170,40 +170,109 @@ const COLUNAS_POSICAO: AlinhamentoTexto[] = ["ESQUERDA", "CENTRO", "DIREITA"];
 // Nove pontos de ancoragem do conteúdo (título/botão) sobre a imagem do
 // banner — combina os dois eixos independentes já existentes no schema
 // (alinhamentoHorizontal x alinhamentoVertical) numa única grade de cliques,
-// em vez de dois seletores separados.
+// em vez de dois seletores separados. Alternativa: "Arrastar", posição
+// livre em % (x,y) — arrasta um marcador dentro da miniatura do banner.
 function SeletorPosicaoConteudo({
   horizontal,
   vertical,
+  posicaoLivre,
   onChange,
+  onChangeLivre,
 }: {
   horizontal: AlinhamentoTexto;
   vertical: PosicaoVertical;
+  posicaoLivre: { x: number; y: number } | undefined;
   onChange: (valor: { horizontal: AlinhamentoTexto; vertical: PosicaoVertical }) => void;
+  onChangeLivre: (valor: { x: number; y: number } | undefined) => void;
 }) {
+  const areaRef = useRef<HTMLDivElement>(null);
+  const modo = posicaoLivre ? "LIVRE" : "GRADE";
+
+  function calcularPosicao(e: { clientX: number; clientY: number }) {
+    const area = areaRef.current;
+    if (!area) return;
+    const rect = area.getBoundingClientRect();
+    const x = Math.min(100, Math.max(0, ((e.clientX - rect.left) / rect.width) * 100));
+    const y = Math.min(100, Math.max(0, ((e.clientY - rect.top) / rect.height) * 100));
+    onChangeLivre({ x: Math.round(x), y: Math.round(y) });
+  }
+
+  function iniciarArrasto(e: React.PointerEvent<HTMLDivElement>) {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    calcularPosicao(e);
+  }
+
+  function arrastando(e: React.PointerEvent<HTMLDivElement>) {
+    if (e.buttons !== 1) return;
+    calcularPosicao(e);
+  }
+
   return (
     <div className="flex flex-col gap-2">
-      <Label>Onde o texto aparece sobre a imagem</Label>
-      <div className="bg-muted grid aspect-video grid-cols-3 gap-1.5 rounded-md p-1.5">
-        {LINHAS_POSICAO.map((linha) =>
-          COLUNAS_POSICAO.map((coluna) => {
-            const ativo = linha === vertical && coluna === horizontal;
-            return (
-              <button
-                key={`${linha}-${coluna}`}
-                type="button"
-                aria-label={`Posicionar em ${linha === "INICIO" ? "cima" : linha === "CENTRO" ? "meio" : "baixo"}, ${coluna === "ESQUERDA" ? "esquerda" : coluna === "CENTRO" ? "centro" : "direita"}`}
-                onClick={() => onChange({ horizontal: coluna, vertical: linha })}
-                className={cn(
-                  "bg-background flex items-center justify-center rounded-sm border transition-colors",
-                  ativo ? "border-primary ring-primary/30 ring-2" : "hover:border-primary/40",
-                )}
-              >
-                <span className={cn("size-2 rounded-full", ativo ? "bg-primary" : "bg-muted-foreground/40")} />
-              </button>
-            );
-          }),
-        )}
+      <div className="flex items-center justify-between">
+        <Label>Onde o texto aparece sobre a imagem</Label>
+        <div className="bg-muted flex items-center gap-0.5 rounded-md p-0.5">
+          <button
+            type="button"
+            onClick={() => onChangeLivre(undefined)}
+            className={cn(
+              "rounded-sm px-2 py-1 text-xs font-medium transition-colors",
+              modo === "GRADE" ? "bg-background shadow-sm" : "text-muted-foreground",
+            )}
+          >
+            Grade
+          </button>
+          <button
+            type="button"
+            onClick={() => onChangeLivre(posicaoLivre ?? { x: 50, y: 85 })}
+            className={cn(
+              "rounded-sm px-2 py-1 text-xs font-medium transition-colors",
+              modo === "LIVRE" ? "bg-background shadow-sm" : "text-muted-foreground",
+            )}
+          >
+            Arrastar
+          </button>
+        </div>
       </div>
+
+      {modo === "GRADE" ? (
+        <div className="bg-muted grid aspect-video grid-cols-3 gap-1.5 rounded-md p-1.5">
+          {LINHAS_POSICAO.map((linha) =>
+            COLUNAS_POSICAO.map((coluna) => {
+              const ativo = linha === vertical && coluna === horizontal;
+              return (
+                <button
+                  key={`${linha}-${coluna}`}
+                  type="button"
+                  aria-label={`Posicionar em ${linha === "INICIO" ? "cima" : linha === "CENTRO" ? "meio" : "baixo"}, ${coluna === "ESQUERDA" ? "esquerda" : coluna === "CENTRO" ? "centro" : "direita"}`}
+                  onClick={() => onChange({ horizontal: coluna, vertical: linha })}
+                  className={cn(
+                    "bg-background flex items-center justify-center rounded-sm border transition-colors",
+                    ativo ? "border-primary ring-primary/30 ring-2" : "hover:border-primary/40",
+                  )}
+                >
+                  <span className={cn("size-2 rounded-full", ativo ? "bg-primary" : "bg-muted-foreground/40")} />
+                </button>
+              );
+            }),
+          )}
+        </div>
+      ) : (
+        <>
+          <div
+            ref={areaRef}
+            onPointerDown={iniciarArrasto}
+            onPointerMove={arrastando}
+            className="bg-muted relative aspect-video cursor-crosshair touch-none rounded-md"
+          >
+            <div
+              className="border-background bg-primary absolute size-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 shadow-sm"
+              style={{ left: `${posicaoLivre?.x ?? 50}%`, top: `${posicaoLivre?.y ?? 85}%` }}
+            />
+          </div>
+          <p className="text-muted-foreground text-xs">Arraste o círculo para posicionar livremente.</p>
+        </>
+      )}
     </div>
   );
 }
@@ -496,6 +565,13 @@ function EditorBannersHero({
     onChange(banners.map((b, idx) => (idx === i ? { ...b, ...alteracoes } : b)));
   }
 
+  // Estilo/posição do conteúdo mobile fica em banner.mobile — cada campo
+  // não definido ali cai no valor do desktop (ver resolverConteudoBannerMobile).
+  function atualizarBannerMobile(i: number, alteracoes: Partial<NonNullable<BannerTema["mobile"]>>) {
+    const banner = banners[i];
+    atualizarBanner(i, { mobile: { ...banner.mobile, ...alteracoes } });
+  }
+
   async function handleUploadMobile(i: number, e: React.ChangeEvent<HTMLInputElement>) {
     const arquivo = e.target.files?.[0];
     e.target.value = "";
@@ -649,10 +725,75 @@ function EditorBannersHero({
                 <SeletorPosicaoConteudo
                   horizontal={banner.alinhamentoHorizontal ?? "ESQUERDA"}
                   vertical={banner.alinhamentoVertical ?? "FIM"}
+                  posicaoLivre={banner.posicaoLivre}
                   onChange={({ horizontal, vertical }) =>
                     atualizarBanner(i, { alinhamentoHorizontal: horizontal, alinhamentoVertical: vertical })
                   }
+                  onChangeLivre={(posicaoLivre) => atualizarBanner(i, { posicaoLivre })}
                 />
+
+                <div className="flex flex-col gap-3 rounded-md border border-dashed p-3">
+                  <CampoSwitch
+                    label="Personalizar posição/fonte pro mobile"
+                    checked={Boolean(banner.mobile)}
+                    onChange={(ativo) => atualizarBanner(i, { mobile: ativo ? (banner.mobile ?? {}) : undefined })}
+                  />
+                  {banner.mobile && (
+                    <>
+                      <p className="text-muted-foreground text-xs">
+                        Campos não preenchidos aqui usam o mesmo valor do desktop acima.
+                      </p>
+                      <CampoSwitch
+                        label="Mostrar fundo atrás do texto (mobile)"
+                        checked={banner.mobile.mostrarFundo ?? banner.mostrarFundo ?? true}
+                        onChange={(mostrarFundo) => atualizarBannerMobile(i, { mostrarFundo })}
+                      />
+                      <SeletorPosicaoConteudo
+                        horizontal={banner.mobile.alinhamentoHorizontal ?? banner.alinhamentoHorizontal ?? "ESQUERDA"}
+                        vertical={banner.mobile.alinhamentoVertical ?? banner.alinhamentoVertical ?? "FIM"}
+                        posicaoLivre={banner.mobile.posicaoLivre ?? banner.posicaoLivre}
+                        onChange={({ horizontal, vertical }) =>
+                          atualizarBannerMobile(i, { alinhamentoHorizontal: horizontal, alinhamentoVertical: vertical })
+                        }
+                        onChangeLivre={(posicaoLivre) => atualizarBannerMobile(i, { posicaoLivre })}
+                      />
+                      {banner.titulo && (
+                        <SeletorFonteTamanho
+                          label="Fonte e tamanho do título (mobile)"
+                          fonte={banner.mobile.fonteTitulo}
+                          tamanho={banner.mobile.tamanhoTitulo}
+                          onChangeFonte={(fonteTitulo) => atualizarBannerMobile(i, { fonteTitulo })}
+                          onChangeTamanho={(tamanhoTitulo) => atualizarBannerMobile(i, { tamanhoTitulo })}
+                        />
+                      )}
+                      {banner.textoBotao && (
+                        <>
+                          <SeletorAlinhamentoBotao
+                            value={banner.mobile.alinhamentoBotao}
+                            onChange={(alinhamentoBotao) => atualizarBannerMobile(i, { alinhamentoBotao })}
+                          />
+                          <SeletorFonteTamanho
+                            label="Fonte e tamanho do texto do botão (mobile)"
+                            fonte={banner.mobile.fonteBotao}
+                            tamanho={banner.mobile.tamanhoFonteBotao}
+                            onChangeFonte={(fonteBotao) => atualizarBannerMobile(i, { fonteBotao })}
+                            onChangeTamanho={(tamanhoFonteBotao) => atualizarBannerMobile(i, { tamanhoFonteBotao })}
+                          />
+                          <SeletorEscala
+                            label="Tamanho do botão (mobile)"
+                            valor={banner.mobile.tamanhoBotao}
+                            onChange={(tamanhoBotao) => atualizarBannerMobile(i, { tamanhoBotao })}
+                          />
+                          <SeletorEscala
+                            label="Arredondamento do botão (mobile)"
+                            valor={banner.mobile.arredondamentoBotao}
+                            onChange={(arredondamentoBotao) => atualizarBannerMobile(i, { arredondamentoBotao })}
+                          />
+                        </>
+                      )}
+                    </>
+                  )}
+                </div>
               </>
             )}
           </div>
@@ -1035,6 +1176,25 @@ function FormularioSecao({
             onChange={(alinhamento) => onChange({ ...secao, config: { ...secao.config, alinhamento } })}
           />
           <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <Label>Tamanho da imagem</Label>
+              <span className="text-muted-foreground text-xs">{secao.config.tamanhoImagem ?? "Padrão"}</span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={secao.config.tamanhoImagem ?? 40}
+              onChange={(e) =>
+                onChange({ ...secao, config: { ...secao.config, tamanhoImagem: Number(e.target.value) } })
+              }
+              className="accent-primary"
+            />
+            <p className="text-muted-foreground text-xs">
+              Controla o tamanho dos cards na grade — maior imagem, menos produtos por linha.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2">
             <Label>Layout no mobile</Label>
             <div className="grid grid-cols-2 gap-2">
               {(["GRADE", "CARROSSEL"] as const).map((layout) => (
@@ -1054,10 +1214,18 @@ function FormularioSecao({
               ))}
             </div>
             <p className="text-muted-foreground text-xs">
-              Carrossel mostra um produto por vez, com variação e "Adicionar ao carrinho" já
-              visíveis — só afeta o mobile, o desktop sempre usa grade.
+              Carrossel mostra um produto por vez — só afeta o mobile, o desktop sempre usa grade.
             </p>
           </div>
+          {secao.config.layoutMobile === "CARROSSEL" && (
+            <CampoSwitch
+              label='Mostrar variação e "Adicionar ao carrinho" no carrossel'
+              checked={secao.config.mostrarComprarCarrossel ?? true}
+              onChange={(mostrarComprarCarrossel) =>
+                onChange({ ...secao, config: { ...secao.config, mostrarComprarCarrossel } })
+              }
+            />
+          )}
         </div>
       );
 
@@ -1236,6 +1404,28 @@ function FormularioEstilo({
             ))}
           </SelectContent>
         </Select>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Label>Cor de fundo da página</Label>
+        <div className="flex items-center gap-2">
+          <input
+            type="color"
+            value={estilo.corFundo ?? "#ffffff"}
+            onChange={(e) => onChangeEstilo({ ...estilo, corFundo: e.target.value })}
+            className="h-9 w-12 rounded-md border"
+          />
+          <Input
+            value={estilo.corFundo ?? ""}
+            placeholder="Padrão do tema"
+            onChange={(e) =>
+              onChangeEstilo({ ...estilo, corFundo: e.target.value || undefined })
+            }
+          />
+        </div>
+        <p className="text-muted-foreground text-xs">
+          Fundo de toda a página da loja — diferente da cor de fundo do cabeçalho, que afeta só ele.
+        </p>
       </div>
     </div>
   );
