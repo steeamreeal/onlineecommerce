@@ -57,6 +57,7 @@ const variacaoSchema = z
       .string()
       .min(1, "Informe o estoque")
       .refine((v) => !Number.isNaN(Number(v)) && Number(v) >= 0, "Não pode ser negativo"),
+    fotoUrl: z.string().optional(),
   })
   .refine((v) => v.cor || v.tamanho || v.modelo, {
     message: "Informe cor, tamanho ou modelo",
@@ -100,7 +101,7 @@ function produtoParaFormValues(produto?: ProdutoExistente): ProdutoFormValues {
       larguraCm: "",
       profundidadeCm: "",
       status: "ATIVO",
-      variacoes: [{ cor: "", tamanho: "", modelo: "", estoque: "0" }],
+      variacoes: [{ cor: "", tamanho: "", modelo: "", estoque: "0", fotoUrl: "" }],
     };
   }
   return {
@@ -115,13 +116,17 @@ function produtoParaFormValues(produto?: ProdutoExistente): ProdutoFormValues {
     larguraCm: produto.larguraCm != null ? String(produto.larguraCm) : "",
     profundidadeCm: produto.profundidadeCm != null ? String(produto.profundidadeCm) : "",
     status: produto.status,
-    variacoes: produto.variacoes.map((v) => ({
-      id: v.id,
-      cor: v.cor ?? "",
-      tamanho: v.tamanho ?? "",
-      modelo: v.modelo ?? "",
-      estoque: String(v.estoque),
-    })),
+    variacoes: produto.variacoes.map((v) => {
+      const foto = produto.fotos.find((f) => f.id === v.fotoId);
+      return {
+        id: v.id,
+        cor: v.cor ?? "",
+        tamanho: v.tamanho ?? "",
+        modelo: v.modelo ?? "",
+        estoque: String(v.estoque),
+        fotoUrl: foto?.url ?? "",
+      };
+    }),
   };
 }
 
@@ -173,6 +178,7 @@ export function ProdutoForm({ produto }: { produto?: ProdutoExistente }) {
         tamanho: v.tamanho || undefined,
         modelo: v.modelo || undefined,
         estoque: Number(v.estoque),
+        fotoUrl: v.fotoUrl || undefined,
       })),
     };
 
@@ -430,7 +436,9 @@ export function ProdutoForm({ produto }: { produto?: ProdutoExistente }) {
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => append({ cor: "", tamanho: "", modelo: "", estoque: "0" })}
+              onClick={() =>
+                append({ cor: "", tamanho: "", modelo: "", estoque: "0", fotoUrl: "" })
+              }
             >
               <Plus className="size-4" />
               Adicionar variação
@@ -439,68 +447,112 @@ export function ProdutoForm({ produto }: { produto?: ProdutoExistente }) {
 
           <div className="flex flex-col gap-3">
             {fields.map((field, index) => (
-              <div
-                key={field.id}
-                className="grid grid-cols-[1fr_1fr_1fr_120px_auto] items-start gap-3 rounded-lg border p-3"
-              >
+              <div key={field.id} className="flex flex-col gap-3 rounded-lg border p-3">
+                <div className="grid grid-cols-[1fr_1fr_1fr_120px_auto] items-start gap-3">
+                  <FormField
+                    control={form.control}
+                    name={`variacoes.${index}.cor`}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs">Cor</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Ex.: Preto" {...field} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name={`variacoes.${index}.tamanho`}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs">Tamanho</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Ex.: M" {...field} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name={`variacoes.${index}.modelo`}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs">Modelo</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Opcional" {...field} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name={`variacoes.${index}.estoque`}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs">Estoque</FormLabel>
+                        <FormControl>
+                          <Input type="number" min="0" {...field} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="mt-6"
+                    disabled={fields.length === 1}
+                    onClick={() => remove(index)}
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                </div>
+
                 <FormField
                   control={form.control}
-                  name={`variacoes.${index}.cor`}
+                  name={`variacoes.${index}.fotoUrl`}
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-xs">Cor</FormLabel>
+                      <FormLabel className="text-xs">
+                        Foto desta variação
+                        <span className="text-muted-foreground font-normal">
+                          {" "}
+                          — mostrada quando o cliente selecionar esta opção
+                        </span>
+                      </FormLabel>
                       <FormControl>
-                        <Input placeholder="Ex.: Preto" {...field} />
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => field.onChange("")}
+                            className={`text-muted-foreground flex size-14 items-center justify-center rounded-md border text-[10px] ${
+                              !field.value ? "border-foreground" : "border-input"
+                            }`}
+                          >
+                            Sem foto
+                          </button>
+                          {midias
+                            .filter((m) => m.tipo === "IMAGEM")
+                            .map((midia) => (
+                              // eslint-disable-next-line @next/next/no-img-element -- URL dinâmica do Supabase Storage
+                              <img
+                                key={midia.url}
+                                src={midia.url}
+                                alt="Opção de foto da variação"
+                                onClick={() => field.onChange(midia.url)}
+                                className={`size-14 cursor-pointer rounded-md border object-cover ${
+                                  field.value === midia.url
+                                    ? "border-foreground ring-2 ring-foreground"
+                                    : "border-input"
+                                }`}
+                              />
+                            ))}
+                        </div>
                       </FormControl>
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={form.control}
-                  name={`variacoes.${index}.tamanho`}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-xs">Tamanho</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Ex.: M" {...field} />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name={`variacoes.${index}.modelo`}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-xs">Modelo</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Opcional" {...field} />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name={`variacoes.${index}.estoque`}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-xs">Estoque</FormLabel>
-                      <FormControl>
-                        <Input type="number" min="0" {...field} />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="mt-6"
-                  disabled={fields.length === 1}
-                  onClick={() => remove(index)}
-                >
-                  <Trash2 className="size-4" />
-                </Button>
               </div>
             ))}
           </div>

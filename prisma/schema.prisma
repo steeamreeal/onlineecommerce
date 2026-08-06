@@ -199,12 +199,13 @@ enum TipoMidiaProduto {
 }
 
 model FotoProduto {
-  id        String           @id @default(cuid())
-  produtoId String
-  produto   Produto          @relation(fields: [produtoId], references: [id], onDelete: Cascade)
-  url       String
-  ordem     Int              @default(0)
-  tipo      TipoMidiaProduto @default(IMAGEM)
+  id         String            @id @default(cuid())
+  produtoId  String
+  produto    Produto           @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+  url        String
+  ordem      Int               @default(0)
+  tipo       TipoMidiaProduto  @default(IMAGEM)
+  variacoes  VariacaoProduto[]
 }
 
 model VariacaoProduto {
@@ -215,10 +216,13 @@ model VariacaoProduto {
   tamanho     String?
   modelo      String?
   estoque     Int                @default(0)
+  fotoId      String?
+  foto        FotoProduto?       @relation(fields: [fotoId], references: [id], onDelete: SetNull)
   itensPedido ItemPedido[]
   movimentos  MovimentoEstoque[]
 
   @@index([produtoId])
+  @@index([fotoId])
 }
 
 enum TipoMovimentoEstoque {

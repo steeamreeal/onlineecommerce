@@ -136,7 +136,12 @@ export function ProdutoDetalhe({ produto, slug }: { produto: Produto; slug: stri
                       key={variacao.id}
                       type="button"
                       disabled={esgotada}
-                      onClick={() => setVariacaoId(variacao.id)}
+                      onClick={() => {
+                        setVariacaoId(variacao.id);
+                        if (variacao.fotoId) {
+                          setMidiaSelecionadaId(variacao.fotoId);
+                        }
+                      }}
                       className={`rounded-md border px-3 py-2 text-sm transition-colors ${
                         selecionada ? "border-primary bg-primary/5" : "hover:border-primary/40"
                       } ${esgotada ? "text-muted-foreground cursor-not-allowed line-through opacity-50" : ""}`}

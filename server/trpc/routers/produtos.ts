@@ -23,6 +23,10 @@ const variacaoSchema = z.object({
   tamanho: z.string().optional(),
   modelo: z.string().optional(),
   estoque: z.number().int().min(0),
+  // Fotos novas ainda não têm id no momento do submit (só ganham id ao
+  // serem persistidas), então o client referencia a foto pela url — o
+  // servidor resolve para o fotoId real dentro da mesma transação.
+  fotoUrl: z.string().optional(),
 });
 
 const produtoInputBase = {
@@ -126,31 +130,43 @@ export const produtosRouter = router({
         }
       }
 
-      return ctx.prisma.produto.create({
-        data: {
-          lojaId: ctx.lojaId,
-          nome: input.nome,
-          descricao: input.descricao,
-          codigo: input.codigo,
-          precoNormal: input.precoNormal,
-          precoPromo: input.precoPromo,
-          pesoGramas: input.pesoGramas,
-          alturaCm: input.alturaCm,
-          larguraCm: input.larguraCm,
-          profundidadeCm: input.profundidadeCm,
-          status: input.status,
-          categoriaId: input.categoriaId,
-          fotos: { create: input.fotos.map(({ url, ordem, tipo }) => ({ url, ordem, tipo })) },
-          variacoes: {
-            create: input.variacoes.map(({ cor, tamanho, modelo, estoque }) => ({
-              cor,
-              tamanho,
-              modelo,
-              estoque,
-            })),
+      return ctx.prisma.$transaction(async (tx) => {
+        const produto = await tx.produto.create({
+          data: {
+            lojaId: ctx.lojaId,
+            nome: input.nome,
+            descricao: input.descricao,
+            codigo: input.codigo,
+            precoNormal: input.precoNormal,
+            precoPromo: input.precoPromo,
+            pesoGramas: input.pesoGramas,
+            alturaCm: input.alturaCm,
+            larguraCm: input.larguraCm,
+            profundidadeCm: input.profundidadeCm,
+            status: input.status,
+            categoriaId: input.categoriaId,
+            fotos: { create: input.fotos.map(({ url, ordem, tipo }) => ({ url, ordem, tipo })) },
           },
-        },
-        include: { fotos: true, variacoes: true },
+          include: { fotos: true },
+        });
+
+        const fotoIdPorUrl = new Map(produto.fotos.map((f) => [f.url, f.id]));
+
+        await tx.variacaoProduto.createMany({
+          data: input.variacoes.map(({ cor, tamanho, modelo, estoque, fotoUrl }) => ({
+            produtoId: produto.id,
+            cor,
+            tamanho,
+            modelo,
+            estoque,
+            fotoId: fotoUrl ? fotoIdPorUrl.get(fotoUrl) : undefined,
+          })),
+        });
+
+        return tx.produto.findUniqueOrThrow({
+          where: { id: produto.id },
+          include: { fotos: true, variacoes: true },
+        });
       });
     }),
 
@@ -243,6 +259,9 @@ export const produtosRouter = router({
           });
         }
 
+        const fotosAtuais = await tx.fotoProduto.findMany({ where: { produtoId: input.id } });
+        const fotoIdPorUrl = new Map(fotosAtuais.map((f) => [f.url, f.id]));
+
         if (variacoesParaRemover.length > 0) {
           await tx.variacaoProduto.deleteMany({
             where: { id: { in: variacoesParaRemover.map((v) => v.id) }, produtoId: input.id },
@@ -258,6 +277,7 @@ export const produtosRouter = router({
               tamanho: variacao.tamanho,
               modelo: variacao.modelo,
               estoque: variacao.estoque,
+              fotoId: variacao.fotoUrl ? fotoIdPorUrl.get(variacao.fotoUrl) : null,
             },
           });
 
@@ -288,12 +308,13 @@ export const produtosRouter = router({
         }
         if (variacoesParaCriar.length > 0) {
           await tx.variacaoProduto.createMany({
-            data: variacoesParaCriar.map(({ cor, tamanho, modelo, estoque }) => ({
+            data: variacoesParaCriar.map(({ cor, tamanho, modelo, estoque, fotoUrl }) => ({
               produtoId: input.id,
               cor,
               tamanho,
               modelo,
               estoque,
+              fotoId: fotoUrl ? fotoIdPorUrl.get(fotoUrl) : undefined,
             })),
           });
         }
