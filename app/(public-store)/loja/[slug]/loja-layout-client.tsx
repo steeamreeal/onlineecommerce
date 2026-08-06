@@ -71,7 +71,12 @@ export default function LojaLayoutClient({
     <CartProvider slug={slug}>
       <div
         className="flex min-h-full flex-1 flex-col"
-        style={{ "--loja-primary": config.corPrimaria || "var(--primary)" } as React.CSSProperties}
+        style={
+          {
+            "--loja-primary": config.corPrimaria || "var(--primary)",
+            backgroundColor: temaConfig?.estilo.corFundo,
+          } as React.CSSProperties
+        }
       >
         <SiteHeader
           slug={slug}

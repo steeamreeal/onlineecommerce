@@ -86,21 +86,21 @@ export function arredondamentoBotaoEmPx(tamanho: number | undefined): number | u
   return (tamanho / 100) * 24;
 }
 
-export const bannerTemaSchema = z.object({
-  id: z.string().optional(),
-  url: z.string().min(1),
-  titulo: z.string(),
-  tipo: z.enum(["IMAGEM", "VIDEO"]).default("IMAGEM"),
-  urlMobile: z.string().optional(),
-  tipoMobile: z.enum(["IMAGEM", "VIDEO"]).optional(),
-  // Link/seção de destino ao clicar nessa imagem específica — independente
-  // do linkBotao, que é só o CTA do texto sobreposto desse mesmo banner.
-  link: z.string().trim().max(300).optional(),
-  // Texto/botão sobreposto são por banner (cada slide do carrossel tem o
-  // seu) — `titulo` acima é o texto principal; os campos abaixo controlam
-  // o CTA e o posicionamento desse conteúdo dentro do slide.
-  textoBotao: z.string().trim().max(40).optional(),
-  linkBotao: z.string().trim().max(300).optional(),
+// Largura mínima de cada card de produto na grade (CSS grid auto-fill) —
+// 0 = cards pequenos, mais colunas; 100 = cards grandes, menos colunas.
+const TAMANHO_IMAGEM_MIN_PX = 130;
+const TAMANHO_IMAGEM_MAX_PX = 340;
+
+export function tamanhoImagemEmPx(tamanho: number | undefined): number | undefined {
+  if (tamanho == null) return undefined;
+  return TAMANHO_IMAGEM_MIN_PX + (tamanho / 100) * (TAMANHO_IMAGEM_MAX_PX - TAMANHO_IMAGEM_MIN_PX);
+}
+
+// Estilo do conteúdo sobreposto (título/botão) — usado tanto direto no
+// banner (desktop, ou ambos se não houver override mobile) quanto dentro de
+// `mobile` (todos opcionais lá: undefined em qualquer campo cai pro valor
+// correspondente aqui fora, ver resolverConteudoBannerMobile).
+const bannerConteudoEstiloSchema = z.object({
   alinhamentoHorizontal: alinhamentoTextoSchema.optional(),
   alinhamentoVertical: posicaoVerticalSchema.optional(),
   // Sem valor definido, mantém o fundo escuro/claro atrás do título+botão
@@ -124,9 +124,49 @@ export const bannerTemaSchema = z.object({
   // texto dentro dele.
   tamanhoBotao: z.number().min(0).max(100).optional(),
   arredondamentoBotao: z.number().min(0).max(100).optional(),
+  // Posição livre (arrastar no preview), em % da área do banner — quando
+  // definida, tem prioridade sobre alinhamentoHorizontal/alinhamentoVertical
+  // (que viram só a grade de 9 pontos, o modo "por encaixe"). Sem valor,
+  // continua no modo grade de sempre.
+  posicaoLivre: z
+    .object({
+      x: z.number().min(0).max(100),
+      y: z.number().min(0).max(100),
+    })
+    .optional(),
+});
+
+export const bannerTemaSchema = z.object({
+  id: z.string().optional(),
+  url: z.string().min(1),
+  titulo: z.string(),
+  tipo: z.enum(["IMAGEM", "VIDEO"]).default("IMAGEM"),
+  urlMobile: z.string().optional(),
+  tipoMobile: z.enum(["IMAGEM", "VIDEO"]).optional(),
+  // Link/seção de destino ao clicar nessa imagem específica — independente
+  // do linkBotao, que é só o CTA do texto sobreposto desse mesmo banner.
+  link: z.string().trim().max(300).optional(),
+  // Texto/botão sobreposto são por banner (cada slide do carrossel tem o
+  // seu) — `titulo` acima é o texto principal; os campos abaixo controlam
+  // o CTA e o posicionamento desse conteúdo dentro do slide.
+  textoBotao: z.string().trim().max(40).optional(),
+  linkBotao: z.string().trim().max(300).optional(),
+  ...bannerConteudoEstiloSchema.shape,
+  // Override específico do mobile pra posição/fonte/tamanho do conteúdo —
+  // a imagem já tinha isso via urlMobile; isso completa pro texto/botão por
+  // cima dela. Cada campo não definido aqui cai no valor de cima (desktop).
+  mobile: bannerConteudoEstiloSchema.optional(),
 });
 
 export type BannerTema = z.infer<typeof bannerTemaSchema>;
+
+// Resolve os valores efetivos de estilo do conteúdo pro mobile, herdando do
+// desktop qualquer campo que não tenha override em `overridesMobile`.
+// Genérico (não fixo em BannerTema) pra funcionar também com o tipo local
+// de banner usado por BannerCarousel/ThemeRenderer.
+export function resolverConteudoBannerMobile<T>(base: T, overridesMobile: Partial<T> | undefined): T {
+  return { ...base, ...overridesMobile };
+}
 
 const secaoBaseSchema = z.object({
   id: z.string(),
@@ -205,6 +245,15 @@ export const secaoColecaoDestaqueSchema = secaoBaseSchema.extend({
     // grande, variação e adicionar ao carrinho já visíveis), em vez da
     // grade normal. Desktop sempre usa grade, independente dessa opção.
     layoutMobile: z.enum(["GRADE", "CARROSSEL"]).default("GRADE"),
+    // Escala 0-100 → largura mínima de cada card na grade (ver
+    // TAMANHO_IMAGEM_PRODUTO_*_PX) — controla quantos produtos cabem por
+    // linha. Sem valor definido, usa as colunas fixas por variante de
+    // sempre (gridProdutosClassePorVariante).
+    tamanhoImagem: z.number().min(0).max(100).optional(),
+    // Só tem efeito quando layoutMobile é "CARROSSEL": liga/desliga a
+    // seleção de variação + "Adicionar ao carrinho" nos slides — desligado,
+    // o carrossel mostra só imagem/nome/preço, igual um card comum.
+    mostrarComprarCarrossel: z.boolean().default(true),
   }),
 });
 
@@ -288,6 +337,12 @@ export const estiloTemaSchema = z.object({
     .optional(),
   fonteTitulo: z.enum(FONTES_TEMA).default("INTER"),
   fonteCorpo: z.enum(FONTES_TEMA).default("INTER"),
+  // Fundo de toda a página da loja (site inteiro, não só uma seção) — sem
+  // valor definido, mantém o branco/neutro padrão do tema.
+  corFundo: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/, "Informe uma cor no formato #RRGGBB")
+    .optional(),
 });
 
 export type EstiloTema = z.infer<typeof estiloTemaSchema>;
@@ -380,6 +435,7 @@ export function criarTemaConfigPadrao(opcoes: {
           alinhamento: "ESQUERDA",
           mostrarPreco: true,
           layoutMobile: "GRADE",
+          mostrarComprarCarrossel: true,
         },
       },
       {

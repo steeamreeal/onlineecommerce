@@ -3,7 +3,14 @@ import { ProductCard } from "@/components/store/product-card";
 import { ProductCarousel } from "@/components/store/product-carousel";
 import { BannerCarousel } from "@/components/store/banner-carousel";
 import { cn } from "@/lib/utils";
-import { FONTE_CSS_VAR, tamanhoFonteEmPx, paddingBotaoEmPx, arredondamentoBotaoEmPx } from "@/lib/tema-loja";
+import {
+  FONTE_CSS_VAR,
+  tamanhoFonteEmPx,
+  paddingBotaoEmPx,
+  arredondamentoBotaoEmPx,
+  tamanhoImagemEmPx,
+  resolverConteudoBannerMobile,
+} from "@/lib/tema-loja";
 import type { RouterOutputs } from "@/lib/trpc/types";
 import type { AlinhamentoTexto, PosicaoVertical, SecaoTema, FonteTema } from "@/lib/tema-loja";
 
@@ -110,6 +117,8 @@ function ConteudoHero({
   arredondamentoBotao,
   mostrarFundo = true,
   alinhamentoBotao,
+  posicaoLivre,
+  classeVisibilidade,
 }: {
   variante: Variante;
   slug: string;
@@ -126,6 +135,14 @@ function ConteudoHero({
   arredondamentoBotao?: number;
   mostrarFundo?: boolean;
   alinhamentoBotao?: AlinhamentoTexto;
+  // Posição livre (arrastar no editor) em % — tem prioridade sobre
+  // alinhamentoHorizontal/alinhamentoVertical (grade de 9 pontos) quando
+  // definida.
+  posicaoLivre?: { x: number; y: number };
+  // Alterna entre a versão desktop e mobile no site público (viewport
+  // undefined) — ver SecaoHero, que renderiza esse componente duas vezes,
+  // uma com o estilo resolvido pro desktop e outra pro mobile.
+  classeVisibilidade?: string;
 }) {
   if (!titulo && !textoBotao) return null;
 
@@ -134,10 +151,21 @@ function ConteudoHero({
   return (
     <div
       className={cn(
-        "pointer-events-none absolute inset-0 flex p-4",
-        classeItemsVertical[alinhamentoVertical ?? "FIM"],
-        classeJustifyHorizontal[alinhamentoHorizontal ?? "ESQUERDA"],
+        "pointer-events-none absolute inset-0",
+        posicaoLivre
+          ? undefined
+          : cn(
+              "flex p-4",
+              classeItemsVertical[alinhamentoVertical ?? "FIM"],
+              classeJustifyHorizontal[alinhamentoHorizontal ?? "ESQUERDA"],
+            ),
+        classeVisibilidade,
       )}
+      style={
+        posicaoLivre
+          ? { left: `${posicaoLivre.x}%`, top: `${posicaoLivre.y}%`, transform: "translate(-50%, -50%)" }
+          : undefined
+      }
     >
       <div
         className={cn(
@@ -191,6 +219,48 @@ function ConteudoHero({
   );
 }
 
+// Mapeia os campos de estilo/posição de um BannerTema (desktop ou já
+// resolvido pro mobile via resolverConteudoBannerMobile) pras props flat de
+// ConteudoHero — evita repetir a mesma lista longa duas vezes em SecaoHero.
+type ConteudoBanner = {
+  titulo?: string;
+  textoBotao?: string;
+  linkBotao?: string;
+  alinhamentoHorizontal?: AlinhamentoTexto;
+  alinhamentoVertical?: PosicaoVertical;
+  fonteTitulo?: FonteTema;
+  tamanhoTitulo?: number;
+  fonteBotao?: FonteTema;
+  tamanhoFonteBotao?: number;
+  tamanhoBotao?: number;
+  arredondamentoBotao?: number;
+  mostrarFundo?: boolean;
+  alinhamentoBotao?: AlinhamentoTexto;
+  posicaoLivre?: { x: number; y: number };
+  mobile?: Omit<ConteudoBanner, "titulo" | "textoBotao" | "linkBotao" | "mobile">;
+};
+
+function propsConteudoHero(variante: Variante, slug: string, banner: ConteudoBanner) {
+  return {
+    variante,
+    slug,
+    titulo: banner.titulo,
+    textoBotao: banner.textoBotao,
+    linkBotao: banner.linkBotao,
+    alinhamentoHorizontal: banner.alinhamentoHorizontal,
+    alinhamentoVertical: banner.alinhamentoVertical,
+    fonteTitulo: banner.fonteTitulo,
+    tamanhoTitulo: banner.tamanhoTitulo,
+    fonteBotao: banner.fonteBotao,
+    tamanhoFonteBotao: banner.tamanhoFonteBotao,
+    tamanhoBotao: banner.tamanhoBotao,
+    arredondamentoBotao: banner.arredondamentoBotao,
+    mostrarFundo: banner.mostrarFundo,
+    alinhamentoBotao: banner.alinhamentoBotao,
+    posicaoLivre: banner.posicaoLivre,
+  };
+}
+
 function SecaoHero({
   variante,
   config,
@@ -217,6 +287,13 @@ function SecaoHero({
   // adicionados no editor (antes do primeiro save) ainda não têm id salvo.
   const banners = config.banners.map((banner, i) => ({ ...banner, id: banner.id ?? `${i}` }));
 
+  // No site público (viewport undefined) as duas versões existem no DOM e o
+  // CSS decide qual mostrar — no preview do editor (viewport definido) a
+  // simulação de mobile é um container estreito, não a largura real da
+  // janela, então só uma delas é renderizada, escolhida explicitamente.
+  const mostrarDesktop = viewport ? viewport === "DESKTOP" : true;
+  const mostrarMobile = viewport ? viewport === "MOBILE" : true;
+
   return (
     <section className={classeSecao}>
       <BannerCarousel
@@ -232,23 +309,18 @@ function SecaoHero({
                 className="absolute inset-0"
               />
             )}
-            <ConteudoHero
-              variante={variante}
-              slug={slug}
-              titulo={banner.titulo}
-              textoBotao={banner.textoBotao}
-              linkBotao={banner.linkBotao}
-              alinhamentoHorizontal={banner.alinhamentoHorizontal}
-              alinhamentoVertical={banner.alinhamentoVertical}
-              fonteTitulo={banner.fonteTitulo}
-              tamanhoTitulo={banner.tamanhoTitulo}
-              fonteBotao={banner.fonteBotao}
-              tamanhoFonteBotao={banner.tamanhoFonteBotao}
-              tamanhoBotao={banner.tamanhoBotao}
-              arredondamentoBotao={banner.arredondamentoBotao}
-              mostrarFundo={banner.mostrarFundo}
-              alinhamentoBotao={banner.alinhamentoBotao}
-            />
+            {mostrarDesktop && (
+              <ConteudoHero
+                {...propsConteudoHero(variante, slug, banner)}
+                classeVisibilidade={viewport ? undefined : "hidden md:flex"}
+              />
+            )}
+            {mostrarMobile && (
+              <ConteudoHero
+                {...propsConteudoHero(variante, slug, resolverConteudoBannerMobile(banner, banner.mobile))}
+                classeVisibilidade={viewport ? undefined : "flex md:hidden"}
+              />
+            )}
           </>
         )}
       />
@@ -383,7 +455,14 @@ function SecaoColecaoDestaque({
             </h2>
           </div>
           {exibirGrade && (
-            <div className={cn(gridProdutosClassePorVariante[variante], layoutCarrossel && "max-md:hidden")}>
+            <div
+              className={cn(gridProdutosClassePorVariante[variante], layoutCarrossel && "max-md:hidden")}
+              style={
+                config.tamanhoImagem != null
+                  ? { gridTemplateColumns: `repeat(auto-fill, minmax(${tamanhoImagemEmPx(config.tamanhoImagem)}px, 1fr))` }
+                  : undefined
+              }
+            >
               {produtos.map((produto) => (
                 <ProductCard
                   key={produto.id}
@@ -397,7 +476,13 @@ function SecaoColecaoDestaque({
           )}
           {exibirCarrossel && (
             <div className={viewport ? undefined : "md:hidden"}>
-              <ProductCarousel produtos={produtos} slug={slug} variante={variantLower} mostrarPreco={mostrarPreco} />
+              <ProductCarousel
+                produtos={produtos}
+                slug={slug}
+                variante={variantLower}
+                mostrarPreco={mostrarPreco}
+                mostrarComprar={config.mostrarComprarCarrossel ?? true}
+              />
             </div>
           )}
           {config.linkVerTudo && (

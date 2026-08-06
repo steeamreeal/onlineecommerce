@@ -76,6 +76,7 @@ function novaSecao(tipo: TipoSecaoTema): SecaoTema {
           alinhamento: "ESQUERDA",
           mostrarPreco: true,
           layoutMobile: "GRADE",
+          mostrarComprarCarrossel: true,
         },
       };
     case "TEXTO":
@@ -418,6 +419,7 @@ export function EditorTema() {
           secoes={tema.secoes}
           template={template}
           corPrimaria={tema.estilo.corPrimaria}
+          corFundo={tema.estilo.corFundo}
           secaoSelecionadaId={selecaoId}
           onSelecionarSecao={(id) => selecionarSecao(id)}
           viewport={viewport}

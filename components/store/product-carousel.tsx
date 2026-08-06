@@ -15,11 +15,16 @@ export function ProductCarousel({
   slug,
   variante,
   mostrarPreco,
+  mostrarComprar = true,
 }: {
   produtos: Produto[];
   slug: string;
   variante: "minimalista" | "editorial" | "vitrine";
   mostrarPreco: boolean;
+  // Desligado, o carrossel vira só imagem/nome/preço (sem variação nem
+  // "Adicionar ao carrinho") — toque não tem hover pra revelar isso depois,
+  // então aqui é tudo ou nada, controlado direto por esse prop.
+  mostrarComprar?: boolean;
 }) {
   const trilhaRef = useRef<HTMLDivElement>(null);
   const [indiceAtual, setIndiceAtual] = useState(0);
@@ -51,7 +56,13 @@ export function ProductCarousel({
       >
         {produtos.map((produto) => (
           <div key={produto.id} className="w-[80%] shrink-0 snap-center">
-            <ProductCard produto={produto} slug={slug} variante={variante} mostrarPreco={mostrarPreco} expandido />
+            <ProductCard
+              produto={produto}
+              slug={slug}
+              variante={variante}
+              mostrarPreco={mostrarPreco}
+              expandido={mostrarComprar}
+            />
           </div>
         ))}
       </div>
