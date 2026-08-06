@@ -320,7 +320,7 @@ export function EditorTema() {
         </Button>
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex min-h-0 flex-1 overflow-hidden">
         <aside className="flex w-64 shrink-0 flex-col gap-1 overflow-y-auto border-r p-3">
           <button
             type="button"

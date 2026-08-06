@@ -168,7 +168,7 @@ export function PreviewTema({
   }
 
   return (
-    <div className="bg-muted/30 flex flex-1 justify-center overflow-y-auto p-6">
+    <div className="bg-muted/30 flex min-h-0 flex-1 justify-center overflow-y-auto p-6">
       <div
         onClick={handleClick}
         className={cn(
