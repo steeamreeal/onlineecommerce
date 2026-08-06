@@ -30,6 +30,7 @@ import {
   NOMES_TIPO_SECAO,
   NOMES_FONTE,
   NOMES_TAMANHO_TEXTO,
+  NOMES_EXIBIR_EM,
   FONTES_TEMA,
   type SecaoTema,
   type EstiloTema,
@@ -38,6 +39,7 @@ import {
   type PosicaoVertical,
   type ColunaRodape,
   type TamanhoTexto,
+  type ExibirEm,
 } from "@/lib/tema-loja";
 
 function CampoTexto({
@@ -736,6 +738,26 @@ function FormularioSecao({
             value={secao.config.alinhamento ?? "ESQUERDA"}
             onChange={(alinhamento) => onChange({ ...secao, config: { ...secao.config, alinhamento } })}
           />
+          <div className="flex flex-col gap-2">
+            <Label>Exibir em</Label>
+            <div className="grid grid-cols-3 gap-2">
+              {(["AMBOS", "DESKTOP", "MOBILE"] as ExibirEm[]).map((exibirEm) => (
+                <button
+                  key={exibirEm}
+                  type="button"
+                  onClick={() => onChange({ ...secao, config: { ...secao.config, exibirEm } })}
+                  className={cn(
+                    "rounded-md border px-2 py-2 text-xs font-medium transition-colors",
+                    (secao.config.exibirEm ?? "AMBOS") === exibirEm
+                      ? "border-primary ring-primary/30 ring-2"
+                      : "hover:border-primary/40",
+                  )}
+                >
+                  {NOMES_EXIBIR_EM[exibirEm]}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       );
 

@@ -196,16 +196,36 @@ function SecaoMenuCategorias({
   config,
   slug,
   categorias,
+  viewport,
 }: {
   variante: Variante;
   config: Extract<SecaoTema, { tipo: "MENU_CATEGORIAS" }>["config"];
   slug: string;
   categorias: Categoria[];
+  viewport?: "DESKTOP" | "MOBILE";
 }) {
   if (categorias.length === 0) return null;
 
+  const exibirEm = config.exibirEm ?? "AMBOS";
+  // No preview do editor (viewport definido) a simulação de mobile é um
+  // container estreito, não a largura real da janela — então as classes
+  // `md:` do Tailwind não reagem, e a decisão precisa ser explícita aqui.
+  // No site público (viewport undefined) o comportamento é só responsivo.
+  if (viewport && exibirEm !== "AMBOS" && exibirEm !== viewport) return null;
+
   return (
-    <section className="flex flex-col gap-4 px-6">
+    <section
+      className={cn(
+        "flex-col gap-4 px-6",
+        viewport
+          ? "flex"
+          : exibirEm === "DESKTOP"
+            ? "hidden md:flex"
+            : exibirEm === "MOBILE"
+              ? "flex md:hidden"
+              : "flex",
+      )}
+    >
       <div
         className={cn(
           categoriasWrapperClassePorVariante[variante],
@@ -382,6 +402,7 @@ export function ThemeRenderer({
                 config={secao.config}
                 slug={slug}
                 categorias={categorias}
+                viewport={viewport}
               />
             );
           case "COLECAO_DESTAQUE":

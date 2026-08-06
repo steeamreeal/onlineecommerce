@@ -20,6 +20,9 @@ export type AlinhamentoTexto = z.infer<typeof alinhamentoTextoSchema>;
 export const posicaoVerticalSchema = z.enum(["INICIO", "CENTRO", "FIM"]);
 export type PosicaoVertical = z.infer<typeof posicaoVerticalSchema>;
 
+export const exibirEmSchema = z.enum(["AMBOS", "DESKTOP", "MOBILE"]);
+export type ExibirEm = z.infer<typeof exibirEmSchema>;
+
 export const bannerTemaSchema = z.object({
   id: z.string().optional(),
   url: z.string().min(1),
@@ -124,6 +127,11 @@ export const secaoMenuCategoriasSchema = secaoBaseSchema.extend({
       .optional(),
     tamanho: tamanhoTextoSchema.default("MEDIO"),
     alinhamento: alinhamentoTextoSchema.default("ESQUERDA"),
+    // Controla em qual(is) largura(s) de tela esse menu aparece — útil
+    // porque o cabeçalho (CABECALHO) já tem sua própria navegação de
+    // categorias visível a partir de md, então em muitos temas esse menu
+    // fica redundante em desktop e só faz sentido em mobile (ou vice-versa).
+    exibirEm: exibirEmSchema.default("AMBOS"),
   }),
 });
 
@@ -229,6 +237,12 @@ export const NOMES_TAMANHO_TEXTO: Record<TamanhoTexto, string> = {
   PEQUENO: "Pequeno",
   MEDIO: "Médio",
   GRANDE: "Grande",
+};
+
+export const NOMES_EXIBIR_EM: Record<ExibirEm, string> = {
+  AMBOS: "Sempre",
+  DESKTOP: "Só desktop",
+  MOBILE: "Só mobile",
 };
 
 export const NOMES_FONTE: Record<(typeof FONTES_TEMA)[number], string> = {
