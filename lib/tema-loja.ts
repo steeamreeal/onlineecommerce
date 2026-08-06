@@ -343,6 +343,13 @@ export const estiloTemaSchema = z.object({
     .string()
     .regex(/^#[0-9A-Fa-f]{6}$/, "Informe uma cor no formato #RRGGBB")
     .optional(),
+  // Cor do texto de toda a página (site inteiro) — dá pro lojista corrigir a
+  // legibilidade quando escolhe um corFundo escuro. Sem valor definido,
+  // mantém a cor de texto padrão do tema.
+  corTexto: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/, "Informe uma cor no formato #RRGGBB")
+    .optional(),
 });
 
 export type EstiloTema = z.infer<typeof estiloTemaSchema>;

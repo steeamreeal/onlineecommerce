@@ -420,6 +420,7 @@ export function EditorTema() {
           template={template}
           corPrimaria={tema.estilo.corPrimaria}
           corFundo={tema.estilo.corFundo}
+          corTexto={tema.estilo.corTexto}
           secaoSelecionadaId={selecaoId}
           onSelecionarSecao={(id) => selecionarSecao(id)}
           viewport={viewport}
