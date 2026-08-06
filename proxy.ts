@@ -22,6 +22,17 @@ function resolverTenantPorHost(request: NextRequest): NextResponse | null {
     return null;
   }
 
+  // Chamadas de API (tRPC do client, webhooks etc.) nunca são "navegação de
+  // página de loja" — precisam ir direto para a mesma instância Next, sem
+  // reescrita de tenant. Sem esse corte, uma request a /api/trpc/... vinda
+  // de um domínio próprio virava /loja/dominio-proprio/{host}/api/trpc/...
+  // (ou, após o redirect da página resolvedora, /loja/{slug}/api/trpc/...),
+  // uma rota que não existe — toda chamada tRPC feita pelo browser no site
+  // público de um domínio próprio quebrava com 404, mesmo a loja existindo.
+  if (pathname.startsWith("/api/")) {
+    return null;
+  }
+
   if (host === plataforma || host === `www.${plataforma}`) {
     return null;
   }
