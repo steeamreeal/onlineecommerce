@@ -20,6 +20,7 @@ function PreviewCabecalho({
   mostrarConta,
   posicaoLogo,
   corFundo,
+  corTexto,
   viewport,
 }: {
   nome: string;
@@ -30,9 +31,10 @@ function PreviewCabecalho({
   mostrarConta: boolean;
   posicaoLogo: "ESQUERDA" | "CENTRO";
   corFundo: string | undefined;
+  corTexto: string | undefined;
   viewport: "DESKTOP" | "MOBILE";
 }) {
-  const estiloFundo = corFundo ? { backgroundColor: corFundo } : undefined;
+  const estiloFundo = { backgroundColor: corFundo, color: corTexto };
   const logo =
     exibicaoLogo === "LOGO" && logoUrl ? (
       // eslint-disable-next-line @next/next/no-img-element -- URL dinâmica do Supabase Storage
@@ -254,6 +256,7 @@ export function PreviewTema({
               mostrarConta={cabecalho.config.mostrarConta ?? true}
               posicaoLogo={cabecalho.config.posicaoLogo ?? "ESQUERDA"}
               corFundo={cabecalho.config.corFundo}
+              corTexto={cabecalho.config.corTexto}
               viewport={viewport}
             />
           </button>

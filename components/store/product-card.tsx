@@ -41,6 +41,8 @@ export function ProductCard({
   variante = "minimalista",
   mostrarPreco = true,
   expandido = false,
+  corBotao,
+  corTextoBotao,
 }: {
   produto: Produto;
   slug: string;
@@ -49,6 +51,10 @@ export function ProductCard({
   // Mostra a seleção de variação/adicionar ao carrinho sempre visível, sem
   // depender de hover — usado no carrossel mobile (toque não tem hover).
   expandido?: boolean;
+  // Cor do botão "Adicionar ao carrinho" definida na seção (ex.: Coleção em
+  // destaque) — sem valor, cai no padrão bg-foreground/text-background.
+  corBotao?: string;
+  corTextoBotao?: string;
 }) {
   // Opcional (não obrigatório) porque esse card também é renderizado no
   // preview do editor de tema, que roda sem CartProvider de propósito — lá
@@ -172,7 +178,12 @@ export function ProductCard({
             type="button"
             disabled={!podeComprar}
             onClick={handleAdicionar}
-            className="bg-foreground text-background w-full rounded-md py-1.5 text-xs font-medium disabled:opacity-50"
+            className={cn(
+              "w-full rounded-md py-1.5 text-xs font-medium disabled:opacity-50",
+              !corBotao && "bg-foreground",
+              !corTextoBotao && "text-background",
+            )}
+            style={{ backgroundColor: corBotao, color: corTextoBotao }}
           >
             Adicionar ao carrinho
           </button>

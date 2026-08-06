@@ -206,6 +206,13 @@ export const secaoCabecalhoSchema = secaoBaseSchema.extend({
       .string()
       .regex(/^#[0-9A-Fa-f]{6}$/, "Informe uma cor no formato #RRGGBB")
       .optional(),
+    // Cor do texto do cabeçalho (nome da loja, busca, menu de categorias
+    // embutido) — independente da cor de texto do resto da página, já que o
+    // fundo do cabeçalho também pode ser diferente do resto da página.
+    corTexto: z
+      .string()
+      .regex(/^#[0-9A-Fa-f]{6}$/, "Informe uma cor no formato #RRGGBB")
+      .optional(),
   }),
 });
 
@@ -254,6 +261,18 @@ export const secaoColecaoDestaqueSchema = secaoBaseSchema.extend({
     // seleção de variação + "Adicionar ao carrinho" nos slides — desligado,
     // o carrossel mostra só imagem/nome/preço, igual um card comum.
     mostrarComprarCarrossel: z.boolean().default(true),
+    // Cor do botão "Adicionar ao carrinho" só nos cards desta seção (grade e
+    // carrossel mobile) — independente da cor usada em outras seções/na
+    // página do produto. Sem valor definido, usa o padrão do tema
+    // (bg-foreground/text-background).
+    corBotao: z
+      .string()
+      .regex(/^#[0-9A-Fa-f]{6}$/, "Informe uma cor no formato #RRGGBB")
+      .optional(),
+    corTextoBotao: z
+      .string()
+      .regex(/^#[0-9A-Fa-f]{6}$/, "Informe uma cor no formato #RRGGBB")
+      .optional(),
   }),
 });
 

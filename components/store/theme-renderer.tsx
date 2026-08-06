@@ -470,6 +470,8 @@ function SecaoColecaoDestaque({
                   slug={slug}
                   variante={variantLower}
                   mostrarPreco={mostrarPreco}
+                  corBotao={config.corBotao}
+                  corTextoBotao={config.corTextoBotao}
                 />
               ))}
             </div>
@@ -482,6 +484,8 @@ function SecaoColecaoDestaque({
                 variante={variantLower}
                 mostrarPreco={mostrarPreco}
                 mostrarComprar={config.mostrarComprarCarrossel ?? true}
+                corBotao={config.corBotao}
+                corTextoBotao={config.corTextoBotao}
               />
             </div>
           )}

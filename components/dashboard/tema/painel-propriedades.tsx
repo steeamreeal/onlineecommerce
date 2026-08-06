@@ -998,6 +998,32 @@ function FormularioSecao({
               />
             </div>
           </div>
+          <div className="flex flex-col gap-2">
+            <Label>Cor do texto</Label>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={secao.config.corTexto ?? "#000000"}
+                onChange={(e) =>
+                  onChange({ ...secao, config: { ...secao.config, corTexto: e.target.value } })
+                }
+                className="h-9 w-12 rounded-md border"
+              />
+              <Input
+                value={secao.config.corTexto ?? ""}
+                placeholder="Padrão do tema"
+                onChange={(e) =>
+                  onChange({
+                    ...secao,
+                    config: { ...secao.config, corTexto: e.target.value || undefined },
+                  })
+                }
+              />
+            </div>
+            <p className="text-muted-foreground text-xs">
+              Cor do nome da loja e do menu de categorias no cabeçalho.
+            </p>
+          </div>
         </div>
       );
 
@@ -1232,6 +1258,56 @@ function FormularioSecao({
               }
             />
           )}
+          <div className="flex flex-col gap-2">
+            <Label>Cor do botão &quot;Adicionar ao carrinho&quot;</Label>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={secao.config.corBotao ?? "#000000"}
+                onChange={(e) =>
+                  onChange({ ...secao, config: { ...secao.config, corBotao: e.target.value } })
+                }
+                className="h-9 w-12 rounded-md border"
+              />
+              <Input
+                value={secao.config.corBotao ?? ""}
+                placeholder="Padrão do tema"
+                onChange={(e) =>
+                  onChange({
+                    ...secao,
+                    config: { ...secao.config, corBotao: e.target.value || undefined },
+                  })
+                }
+              />
+            </div>
+            <p className="text-muted-foreground text-xs">
+              Vale só pros cards desta seção (grade e carrossel mobile) — outras seções e a
+              página do produto não são afetadas.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label>Cor do texto do botão</Label>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={secao.config.corTextoBotao ?? "#ffffff"}
+                onChange={(e) =>
+                  onChange({ ...secao, config: { ...secao.config, corTextoBotao: e.target.value } })
+                }
+                className="h-9 w-12 rounded-md border"
+              />
+              <Input
+                value={secao.config.corTextoBotao ?? ""}
+                placeholder="Padrão do tema"
+                onChange={(e) =>
+                  onChange({
+                    ...secao,
+                    config: { ...secao.config, corTextoBotao: e.target.value || undefined },
+                  })
+                }
+              />
+            </div>
+          </div>
         </div>
       );
 
