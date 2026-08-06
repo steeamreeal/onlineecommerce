@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductCard } from "@/components/store/product-card";
+import { ProdutoGaleria } from "@/components/store/produto-galeria";
 import { useCart } from "@/components/store/cart-context";
 import { trpc } from "@/lib/trpc/client";
 import type { RouterOutputs } from "@/lib/trpc/types";
@@ -71,19 +72,12 @@ export function ProdutoDetalhe({ produto, slug }: { produto: Produto; slug: stri
 
       <div className="grid gap-8 md:grid-cols-2">
         <div className="flex flex-col gap-3">
-          <div className="bg-muted aspect-square overflow-hidden rounded-lg">
-            {midiaSelecionada?.tipo === "VIDEO" ? (
-              <video
-                src={midiaSelecionada.url}
-                className="size-full object-cover"
-                controls
-                playsInline
-              />
-            ) : midiaSelecionada ? (
-              // eslint-disable-next-line @next/next/no-img-element -- URL dinâmica do Supabase Storage, sem domínio fixo para next/image
-              <img src={midiaSelecionada.url} alt={produto.nome} className="size-full object-cover" />
-            ) : null}
-          </div>
+          <ProdutoGaleria
+            midias={midias}
+            midiaSelecionadaId={midiaSelecionada?.id}
+            onSelecionar={setMidiaSelecionadaId}
+            nomeProduto={produto.nome}
+          />
           {midias.length > 1 && (
             <div className="flex gap-2">
               {midias.map((midia) => (
