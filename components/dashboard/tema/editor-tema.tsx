@@ -15,6 +15,8 @@ import {
   PanelTop,
   Plus,
   Settings,
+  Smartphone,
+  Monitor,
   Trash2,
   X,
 } from "lucide-react";
@@ -161,6 +163,7 @@ export function EditorTema() {
   const [template, setTemplate] = useState<"MINIMALISTA" | "EDITORIAL" | "VITRINE">("MINIMALISTA");
   const [selecaoId, setSelecaoId] = useState<string | null>(null);
   const [mostrandoEstilo, setMostrandoEstilo] = useState(false);
+  const [viewport, setViewport] = useState<"DESKTOP" | "MOBILE">("DESKTOP");
 
   // Inicializa o estado local a partir do que está salvo (ou de um padrão
   // migrado dos banners antigos, se a loja nunca abriu o editor) — só uma
@@ -282,6 +285,32 @@ export function EditorTema() {
             <p className="text-muted-foreground text-xs">Personalize a página inicial da sua loja</p>
           </div>
         </div>
+        <div className="bg-muted flex items-center gap-0.5 rounded-md p-0.5">
+          <button
+            type="button"
+            aria-label="Visualizar como desktop"
+            aria-pressed={viewport === "DESKTOP"}
+            onClick={() => setViewport("DESKTOP")}
+            className={cn(
+              "flex size-7 items-center justify-center rounded-sm transition-colors",
+              viewport === "DESKTOP" ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <Monitor className="size-4" />
+          </button>
+          <button
+            type="button"
+            aria-label="Visualizar como celular"
+            aria-pressed={viewport === "MOBILE"}
+            onClick={() => setViewport("MOBILE")}
+            className={cn(
+              "flex size-7 items-center justify-center rounded-sm transition-colors",
+              viewport === "MOBILE" ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <Smartphone className="size-4" />
+          </button>
+        </div>
         <Button
           size="sm"
           onClick={salvar}
@@ -385,6 +414,7 @@ export function EditorTema() {
           corPrimaria={tema.estilo.corPrimaria}
           secaoSelecionadaId={selecaoId}
           onSelecionarSecao={(id) => selecionarSecao(id)}
+          viewport={viewport}
         />
 
         <PainelPropriedades
