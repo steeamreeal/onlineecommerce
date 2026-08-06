@@ -9,6 +9,8 @@ import {
   AlignRight,
   Plus,
   Trash2,
+  Monitor,
+  Smartphone,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -543,6 +545,10 @@ function EditorBannersHero({
 }) {
   const [enviando, setEnviando] = useState(false);
   const [enviandoMobileIndex, setEnviandoMobileIndex] = useState<number | null>(null);
+  // Qual versão (desktop/mobile) do estilo do conteúdo está sendo editada
+  // em cada banner — chave por id/url porque o índice muda se um banner do
+  // meio for removido.
+  const [viewportEstilo, setViewportEstilo] = useState<Record<string, "DESKTOP" | "MOBILE">>({});
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const arquivo = e.target.files?.[0];
@@ -667,16 +673,6 @@ function EditorBannersHero({
               onChange={(e) => atualizarBanner(i, { titulo: e.target.value })}
             />
 
-            {banner.titulo && (
-              <SeletorFonteTamanho
-                label="Fonte e tamanho do título"
-                fonte={banner.fonteTitulo}
-                tamanho={banner.tamanhoTitulo}
-                onChangeFonte={(fonteTitulo) => atualizarBanner(i, { fonteTitulo })}
-                onChangeTamanho={(tamanhoTitulo) => atualizarBanner(i, { tamanhoTitulo })}
-              />
-            )}
-
             <Input
               value={banner.textoBotao ?? ""}
               placeholder="Texto do botão (opcional)"
@@ -689,113 +685,123 @@ function EditorBannersHero({
               onChange={(e) => atualizarBanner(i, { linkBotao: e.target.value })}
             />
 
-            {banner.textoBotao && (
-              <>
-                <SeletorAlinhamentoBotao
-                  value={banner.alinhamentoBotao}
-                  onChange={(alinhamentoBotao) => atualizarBanner(i, { alinhamentoBotao })}
-                />
-                <SeletorFonteTamanho
-                  label="Fonte e tamanho do texto do botão"
-                  fonte={banner.fonteBotao}
-                  tamanho={banner.tamanhoFonteBotao}
-                  onChangeFonte={(fonteBotao) => atualizarBanner(i, { fonteBotao })}
-                  onChangeTamanho={(tamanhoFonteBotao) => atualizarBanner(i, { tamanhoFonteBotao })}
-                />
-                <SeletorEscala
-                  label="Tamanho do botão"
-                  valor={banner.tamanhoBotao}
-                  onChange={(tamanhoBotao) => atualizarBanner(i, { tamanhoBotao })}
-                />
-                <SeletorEscala
-                  label="Arredondamento do botão"
-                  valor={banner.arredondamentoBotao}
-                  onChange={(arredondamentoBotao) => atualizarBanner(i, { arredondamentoBotao })}
-                />
-              </>
-            )}
+            {(banner.titulo || banner.textoBotao) &&
+              (() => {
+                const chave = banner.id ?? banner.url;
+                const tab = viewportEstilo[chave] ?? "DESKTOP";
+                const noMobile = tab === "MOBILE";
+                const m = banner.mobile;
+                const escrever = (alteracoes: Partial<NonNullable<BannerTema["mobile"]>>) =>
+                  noMobile ? atualizarBannerMobile(i, alteracoes) : atualizarBanner(i, alteracoes);
 
-            {(banner.titulo || banner.textoBotao) && (
-              <>
-                <CampoSwitch
-                  label="Mostrar fundo atrás do texto"
-                  checked={banner.mostrarFundo ?? true}
-                  onChange={(mostrarFundo) => atualizarBanner(i, { mostrarFundo })}
-                />
-                <SeletorPosicaoConteudo
-                  horizontal={banner.alinhamentoHorizontal ?? "ESQUERDA"}
-                  vertical={banner.alinhamentoVertical ?? "FIM"}
-                  posicaoLivre={banner.posicaoLivre}
-                  onChange={({ horizontal, vertical }) =>
-                    atualizarBanner(i, { alinhamentoHorizontal: horizontal, alinhamentoVertical: vertical })
-                  }
-                  onChangeLivre={(posicaoLivre) => atualizarBanner(i, { posicaoLivre })}
-                />
+                return (
+                  <div className="flex flex-col gap-3 rounded-md border p-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs">Estilo e posição do conteúdo</Label>
+                      <div className="bg-muted flex items-center gap-0.5 rounded-md p-0.5">
+                        <button
+                          type="button"
+                          aria-label="Editar estilo para desktop"
+                          onClick={() => setViewportEstilo((atual) => ({ ...atual, [chave]: "DESKTOP" }))}
+                          className={cn(
+                            "flex size-7 items-center justify-center rounded-sm transition-colors",
+                            !noMobile ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground",
+                          )}
+                        >
+                          <Monitor className="size-4" />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label="Editar estilo para mobile"
+                          onClick={() => setViewportEstilo((atual) => ({ ...atual, [chave]: "MOBILE" }))}
+                          className={cn(
+                            "flex size-7 items-center justify-center rounded-sm transition-colors",
+                            noMobile ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground",
+                          )}
+                        >
+                          <Smartphone className="size-4" />
+                        </button>
+                      </div>
+                    </div>
 
-                <div className="flex flex-col gap-3 rounded-md border border-dashed p-3">
-                  <CampoSwitch
-                    label="Personalizar posição/fonte pro mobile"
-                    checked={Boolean(banner.mobile)}
-                    onChange={(ativo) => atualizarBanner(i, { mobile: ativo ? (banner.mobile ?? {}) : undefined })}
-                  />
-                  {banner.mobile && (
-                    <>
-                      <p className="text-muted-foreground text-xs">
-                        Campos não preenchidos aqui usam o mesmo valor do desktop acima.
-                      </p>
-                      <CampoSwitch
-                        label="Mostrar fundo atrás do texto (mobile)"
-                        checked={banner.mobile.mostrarFundo ?? banner.mostrarFundo ?? true}
-                        onChange={(mostrarFundo) => atualizarBannerMobile(i, { mostrarFundo })}
+                    {noMobile && (
+                      <div className="flex items-center justify-between">
+                        <p className="text-muted-foreground text-xs">
+                          Campo não mexido aqui usa o mesmo valor do desktop.
+                        </p>
+                        {m && Object.keys(m).length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => atualizarBanner(i, { mobile: undefined })}
+                            className="text-primary shrink-0 text-xs hover:underline"
+                          >
+                            Restaurar padrão
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {banner.titulo && (
+                      <SeletorFonteTamanho
+                        label="Fonte e tamanho do título"
+                        fonte={noMobile ? m?.fonteTitulo : banner.fonteTitulo}
+                        tamanho={noMobile ? m?.tamanhoTitulo : banner.tamanhoTitulo}
+                        onChangeFonte={(fonteTitulo) => escrever({ fonteTitulo })}
+                        onChangeTamanho={(tamanhoTitulo) => escrever({ tamanhoTitulo })}
                       />
-                      <SeletorPosicaoConteudo
-                        horizontal={banner.mobile.alinhamentoHorizontal ?? banner.alinhamentoHorizontal ?? "ESQUERDA"}
-                        vertical={banner.mobile.alinhamentoVertical ?? banner.alinhamentoVertical ?? "FIM"}
-                        posicaoLivre={banner.mobile.posicaoLivre ?? banner.posicaoLivre}
-                        onChange={({ horizontal, vertical }) =>
-                          atualizarBannerMobile(i, { alinhamentoHorizontal: horizontal, alinhamentoVertical: vertical })
-                        }
-                        onChangeLivre={(posicaoLivre) => atualizarBannerMobile(i, { posicaoLivre })}
-                      />
-                      {banner.titulo && (
-                        <SeletorFonteTamanho
-                          label="Fonte e tamanho do título (mobile)"
-                          fonte={banner.mobile.fonteTitulo}
-                          tamanho={banner.mobile.tamanhoTitulo}
-                          onChangeFonte={(fonteTitulo) => atualizarBannerMobile(i, { fonteTitulo })}
-                          onChangeTamanho={(tamanhoTitulo) => atualizarBannerMobile(i, { tamanhoTitulo })}
+                    )}
+
+                    {banner.textoBotao && (
+                      <>
+                        <SeletorAlinhamentoBotao
+                          value={noMobile ? m?.alinhamentoBotao : banner.alinhamentoBotao}
+                          onChange={(alinhamentoBotao) => escrever({ alinhamentoBotao })}
                         />
-                      )}
-                      {banner.textoBotao && (
-                        <>
-                          <SeletorAlinhamentoBotao
-                            value={banner.mobile.alinhamentoBotao}
-                            onChange={(alinhamentoBotao) => atualizarBannerMobile(i, { alinhamentoBotao })}
-                          />
-                          <SeletorFonteTamanho
-                            label="Fonte e tamanho do texto do botão (mobile)"
-                            fonte={banner.mobile.fonteBotao}
-                            tamanho={banner.mobile.tamanhoFonteBotao}
-                            onChangeFonte={(fonteBotao) => atualizarBannerMobile(i, { fonteBotao })}
-                            onChangeTamanho={(tamanhoFonteBotao) => atualizarBannerMobile(i, { tamanhoFonteBotao })}
-                          />
-                          <SeletorEscala
-                            label="Tamanho do botão (mobile)"
-                            valor={banner.mobile.tamanhoBotao}
-                            onChange={(tamanhoBotao) => atualizarBannerMobile(i, { tamanhoBotao })}
-                          />
-                          <SeletorEscala
-                            label="Arredondamento do botão (mobile)"
-                            valor={banner.mobile.arredondamentoBotao}
-                            onChange={(arredondamentoBotao) => atualizarBannerMobile(i, { arredondamentoBotao })}
-                          />
-                        </>
-                      )}
-                    </>
-                  )}
-                </div>
-              </>
-            )}
+                        <SeletorFonteTamanho
+                          label="Fonte e tamanho do texto do botão"
+                          fonte={noMobile ? m?.fonteBotao : banner.fonteBotao}
+                          tamanho={noMobile ? m?.tamanhoFonteBotao : banner.tamanhoFonteBotao}
+                          onChangeFonte={(fonteBotao) => escrever({ fonteBotao })}
+                          onChangeTamanho={(tamanhoFonteBotao) => escrever({ tamanhoFonteBotao })}
+                        />
+                        <SeletorEscala
+                          label="Tamanho do botão"
+                          valor={noMobile ? m?.tamanhoBotao : banner.tamanhoBotao}
+                          onChange={(tamanhoBotao) => escrever({ tamanhoBotao })}
+                        />
+                        <SeletorEscala
+                          label="Arredondamento do botão"
+                          valor={noMobile ? m?.arredondamentoBotao : banner.arredondamentoBotao}
+                          onChange={(arredondamentoBotao) => escrever({ arredondamentoBotao })}
+                        />
+                      </>
+                    )}
+
+                    <CampoSwitch
+                      label="Mostrar fundo atrás do texto"
+                      checked={(noMobile ? m?.mostrarFundo : banner.mostrarFundo) ?? banner.mostrarFundo ?? true}
+                      onChange={(mostrarFundo) => escrever({ mostrarFundo })}
+                    />
+                    <SeletorPosicaoConteudo
+                      horizontal={
+                        (noMobile ? m?.alinhamentoHorizontal : banner.alinhamentoHorizontal) ??
+                        banner.alinhamentoHorizontal ??
+                        "ESQUERDA"
+                      }
+                      vertical={
+                        (noMobile ? m?.alinhamentoVertical : banner.alinhamentoVertical) ??
+                        banner.alinhamentoVertical ??
+                        "FIM"
+                      }
+                      posicaoLivre={(noMobile ? m?.posicaoLivre : banner.posicaoLivre) ?? banner.posicaoLivre}
+                      onChange={({ horizontal, vertical }) =>
+                        escrever({ alinhamentoHorizontal: horizontal, alinhamentoVertical: vertical })
+                      }
+                      onChangeLivre={(posicaoLivre) => escrever({ posicaoLivre })}
+                    />
+                  </div>
+                );
+              })()}
           </div>
         ))}
         {banners.length < 3 && (
