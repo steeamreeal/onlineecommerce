@@ -4,18 +4,23 @@ import { TRPCError } from "@trpc/server";
 import { router, publicProcedure, authedProcedure, storeProcedure, roleProcedure } from "../trpc";
 import { enviarConviteLoja } from "@/lib/email/notificacoes";
 
-const papelUsuarioSchema = z.enum(["ADMINISTRADOR", "GERENTE", "VENDEDOR", "ESTOQUISTA", "SEPARADOR"]);
+const papelUsuarioSchema = z.enum(["DONO", "ADMINISTRADOR", "GERENTE", "VENDEDOR", "ESTOQUISTA", "SEPARADOR"]);
 
 // Gerenciar quem tem acesso ao painel da loja e convidar novos membros é
 // decisão de quem administra a loja — mesmo padrão de restrição usado para
-// pagamentos/domínio em pagamentos.ts.
-const equipeProcedure = roleProcedure(["ADMINISTRADOR"]);
+// pagamentos/domínio em pagamentos.ts. DONO também passa por aqui (tem tudo
+// que ADMINISTRADOR tem e mais as proteções abaixo).
+const equipeProcedure = roleProcedure(["ADMINISTRADOR", "DONO"]);
 
 const CONVITE_VALIDADE_HORAS = 72;
 
 export const usuariosLojaRouter = router({
   // Lista os vínculos reais (UsuarioLoja) e os convites ainda não aceitos,
   // para a tela de Configurações > Usuários mostrar os dois num só lugar.
+  // `souDono`/`existeDono` guiam a UI: transferir o papel de DONO só é
+  // permitido para quem já é DONO — exceto quando a loja ainda não tem
+  // nenhum (lojas criadas antes desse papel existir), caso em que qualquer
+  // ADMINISTRADOR pode fazer a primeira atribuição.
   listar: storeProcedure.query(async ({ ctx }) => {
     const [usuarios, convites] = await Promise.all([
       ctx.prisma.usuarioLoja.findMany({
@@ -29,12 +34,27 @@ export const usuariosLojaRouter = router({
       }),
     ]);
 
-    return { usuarios, convites };
+    return {
+      usuarios,
+      convites,
+      existeDono: usuarios.some((u) => u.papel === "DONO"),
+      souDono: ctx.papel === "DONO",
+    };
   }),
 
   convidar: equipeProcedure
     .input(z.object({ email: z.string().email(), papel: papelUsuarioSchema }))
     .mutation(async ({ ctx, input }) => {
+      // DONO nunca é atribuído por convite (a pessoa pode nem ter conta
+      // ainda) — só por transferência entre membros já existentes, via
+      // alterarPapel.
+      if (input.papel === "DONO") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "O papel de dono não pode ser atribuído por convite.",
+        });
+      }
+
       const email = input.email.toLowerCase();
 
       const usuarioExistente = await ctx.prisma.usuario.findUnique({
@@ -80,10 +100,64 @@ export const usuariosLojaRouter = router({
       if (!vinculo || vinculo.lojaId !== ctx.lojaId) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Usuário não encontrado nesta loja." });
       }
+
+      // Ninguém além do próprio DONO mexe no papel dele — nem outro
+      // ADMINISTRADOR.
+      if (vinculo.papel === "DONO" && ctx.papel !== "DONO") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Só o dono da loja pode alterar o próprio papel.",
+        });
+      }
+
+      if (input.papel === "DONO") {
+        const donoAtual = await ctx.prisma.usuarioLoja.findFirst({
+          where: { lojaId: ctx.lojaId, papel: "DONO" },
+        });
+        // Loja sem dono ainda (criada antes desse papel existir): qualquer
+        // ADMINISTRADOR pode fazer a primeira atribuição. Com um dono já
+        // definido, só ele pode transferir o papel pra outra pessoa.
+        if (donoAtual && ctx.papel !== "DONO") {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Só o dono atual da loja pode transferir esse papel para outra pessoa.",
+          });
+        }
+        return ctx.prisma.$transaction(async (tx) => {
+          if (donoAtual && donoAtual.id !== vinculo.id) {
+            await tx.usuarioLoja.update({ where: { id: donoAtual.id }, data: { papel: "ADMINISTRADOR" } });
+          }
+          return tx.usuarioLoja.update({ where: { id: input.usuarioLojaId }, data: { papel: "DONO" } });
+        });
+      }
+
       return ctx.prisma.usuarioLoja.update({
         where: { id: input.usuarioLojaId },
         data: { papel: input.papel },
       });
+    }),
+
+  // Revoga o acesso de alguém à loja (diferente de cancelarConvite, que só
+  // lida com convites ainda não aceitos). DONO nunca pode ser removido por
+  // aqui — precisaria primeiro transferir o papel pra outra pessoa.
+  remover: equipeProcedure
+    .input(z.object({ usuarioLojaId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const vinculo = await ctx.prisma.usuarioLoja.findUnique({ where: { id: input.usuarioLojaId } });
+      if (!vinculo || vinculo.lojaId !== ctx.lojaId) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Usuário não encontrado nesta loja." });
+      }
+      if (vinculo.papel === "DONO") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "O dono da loja não pode ser removido." });
+      }
+      if (vinculo.usuarioId === ctx.usuario.id) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Você não pode remover o seu próprio acesso.",
+        });
+      }
+      await ctx.prisma.usuarioLoja.delete({ where: { id: input.usuarioLojaId } });
+      return { sucesso: true };
     }),
 
   // Dados públicos do convite (nome da loja, papel) para a página /convite/[token]

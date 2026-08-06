@@ -94,6 +94,11 @@ model Loja {
 // ---------- Usuários e permissões ----------
 
 enum PapelUsuario {
+  // Acima de ADMINISTRADOR: único por loja, não pode ser removido nem ter o
+  // próprio papel alterado por outro usuário (nem por outro ADMINISTRADOR)
+  // — só o próprio DONO pode transferir esse papel para outra pessoa. Ver
+  // regras em server/trpc/routers/usuarios-loja.ts.
+  DONO
   ADMINISTRADOR
   GERENTE
   VENDEDOR
