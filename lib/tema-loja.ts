@@ -296,7 +296,7 @@ export function criarTemaConfigPadrao(opcoes: {
         id: criarId(),
         tipo: "MENU_CATEGORIAS",
         visivel: true,
-        config: { tamanho: "MEDIO", alinhamento: "ESQUERDA" },
+        config: { tamanho: "MEDIO", alinhamento: "ESQUERDA", exibirEm: "AMBOS" },
       },
       {
         id: criarId(),
