@@ -121,6 +121,49 @@ function SeletorAlinhamento({
   );
 }
 
+// Sem valor (undefined) = "Seguir texto", o botão herda o alinhamento do
+// título. Com um valor explícito, o botão ganha posição própria — útil
+// quando o título é comprido e o botão "seguindo" o texto fica torto.
+function SeletorAlinhamentoBotao({
+  value,
+  onChange,
+}: {
+  value: AlinhamentoTexto | undefined;
+  onChange: (valor: AlinhamentoTexto | undefined) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <Label>Alinhamento do botão</Label>
+      <div className="grid grid-cols-4 gap-2">
+        <button
+          type="button"
+          onClick={() => onChange(undefined)}
+          className={cn(
+            "rounded-md border px-2 py-2 text-xs font-medium transition-colors",
+            value === undefined ? "border-primary ring-primary/30 ring-2" : "hover:border-primary/40",
+          )}
+        >
+          Seguir texto
+        </button>
+        {OPCOES_ALINHAMENTO.map(({ valor, label, Icone }) => (
+          <button
+            key={valor}
+            type="button"
+            onClick={() => onChange(valor)}
+            className={cn(
+              "flex flex-col items-center gap-1 rounded-md border px-2 py-2 text-xs font-medium transition-colors",
+              value === valor ? "border-primary ring-primary/30 ring-2" : "hover:border-primary/40",
+            )}
+          >
+            <Icone className="size-4" />
+            {label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 const LINHAS_POSICAO: PosicaoVertical[] = ["INICIO", "CENTRO", "FIM"];
 const COLUNAS_POSICAO: AlinhamentoTexto[] = ["ESQUERDA", "CENTRO", "DIREITA"];
 
@@ -572,6 +615,10 @@ function EditorBannersHero({
 
             {banner.textoBotao && (
               <>
+                <SeletorAlinhamentoBotao
+                  value={banner.alinhamentoBotao}
+                  onChange={(alinhamentoBotao) => atualizarBanner(i, { alinhamentoBotao })}
+                />
                 <SeletorFonteTamanho
                   label="Fonte e tamanho do texto do botão"
                   fonte={banner.fonteBotao}
@@ -593,13 +640,20 @@ function EditorBannersHero({
             )}
 
             {(banner.titulo || banner.textoBotao) && (
-              <SeletorPosicaoConteudo
-                horizontal={banner.alinhamentoHorizontal ?? "ESQUERDA"}
-                vertical={banner.alinhamentoVertical ?? "FIM"}
-                onChange={({ horizontal, vertical }) =>
-                  atualizarBanner(i, { alinhamentoHorizontal: horizontal, alinhamentoVertical: vertical })
-                }
-              />
+              <>
+                <CampoSwitch
+                  label="Mostrar fundo atrás do texto"
+                  checked={banner.mostrarFundo ?? true}
+                  onChange={(mostrarFundo) => atualizarBanner(i, { mostrarFundo })}
+                />
+                <SeletorPosicaoConteudo
+                  horizontal={banner.alinhamentoHorizontal ?? "ESQUERDA"}
+                  vertical={banner.alinhamentoVertical ?? "FIM"}
+                  onChange={({ horizontal, vertical }) =>
+                    atualizarBanner(i, { alinhamentoHorizontal: horizontal, alinhamentoVertical: vertical })
+                  }
+                />
+              </>
             )}
           </div>
         ))}

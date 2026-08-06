@@ -27,6 +27,8 @@ type Banner = {
   tamanhoFonteBotao?: number;
   tamanhoBotao?: number;
   arredondamentoBotao?: number;
+  mostrarFundo?: boolean;
+  alinhamentoBotao?: AlinhamentoTexto;
 };
 
 const INTERVALO_AUTOPLAY_MS = 5000;

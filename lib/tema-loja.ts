@@ -103,6 +103,16 @@ export const bannerTemaSchema = z.object({
   linkBotao: z.string().trim().max(300).optional(),
   alinhamentoHorizontal: alinhamentoTextoSchema.optional(),
   alinhamentoVertical: posicaoVerticalSchema.optional(),
+  // Sem valor definido, mantém o fundo escuro/claro atrás do título+botão
+  // (comportamento de antes dessa opção existir) — false tira esse bloco de
+  // fundo, deixando só o texto (com sombra, pra continuar legível) sobre a
+  // imagem. Não afeta o fundo próprio do botão, só o bloco atrás do título.
+  mostrarFundo: z.boolean().optional(),
+  // Sem valor definido, o botão segue o mesmo alinhamento horizontal do
+  // título (comportamento de antes) — definido, o botão ganha uma posição
+  // própria (ex.: título à esquerda, botão centralizado), útil quando o
+  // título é comprido e o botão "seguindo" o texto fica torto.
+  alinhamentoBotao: alinhamentoTextoSchema.optional(),
   // Fonte e tamanho do título são independentes dos do botão — sem valor
   // definido, cada um cai no padrão visual que já existia antes dessa
   // opção existir.

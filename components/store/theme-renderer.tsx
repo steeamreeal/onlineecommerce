@@ -39,6 +39,15 @@ const classeJustifyHorizontal: Record<AlinhamentoTexto, string> = {
   DIREITA: "justify-end",
 };
 
+// Alinhamento próprio do botão (align-self), só aplicado quando o lojista
+// escolhe uma posição explícita pro botão — sem isso, ele segue o
+// alinhamento do título via items-* do container pai (classeAlinhamento).
+const classeSelfPorAlinhamento: Record<AlinhamentoTexto, string> = {
+  ESQUERDA: "self-start",
+  CENTRO: "self-center",
+  DIREITA: "self-end",
+};
+
 // Aparência de cada seção por template — mesmas classes que antes viviam
 // hardcoded em cada components/store/template-*.tsx, agora indexadas por
 // variante para que o editor de tema possa trocar o "skin" sem duplicar a
@@ -98,6 +107,8 @@ function ConteudoHero({
   tamanhoFonteBotao,
   tamanhoBotao,
   arredondamentoBotao,
+  mostrarFundo = true,
+  alinhamentoBotao,
 }: {
   variante: Variante;
   slug: string;
@@ -112,6 +123,8 @@ function ConteudoHero({
   tamanhoFonteBotao?: number;
   tamanhoBotao?: number;
   arredondamentoBotao?: number;
+  mostrarFundo?: boolean;
+  alinhamentoBotao?: AlinhamentoTexto;
 }) {
   if (!titulo && !textoBotao) return null;
 
@@ -127,8 +140,9 @@ function ConteudoHero({
     >
       <div
         className={cn(
-          "pointer-events-auto flex max-w-[85%] flex-col gap-2 rounded-md px-4 py-3 backdrop-blur-sm",
-          variante === "VITRINE" ? "bg-white/85" : "bg-black/55",
+          "pointer-events-auto flex max-w-[85%] flex-col gap-2",
+          mostrarFundo && "rounded-md px-4 py-3 backdrop-blur-sm",
+          mostrarFundo && (variante === "VITRINE" ? "bg-white/85" : "bg-black/55"),
           classeAlinhamento(alinhamentoHorizontal),
         )}
       >
@@ -138,6 +152,12 @@ function ConteudoHero({
               "font-medium",
               variante === "EDITORIAL" ? "font-heading text-xl italic" : "text-sm",
               variante === "VITRINE" ? "text-foreground" : "text-white",
+              // Sem o bloco de fundo, o texto fica direto sobre a imagem —
+              // a sombra garante legibilidade em qualquer parte da foto.
+              !mostrarFundo &&
+                (variante === "VITRINE"
+                  ? "drop-shadow-[0_1px_3px_rgba(255,255,255,0.8)]"
+                  : "drop-shadow-[0_1px_3px_rgba(0,0,0,0.7)]"),
             )}
             style={{
               fontFamily: fonteTitulo ? FONTE_CSS_VAR[fonteTitulo] : undefined,
@@ -150,7 +170,10 @@ function ConteudoHero({
         {textoBotao && (
           <Link
             href={linkBotao || `/loja/${slug}/produtos`}
-            className="bg-background text-foreground w-fit rounded-md px-4 py-2 text-sm font-medium"
+            className={cn(
+              "bg-background text-foreground w-fit rounded-md px-4 py-2 text-sm font-medium",
+              alinhamentoBotao && classeSelfPorAlinhamento[alinhamentoBotao],
+            )}
             style={{
               fontFamily: fonteBotao ? FONTE_CSS_VAR[fonteBotao] : undefined,
               fontSize: tamanhoFonteEmPx(tamanhoFonteBotao),
@@ -222,6 +245,8 @@ function SecaoHero({
               tamanhoFonteBotao={banner.tamanhoFonteBotao}
               tamanhoBotao={banner.tamanhoBotao}
               arredondamentoBotao={banner.arredondamentoBotao}
+              mostrarFundo={banner.mostrarFundo}
+              alinhamentoBotao={banner.alinhamentoBotao}
             />
           </>
         )}
