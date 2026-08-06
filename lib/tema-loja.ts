@@ -5,6 +5,15 @@ import { z } from "zod";
 // só que descrevendo a página inicial inteira como uma lista ordenada de
 // seções em vez de um único array homogêneo.
 
+// Faixa de altura real (px) que o slider 0-100 de tamanho da logo cobre.
+export const ALTURA_LOGO_MIN_PX = 16;
+export const ALTURA_LOGO_MAX_PX = 80;
+
+export function alturaLogoEmPx(tamanho: number | undefined): number {
+  const t = tamanho ?? 40;
+  return ALTURA_LOGO_MIN_PX + (t / 100) * (ALTURA_LOGO_MAX_PX - ALTURA_LOGO_MIN_PX);
+}
+
 export const bannerTemaSchema = z.object({
   id: z.string().optional(),
   url: z.string().min(1),
@@ -40,6 +49,10 @@ export const secaoCabecalhoSchema = secaoBaseSchema.extend({
     // Se "LOGO" mas a loja não tem Loja.logoUrl cadastrada, o renderer cai
     // para o nome — nunca deixa o cabeçalho sem identidade nenhuma.
     exibicaoLogo: z.enum(["LOGO", "NOME"]).default("NOME"),
+    // Escala 0-100 mapeada linearmente para altura em px (ver
+    // ALTURA_LOGO_MIN_PX/ALTURA_LOGO_MAX_PX) — só tem efeito quando
+    // exibicaoLogo é "LOGO".
+    tamanhoLogo: z.number().min(0).max(100).default(40),
   }),
 });
 
@@ -190,7 +203,13 @@ export function criarTemaConfigPadrao(opcoes: {
         id: criarId(),
         tipo: "CABECALHO",
         visivel: true,
-        config: { mostrarBusca: true, mostrarConta: true, posicaoLogo: "ESQUERDA", exibicaoLogo: "NOME" },
+        config: {
+          mostrarBusca: true,
+          mostrarConta: true,
+          posicaoLogo: "ESQUERDA",
+          exibicaoLogo: "NOME",
+          tamanhoLogo: 40,
+        },
       },
       {
         id: criarId(),

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useCart } from "@/components/store/cart-context";
 import { trpc } from "@/lib/trpc/client";
+import { alturaLogoEmPx } from "@/lib/tema-loja";
 import type { RouterOutputs } from "@/lib/trpc/types";
 
 type ConfiguracaoLoja = RouterOutputs["lojaPublica"]["porSlug"];
@@ -18,6 +19,7 @@ export function SiteHeader({
   mostrarConta = true,
   posicaoLogo = "ESQUERDA",
   exibicaoLogo = "NOME",
+  tamanhoLogo = 40,
 }: {
   slug: string;
   config: ConfiguracaoLoja;
@@ -25,6 +27,7 @@ export function SiteHeader({
   mostrarConta?: boolean;
   posicaoLogo?: "ESQUERDA" | "CENTRO";
   exibicaoLogo?: "LOGO" | "NOME";
+  tamanhoLogo?: number;
 }) {
   const { quantidadeTotal, setAberto } = useCart();
   const { data: categorias } = trpc.lojaPublica.categorias.useQuery({ slug });
@@ -35,7 +38,12 @@ export function SiteHeader({
     <Link href={`/loja/${slug}`} className="flex items-center">
       {exibicaoLogo === "LOGO" && config.logoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element -- URL dinâmica do Supabase Storage, sem domínio fixo para next/image
-        <img src={config.logoUrl} alt={config.nome} className="h-8 w-auto object-contain" />
+        <img
+          src={config.logoUrl}
+          alt={config.nome}
+          className="w-auto object-contain"
+          style={{ height: alturaLogoEmPx(tamanhoLogo) }}
+        />
       ) : (
         <span className="text-lg font-semibold">{config.nome}</span>
       )}

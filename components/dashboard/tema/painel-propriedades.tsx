@@ -342,6 +342,24 @@ function FormularioSecao({
               </p>
             )}
           </div>
+          {secao.config.exibicaoLogo === "LOGO" && (
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <Label>Tamanho da logo</Label>
+                <span className="text-muted-foreground text-xs">{secao.config.tamanhoLogo ?? 40}</span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={secao.config.tamanhoLogo ?? 40}
+                onChange={(e) =>
+                  onChange({ ...secao, config: { ...secao.config, tamanhoLogo: Number(e.target.value) } })
+                }
+                className="accent-primary"
+              />
+            </div>
+          )}
           <div className="flex flex-col gap-2">
             <Label>Posição da logo</Label>
             <div className="grid grid-cols-2 gap-2">

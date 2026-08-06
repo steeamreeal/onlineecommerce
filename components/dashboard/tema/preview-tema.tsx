@@ -4,6 +4,7 @@ import { Search, ShoppingBag, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc/client";
 import { ThemeRenderer } from "@/components/store/theme-renderer";
+import { alturaLogoEmPx } from "@/lib/tema-loja";
 import type { SecaoTema, TipoSecaoTema } from "@/lib/tema-loja";
 
 // Prévia visual do cabeçalho/rodapé dentro do editor — não reaproveita
@@ -14,6 +15,7 @@ function PreviewCabecalho({
   nome,
   logoUrl,
   exibicaoLogo,
+  tamanhoLogo,
   mostrarBusca,
   mostrarConta,
   posicaoLogo,
@@ -21,6 +23,7 @@ function PreviewCabecalho({
   nome: string;
   logoUrl: string | null | undefined;
   exibicaoLogo: "LOGO" | "NOME";
+  tamanhoLogo: number;
   mostrarBusca: boolean;
   mostrarConta: boolean;
   posicaoLogo: "ESQUERDA" | "CENTRO";
@@ -28,7 +31,12 @@ function PreviewCabecalho({
   const logo =
     exibicaoLogo === "LOGO" && logoUrl ? (
       // eslint-disable-next-line @next/next/no-img-element -- URL dinâmica do Supabase Storage
-      <img src={logoUrl} alt={nome} className="h-8 w-auto object-contain" />
+      <img
+        src={logoUrl}
+        alt={nome}
+        className="w-auto object-contain"
+        style={{ height: alturaLogoEmPx(tamanhoLogo) }}
+      />
     ) : (
       <span className="text-lg font-semibold">{nome}</span>
     );
@@ -197,6 +205,7 @@ export function PreviewTema({
               nome={nomeLoja}
               logoUrl={logoUrl}
               exibicaoLogo={cabecalho.config.exibicaoLogo ?? "NOME"}
+              tamanhoLogo={cabecalho.config.tamanhoLogo ?? 40}
               mostrarBusca={cabecalho.config.mostrarBusca ?? true}
               mostrarConta={cabecalho.config.mostrarConta ?? true}
               posicaoLogo={cabecalho.config.posicaoLogo ?? "ESQUERDA"}
