@@ -669,6 +669,29 @@ function FormularioSecao({
             checked={secao.config.mostrarConta}
             onChange={(mostrarConta) => onChange({ ...secao, config: { ...secao.config, mostrarConta } })}
           />
+          <div className="flex flex-col gap-2">
+            <Label>Cor de fundo</Label>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={secao.config.corFundo ?? "#ffffff"}
+                onChange={(e) =>
+                  onChange({ ...secao, config: { ...secao.config, corFundo: e.target.value } })
+                }
+                className="h-9 w-12 rounded-md border"
+              />
+              <Input
+                value={secao.config.corFundo ?? ""}
+                placeholder="Padrão do tema"
+                onChange={(e) =>
+                  onChange({
+                    ...secao,
+                    config: { ...secao.config, corFundo: e.target.value || undefined },
+                  })
+                }
+              />
+            </div>
+          </div>
         </div>
       );
 

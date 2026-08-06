@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { Search, ShoppingBag, User } from "lucide-react";
+import { Menu, Search, ShoppingBag, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useCart } from "@/components/store/cart-context";
 import { trpc } from "@/lib/trpc/client";
@@ -20,6 +22,7 @@ export function SiteHeader({
   posicaoLogo = "ESQUERDA",
   exibicaoLogo = "NOME",
   tamanhoLogo = 40,
+  corFundo,
 }: {
   slug: string;
   config: ConfiguracaoLoja;
@@ -28,9 +31,13 @@ export function SiteHeader({
   posicaoLogo?: "ESQUERDA" | "CENTRO";
   exibicaoLogo?: "LOGO" | "NOME";
   tamanhoLogo?: number;
+  corFundo?: string;
 }) {
   const { quantidadeTotal, setAberto } = useCart();
   const { data: categorias } = trpc.lojaPublica.categorias.useQuery({ slug });
+  // Só controla a gaveta de categorias do cabeçalho mobile (estilo
+  // hambúrguer) — o carrinho tem seu próprio estado em useCart/setAberto.
+  const [menuAberto, setMenuAberto] = useState(false);
 
   // "LOGO" sem Loja.logoUrl cadastrada cai para o nome — nunca deixa o
   // cabeçalho sem nenhuma identidade da loja.
@@ -58,7 +65,7 @@ export function SiteHeader({
   ) : null;
 
   const nav = (
-    <nav className="hidden items-center gap-4 text-sm md:flex">
+    <nav className="flex items-center gap-4 text-sm">
       {(categorias ?? []).map((categoria) => (
         <Link
           key={categoria.id}
@@ -92,31 +99,70 @@ export function SiteHeader({
     </div>
   );
 
-  if (posicaoLogo === "CENTRO") {
-    return (
-      <div className="bg-background sticky top-0 z-40 flex flex-col border-b">
-        <div className="grid grid-cols-3 items-center gap-4 px-6 py-4 md:flex md:flex-wrap">
-          <div className="hidden items-center gap-4 md:flex md:flex-1">{busca}</div>
-          <div className="col-start-2 flex justify-center">{logo}</div>
-          <div className="col-start-3 flex items-center justify-end gap-4 md:flex-1">
-            {nav}
-            {acoes}
-          </div>
-        </div>
-        {busca && <div className="px-6 pb-4 md:hidden">{busca}</div>}
-      </div>
-    );
-  }
-
-  return (
-    <div className="bg-background sticky top-0 z-40 flex flex-col border-b">
-      <div className={cn("flex flex-wrap items-center gap-4 px-6 py-4")}>
+  // Desktop mantém o layout configurável (posicaoLogo Esquerda/Centro) que
+  // já existia. Estrutura só visível a partir de md — o mobile tem seu
+  // próprio bloco abaixo, com layout fixo estilo Pandora (hambúrguer +
+  // logo centralizada + ações), independente dessa configuração.
+  const desktop =
+    posicaoLogo === "CENTRO" ? (
+      <div className="hidden flex-wrap items-center gap-4 px-6 py-4 md:flex">
+        <div className="flex flex-1 items-center gap-4">{busca}</div>
         {logo}
-        <div className="hidden items-center gap-4 md:flex md:flex-1">{busca}</div>
+        <div className="flex flex-1 items-center justify-end gap-4">
+          {nav}
+          {acoes}
+        </div>
+      </div>
+    ) : (
+      <div className="hidden flex-wrap items-center gap-4 px-6 py-4 md:flex">
+        {logo}
+        <div className="flex flex-1 items-center gap-4">{busca}</div>
         {nav}
         {acoes}
       </div>
-      {busca && <div className="px-6 pb-4 md:hidden">{busca}</div>}
+    );
+
+  const mobile = (
+    <div className="flex flex-col md:hidden">
+      <div className="grid grid-cols-3 items-center gap-3 px-4 py-3">
+        <div className="flex justify-start">
+          <Sheet open={menuAberto} onOpenChange={setMenuAberto}>
+            <SheetTrigger render={<Button variant="ghost" size="icon" aria-label="Abrir menu de categorias" />}>
+              <Menu />
+            </SheetTrigger>
+            <SheetContent side="left">
+              <SheetHeader>
+                <SheetTitle>Categorias</SheetTitle>
+              </SheetHeader>
+              <nav className="flex flex-col gap-1 px-4">
+                {(categorias ?? []).map((categoria) => (
+                  <Link
+                    key={categoria.id}
+                    href={`/loja/${slug}/produtos?categoria=${categoria.id}`}
+                    className="hover:bg-accent rounded-md px-2 py-2 text-sm"
+                    onClick={() => setMenuAberto(false)}
+                  >
+                    {categoria.nome}
+                  </Link>
+                ))}
+              </nav>
+            </SheetContent>
+          </Sheet>
+        </div>
+        <div className="flex justify-center">{logo}</div>
+        <div className="flex justify-end">{acoes}</div>
+      </div>
+      {busca && <div className="px-4 pb-3">{busca}</div>}
+    </div>
+  );
+
+  return (
+    <div
+      className={cn("sticky top-0 z-40 border-b", !corFundo && "bg-background")}
+      style={corFundo ? { backgroundColor: corFundo } : undefined}
+    >
+      {desktop}
+      {mobile}
     </div>
   );
 }
