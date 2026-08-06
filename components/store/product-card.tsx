@@ -151,17 +151,10 @@ export function ProductCard({
           {produto.variacoes.length > 0 && (
             // Sem quebra de linha (mesmo com muitas variações) — evita que o
             // botão "Adicionar ao carrinho" pule de altura entre produtos
-            // com números diferentes de variação, principalmente no
-            // carrossel mobile, onde cada slide precisa ficar com o botão
-            // sempre na mesma posição.
-            <div
-              className={cn(
-                "flex gap-1",
-                expandido
-                  ? "overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-                  : "flex-wrap",
-              )}
-            >
+            // com números diferentes de variação. Vale tanto pro carrossel
+            // mobile (cada slide) quanto pra grade desktop (cada card no
+            // hover), pra manter a posição do botão sempre igual.
+            <div className="flex gap-1 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {produto.variacoes.map((variacao) => {
                 const esgotada = variacao.estoque === 0;
                 const selecionada = variacao.id === variacaoId;
@@ -175,8 +168,7 @@ export function ProductCard({
                       setVariacaoId(variacao.id);
                     }}
                     className={cn(
-                      "rounded-md border px-2 py-1 text-xs whitespace-nowrap transition-colors",
-                      expandido && "shrink-0",
+                      "shrink-0 rounded-md border px-2 py-1 text-xs whitespace-nowrap transition-colors",
                       selecionada ? "border-[var(--loja-primary)] bg-[var(--loja-primary)]/5" : "hover:border-[var(--loja-primary)]/40",
                       esgotada && "text-muted-foreground cursor-not-allowed line-through opacity-50",
                     )}
