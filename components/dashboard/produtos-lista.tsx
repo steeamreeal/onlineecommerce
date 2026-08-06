@@ -153,11 +153,21 @@ export function ProdutosLista() {
                 const precoPromo = produto.precoPromo != null ? Number(produto.precoPromo) : null;
                 const total = produto.variacoes.reduce((soma, v) => soma + v.estoque, 0);
                 const baixo = total <= ESTOQUE_BAIXO_LIMITE;
+                const foto = [...produto.fotos].sort((a, b) => a.ordem - b.ordem)[0];
                 return (
                   <TableRow key={produto.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <div className="bg-muted size-10 shrink-0 rounded-md" />
+                        {foto ? (
+                          // eslint-disable-next-line @next/next/no-img-element -- URL dinâmica do Supabase Storage, sem domínio fixo para next/image
+                          <img
+                            src={foto.url}
+                            alt={produto.nome}
+                            className="bg-muted size-10 shrink-0 rounded-md object-cover"
+                          />
+                        ) : (
+                          <div className="bg-muted size-10 shrink-0 rounded-md" />
+                        )}
                         <div>
                           <div className="font-medium">{produto.nome}</div>
                           {produto.codigo && (
