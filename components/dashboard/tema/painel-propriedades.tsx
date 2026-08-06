@@ -40,6 +40,7 @@ import {
   type ColunaRodape,
   type TamanhoTexto,
   type ExibirEm,
+  type FonteTema,
 } from "@/lib/tema-loja";
 
 function CampoTexto({
@@ -101,6 +102,49 @@ function SeletorAlinhamento({
     <div className="flex flex-col gap-2">
       <Label>Alinhamento do texto</Label>
       <div className="grid grid-cols-3 gap-2">
+        {OPCOES_ALINHAMENTO.map(({ valor, label, Icone }) => (
+          <button
+            key={valor}
+            type="button"
+            onClick={() => onChange(valor)}
+            className={cn(
+              "flex flex-col items-center gap-1 rounded-md border px-2 py-2 text-xs font-medium transition-colors",
+              value === valor ? "border-primary ring-primary/30 ring-2" : "hover:border-primary/40",
+            )}
+          >
+            <Icone className="size-4" />
+            {label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Sem valor (undefined) = "Seguir texto", o botão herda o alinhamento do
+// título. Com um valor explícito, o botão ganha posição própria — útil
+// quando o título é comprido e o botão "seguindo" o texto fica torto.
+function SeletorAlinhamentoBotao({
+  value,
+  onChange,
+}: {
+  value: AlinhamentoTexto | undefined;
+  onChange: (valor: AlinhamentoTexto | undefined) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <Label>Alinhamento do botão</Label>
+      <div className="grid grid-cols-4 gap-2">
+        <button
+          type="button"
+          onClick={() => onChange(undefined)}
+          className={cn(
+            "rounded-md border px-2 py-2 text-xs font-medium transition-colors",
+            value === undefined ? "border-primary ring-primary/30 ring-2" : "hover:border-primary/40",
+          )}
+        >
+          Seguir texto
+        </button>
         {OPCOES_ALINHAMENTO.map(({ valor, label, Icone }) => (
           <button
             key={valor}
@@ -347,6 +391,78 @@ function SeletorProdutosCategoria({
   );
 }
 
+function SeletorFonteTamanho({
+  label,
+  fonte,
+  tamanho,
+  onChangeFonte,
+  onChangeTamanho,
+}: {
+  label: string;
+  fonte: FonteTema | undefined;
+  tamanho: number | undefined;
+  onChangeFonte: (fonte: FonteTema | undefined) => void;
+  onChangeTamanho: (tamanho: number | undefined) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-2 rounded-md border p-2">
+      <Label className="text-xs">{label}</Label>
+      <Select value={fonte ?? "_padrao"} onValueChange={(v) => onChangeFonte(v === "_padrao" ? undefined : (v as FonteTema))}>
+        <SelectTrigger className="h-8 text-xs">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="_padrao">Padrão do tema</SelectItem>
+          {FONTES_TEMA.map((f) => (
+            <SelectItem key={f} value={f}>
+              {NOMES_FONTE[f]}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <div className="flex items-center justify-between">
+        <span className="text-muted-foreground text-xs">Tamanho da fonte</span>
+        <span className="text-muted-foreground text-xs">{tamanho ?? "Padrão"}</span>
+      </div>
+      <input
+        type="range"
+        min={0}
+        max={100}
+        value={tamanho ?? 40}
+        onChange={(e) => onChangeTamanho(Number(e.target.value))}
+        className="accent-primary"
+      />
+    </div>
+  );
+}
+
+function SeletorEscala({
+  label,
+  valor,
+  onChange,
+}: {
+  label: string;
+  valor: number | undefined;
+  onChange: (valor: number | undefined) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center justify-between">
+        <Label className="text-xs">{label}</Label>
+        <span className="text-muted-foreground text-xs">{valor ?? "Padrão"}</span>
+      </div>
+      <input
+        type="range"
+        min={0}
+        max={100}
+        value={valor ?? 40}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="accent-primary"
+      />
+    </div>
+  );
+}
+
 function EditorBannersHero({
   lojaId,
   banners,
@@ -475,6 +591,16 @@ function EditorBannersHero({
               onChange={(e) => atualizarBanner(i, { titulo: e.target.value })}
             />
 
+            {banner.titulo && (
+              <SeletorFonteTamanho
+                label="Fonte e tamanho do título"
+                fonte={banner.fonteTitulo}
+                tamanho={banner.tamanhoTitulo}
+                onChangeFonte={(fonteTitulo) => atualizarBanner(i, { fonteTitulo })}
+                onChangeTamanho={(tamanhoTitulo) => atualizarBanner(i, { tamanhoTitulo })}
+              />
+            )}
+
             <Input
               value={banner.textoBotao ?? ""}
               placeholder="Texto do botão (opcional)"
@@ -487,14 +613,47 @@ function EditorBannersHero({
               onChange={(e) => atualizarBanner(i, { linkBotao: e.target.value })}
             />
 
+            {banner.textoBotao && (
+              <>
+                <SeletorAlinhamentoBotao
+                  value={banner.alinhamentoBotao}
+                  onChange={(alinhamentoBotao) => atualizarBanner(i, { alinhamentoBotao })}
+                />
+                <SeletorFonteTamanho
+                  label="Fonte e tamanho do texto do botão"
+                  fonte={banner.fonteBotao}
+                  tamanho={banner.tamanhoFonteBotao}
+                  onChangeFonte={(fonteBotao) => atualizarBanner(i, { fonteBotao })}
+                  onChangeTamanho={(tamanhoFonteBotao) => atualizarBanner(i, { tamanhoFonteBotao })}
+                />
+                <SeletorEscala
+                  label="Tamanho do botão"
+                  valor={banner.tamanhoBotao}
+                  onChange={(tamanhoBotao) => atualizarBanner(i, { tamanhoBotao })}
+                />
+                <SeletorEscala
+                  label="Arredondamento do botão"
+                  valor={banner.arredondamentoBotao}
+                  onChange={(arredondamentoBotao) => atualizarBanner(i, { arredondamentoBotao })}
+                />
+              </>
+            )}
+
             {(banner.titulo || banner.textoBotao) && (
-              <SeletorPosicaoConteudo
-                horizontal={banner.alinhamentoHorizontal ?? "ESQUERDA"}
-                vertical={banner.alinhamentoVertical ?? "FIM"}
-                onChange={({ horizontal, vertical }) =>
-                  atualizarBanner(i, { alinhamentoHorizontal: horizontal, alinhamentoVertical: vertical })
-                }
-              />
+              <>
+                <CampoSwitch
+                  label="Mostrar fundo atrás do texto"
+                  checked={banner.mostrarFundo ?? true}
+                  onChange={(mostrarFundo) => atualizarBanner(i, { mostrarFundo })}
+                />
+                <SeletorPosicaoConteudo
+                  horizontal={banner.alinhamentoHorizontal ?? "ESQUERDA"}
+                  vertical={banner.alinhamentoVertical ?? "FIM"}
+                  onChange={({ horizontal, vertical }) =>
+                    atualizarBanner(i, { alinhamentoHorizontal: horizontal, alinhamentoVertical: vertical })
+                  }
+                />
+              </>
             )}
           </div>
         ))}

@@ -23,6 +23,69 @@ export type PosicaoVertical = z.infer<typeof posicaoVerticalSchema>;
 export const exibirEmSchema = z.enum(["AMBOS", "DESKTOP", "MOBILE"]);
 export type ExibirEm = z.infer<typeof exibirEmSchema>;
 
+// Fonte carregada via next/font/google (ver app/(public-store)/loja/[slug]/layout.tsx)
+// — lista curada para manter o carregamento previsível, igual à paleta
+// curada de CORES_PRIMARIAS_SUGERIDAS. Precisa vir antes de bannerTemaSchema
+// porque é usada nos campos de fonte do título/botão do banner.
+export const FONTES_TEMA = [
+  "INTER",
+  "POPPINS",
+  "PLAYFAIR_DISPLAY",
+  "MERRIWEATHER",
+  "MONTSERRAT",
+  "DM_SANS",
+] as const;
+
+export type FonteTema = (typeof FONTES_TEMA)[number];
+
+export const NOMES_FONTE: Record<(typeof FONTES_TEMA)[number], string> = {
+  INTER: "Inter",
+  POPPINS: "Poppins",
+  PLAYFAIR_DISPLAY: "Playfair Display",
+  MERRIWEATHER: "Merriweather",
+  MONTSERRAT: "Montserrat",
+  DM_SANS: "DM Sans",
+};
+
+// CSS var gerada pelo next/font/google para cada fonte (ver layout da loja
+// pública) — usada via style={{ fontFamily: FONTE_CSS_VAR[fonte] }} para
+// aplicar uma fonte específica num elemento, independente da fonte padrão
+// do tema.
+export const FONTE_CSS_VAR: Record<(typeof FONTES_TEMA)[number], string> = {
+  INTER: "var(--font-inter)",
+  POPPINS: "var(--font-poppins)",
+  PLAYFAIR_DISPLAY: "var(--font-playfair-display)",
+  MERRIWEATHER: "var(--font-merriweather)",
+  MONTSERRAT: "var(--font-montserrat)",
+  DM_SANS: "var(--font-dm-sans)",
+};
+
+// Faixas 0-100 → px, mesmo princípio de alturaLogoEmPx: undefined preserva o
+// visual padrão em Tailwind (classes já existentes), só aplica o inline
+// style quando o lojista escolheu um valor explicitamente.
+const TAMANHO_FONTE_MIN_PX = 12;
+const TAMANHO_FONTE_MAX_PX = 48;
+
+export function tamanhoFonteEmPx(tamanho: number | undefined): number | undefined {
+  if (tamanho == null) return undefined;
+  return TAMANHO_FONTE_MIN_PX + (tamanho / 100) * (TAMANHO_FONTE_MAX_PX - TAMANHO_FONTE_MIN_PX);
+}
+
+export function paddingBotaoEmPx(
+  tamanho: number | undefined,
+): { paddingInline: number; paddingBlock: number } | undefined {
+  if (tamanho == null) return undefined;
+  return {
+    paddingInline: 12 + (tamanho / 100) * (32 - 12),
+    paddingBlock: 6 + (tamanho / 100) * (18 - 6),
+  };
+}
+
+export function arredondamentoBotaoEmPx(tamanho: number | undefined): number | undefined {
+  if (tamanho == null) return undefined;
+  return (tamanho / 100) * 24;
+}
+
 export const bannerTemaSchema = z.object({
   id: z.string().optional(),
   url: z.string().min(1),
@@ -40,6 +103,27 @@ export const bannerTemaSchema = z.object({
   linkBotao: z.string().trim().max(300).optional(),
   alinhamentoHorizontal: alinhamentoTextoSchema.optional(),
   alinhamentoVertical: posicaoVerticalSchema.optional(),
+  // Sem valor definido, mantém o fundo escuro/claro atrás do título+botão
+  // (comportamento de antes dessa opção existir) — false tira esse bloco de
+  // fundo, deixando só o texto (com sombra, pra continuar legível) sobre a
+  // imagem. Não afeta o fundo próprio do botão, só o bloco atrás do título.
+  mostrarFundo: z.boolean().optional(),
+  // Sem valor definido, o botão segue o mesmo alinhamento horizontal do
+  // título (comportamento de antes) — definido, o botão ganha uma posição
+  // própria (ex.: título à esquerda, botão centralizado), útil quando o
+  // título é comprido e o botão "seguindo" o texto fica torto.
+  alinhamentoBotao: alinhamentoTextoSchema.optional(),
+  // Fonte e tamanho do título são independentes dos do botão — sem valor
+  // definido, cada um cai no padrão visual que já existia antes dessa
+  // opção existir.
+  fonteTitulo: z.enum(FONTES_TEMA).optional(),
+  tamanhoTitulo: z.number().min(0).max(100).optional(),
+  fonteBotao: z.enum(FONTES_TEMA).optional(),
+  tamanhoFonteBotao: z.number().min(0).max(100).optional(),
+  // Tamanho do botão em si (padding), diferente do tamanho da fonte do
+  // texto dentro dele.
+  tamanhoBotao: z.number().min(0).max(100).optional(),
+  arredondamentoBotao: z.number().min(0).max(100).optional(),
 });
 
 export type BannerTema = z.infer<typeof bannerTemaSchema>;
@@ -191,18 +275,6 @@ export const secaoTemaSchema = z.discriminatedUnion("tipo", [
 export type SecaoTema = z.infer<typeof secaoTemaSchema>;
 export type TipoSecaoTema = SecaoTema["tipo"];
 
-// Fonte carregada via next/font/google (ver components/store/theme-fonts.ts)
-// — lista curada para manter o carregamento previsível, igual à paleta
-// curada de CORES_PRIMARIAS_SUGERIDAS.
-export const FONTES_TEMA = [
-  "INTER",
-  "POPPINS",
-  "PLAYFAIR_DISPLAY",
-  "MERRIWEATHER",
-  "MONTSERRAT",
-  "DM_SANS",
-] as const;
-
 export const estiloTemaSchema = z.object({
   corPrimaria: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Informe uma cor no formato #RRGGBB"),
   corSecundaria: z
@@ -247,15 +319,6 @@ export const NOMES_EXIBIR_EM: Record<ExibirEm, string> = {
   AMBOS: "Sempre",
   DESKTOP: "Só desktop",
   MOBILE: "Só mobile",
-};
-
-export const NOMES_FONTE: Record<(typeof FONTES_TEMA)[number], string> = {
-  INTER: "Inter",
-  POPPINS: "Poppins",
-  PLAYFAIR_DISPLAY: "Playfair Display",
-  MERRIWEATHER: "Merriweather",
-  MONTSERRAT: "Montserrat",
-  DM_SANS: "DM Sans",
 };
 
 function criarId(): string {
