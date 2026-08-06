@@ -522,12 +522,12 @@ export function ProdutoForm({ produto }: { produto?: ProdutoExistente }) {
                         </span>
                       </FormLabel>
                       <FormControl>
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap gap-3">
                           <button
                             type="button"
                             onClick={() => field.onChange("")}
-                            className={`text-muted-foreground flex size-14 items-center justify-center rounded-md border text-[10px] ${
-                              !field.value ? "border-foreground" : "border-input"
+                            className={`text-muted-foreground flex size-28 items-center justify-center rounded-md border text-xs ${
+                              !field.value ? "border-foreground border-2" : "border-input"
                             }`}
                           >
                             Sem foto
@@ -541,9 +541,9 @@ export function ProdutoForm({ produto }: { produto?: ProdutoExistente }) {
                                 src={midia.url}
                                 alt="Opção de foto da variação"
                                 onClick={() => field.onChange(midia.url)}
-                                className={`size-14 cursor-pointer rounded-md border object-cover ${
+                                className={`size-28 cursor-pointer rounded-md border object-cover ${
                                   field.value === midia.url
-                                    ? "border-foreground ring-2 ring-foreground"
+                                    ? "border-foreground border-2 ring-2 ring-foreground"
                                     : "border-input"
                                 }`}
                               />
