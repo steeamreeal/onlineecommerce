@@ -59,7 +59,7 @@ function novaSecao(tipo: TipoSecaoTema): SecaoTema {
         id,
         tipo,
         visivel: true,
-        config: { banners: [], alinhamento: "ESQUERDA", coladoNoCabecalho: false },
+        config: { banners: [], coladoNoCabecalho: false },
       };
     case "MENU_CATEGORIAS":
       return { id, tipo, visivel: true, config: { tamanho: "MEDIO", alinhamento: "ESQUERDA" } };

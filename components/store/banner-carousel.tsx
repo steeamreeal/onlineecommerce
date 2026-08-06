@@ -5,6 +5,8 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { BannerMidia } from "@/components/store/banner-midia";
 
 type TipoMidia = "IMAGEM" | "VIDEO";
+type AlinhamentoTexto = "ESQUERDA" | "CENTRO" | "DIREITA";
+type PosicaoVertical = "INICIO" | "CENTRO" | "FIM";
 type Banner = {
   id: string;
   url: string;
@@ -13,6 +15,10 @@ type Banner = {
   urlMobile?: string;
   tipoMobile?: TipoMidia;
   link?: string;
+  textoBotao?: string;
+  linkBotao?: string;
+  alinhamentoHorizontal?: AlinhamentoTexto;
+  alinhamentoVertical?: PosicaoVertical;
 };
 
 const INTERVALO_AUTOPLAY_MS = 5000;

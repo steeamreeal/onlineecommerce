@@ -14,6 +14,12 @@ export function alturaLogoEmPx(tamanho: number | undefined): number {
   return ALTURA_LOGO_MIN_PX + (t / 100) * (ALTURA_LOGO_MAX_PX - ALTURA_LOGO_MIN_PX);
 }
 
+export const alinhamentoTextoSchema = z.enum(["ESQUERDA", "CENTRO", "DIREITA"]);
+export type AlinhamentoTexto = z.infer<typeof alinhamentoTextoSchema>;
+
+export const posicaoVerticalSchema = z.enum(["INICIO", "CENTRO", "FIM"]);
+export type PosicaoVertical = z.infer<typeof posicaoVerticalSchema>;
+
 export const bannerTemaSchema = z.object({
   id: z.string().optional(),
   url: z.string().min(1),
@@ -22,8 +28,15 @@ export const bannerTemaSchema = z.object({
   urlMobile: z.string().optional(),
   tipoMobile: z.enum(["IMAGEM", "VIDEO"]).optional(),
   // Link/seção de destino ao clicar nessa imagem específica — independente
-  // do linkBotao da seção Hero, que é só o CTA do texto sobreposto.
+  // do linkBotao, que é só o CTA do texto sobreposto desse mesmo banner.
   link: z.string().trim().max(300).optional(),
+  // Texto/botão sobreposto são por banner (cada slide do carrossel tem o
+  // seu) — `titulo` acima é o texto principal; os campos abaixo controlam
+  // o CTA e o posicionamento desse conteúdo dentro do slide.
+  textoBotao: z.string().trim().max(40).optional(),
+  linkBotao: z.string().trim().max(300).optional(),
+  alinhamentoHorizontal: alinhamentoTextoSchema.optional(),
+  alinhamentoVertical: posicaoVerticalSchema.optional(),
 });
 
 export type BannerTema = z.infer<typeof bannerTemaSchema>;
@@ -39,9 +52,6 @@ export const secaoBarraAnuncioSchema = secaoBaseSchema.extend({
     texto: z.string().trim().max(200),
   }),
 });
-
-export const alinhamentoTextoSchema = z.enum(["ESQUERDA", "CENTRO", "DIREITA"]);
-export type AlinhamentoTexto = z.infer<typeof alinhamentoTextoSchema>;
 
 export const secaoCabecalhoSchema = secaoBaseSchema.extend({
   tipo: z.literal("CABECALHO"),
@@ -62,11 +72,10 @@ export const secaoCabecalhoSchema = secaoBaseSchema.extend({
 export const secaoHeroSchema = secaoBaseSchema.extend({
   tipo: z.literal("HERO"),
   config: z.object({
+    // Título, botão, link e posicionamento do texto vivem em cada item de
+    // `banners` (ver bannerTemaSchema) — cada slide do carrossel tem o seu
+    // próprio conteúdo sobreposto, não um texto único pra seção inteira.
     banners: z.array(bannerTemaSchema).max(3, "No máximo 3 banners por seção."),
-    titulo: z.string().trim().max(120).optional(),
-    textoBotao: z.string().trim().max(40).optional(),
-    linkBotao: z.string().trim().max(300).optional(),
-    alinhamento: alinhamentoTextoSchema.default("ESQUERDA"),
     // Quando true, remove o espaçamento entre o cabeçalho e o banner (fica
     // rente/colado) — só tem efeito visual no template Minimalista, os
     // outros templates já não têm esse espaçamento.
@@ -247,7 +256,6 @@ export function criarTemaConfigPadrao(opcoes: {
         visivel: true,
         config: {
           banners: opcoes.bannersAntigos ?? [],
-          alinhamento: "ESQUERDA",
           coladoNoCabecalho: false,
         },
       },

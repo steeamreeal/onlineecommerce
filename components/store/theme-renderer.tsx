@@ -3,7 +3,7 @@ import { ProductCard } from "@/components/store/product-card";
 import { BannerCarousel } from "@/components/store/banner-carousel";
 import { cn } from "@/lib/utils";
 import type { RouterOutputs } from "@/lib/trpc/types";
-import type { AlinhamentoTexto, SecaoTema } from "@/lib/tema-loja";
+import type { AlinhamentoTexto, PosicaoVertical, SecaoTema } from "@/lib/tema-loja";
 
 type Variante = "MINIMALISTA" | "EDITORIAL" | "VITRINE";
 type Categoria = RouterOutputs["lojaPublica"]["categorias"][number];
@@ -20,6 +20,12 @@ const classeTextoPorAlinhamento: Record<AlinhamentoTexto, string> = {
 function classeAlinhamento(alinhamento: AlinhamentoTexto | undefined): string {
   return classeTextoPorAlinhamento[alinhamento ?? "ESQUERDA"];
 }
+
+const classePosicaoVertical: Record<PosicaoVertical, string> = {
+  INICIO: "items-start justify-start",
+  CENTRO: "items-center justify-center",
+  FIM: "items-end justify-end",
+};
 
 // Aparência de cada seção por template — mesmas classes que antes viviam
 // hardcoded em cada components/store/template-*.tsx, agora indexadas por
@@ -72,33 +78,39 @@ function ConteudoHero({
   titulo,
   textoBotao,
   linkBotao,
-  alinhamento,
+  alinhamentoHorizontal,
+  alinhamentoVertical,
 }: {
   variante: Variante;
   slug: string;
   titulo?: string;
   textoBotao?: string;
   linkBotao?: string;
-  alinhamento?: AlinhamentoTexto;
+  alinhamentoHorizontal?: AlinhamentoTexto;
+  alinhamentoVertical?: PosicaoVertical;
 }) {
   if (!titulo && !textoBotao) return null;
   return (
-    <>
-      {variante === "MINIMALISTA" && (
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+    <div
+      className={cn(
+        "pointer-events-none absolute inset-0 flex p-4",
+        classePosicaoVertical[alinhamentoVertical ?? "FIM"],
       )}
-      {variante === "EDITORIAL" && <div className="bg-background/70 absolute inset-0" />}
-      {variante === "VITRINE" && <div className="absolute inset-0 bg-[var(--loja-primary)]/70" />}
-      <div className={cn("relative flex flex-col gap-3 p-4", classeAlinhamento(alinhamento))}>
+    >
+      <div
+        className={cn(
+          "pointer-events-auto flex max-w-[85%] flex-col gap-2 rounded-md px-4 py-3 backdrop-blur-sm",
+          variante === "VITRINE" ? "bg-white/85" : "bg-black/55",
+          classeAlinhamento(alinhamentoHorizontal),
+        )}
+      >
         {titulo && (
           <span
-            className={
-              variante === "MINIMALISTA"
-                ? "text-sm font-medium text-white"
-                : variante === "EDITORIAL"
-                  ? "font-heading max-w-lg text-2xl italic text-[var(--loja-primary)]"
-                  : "text-lg font-bold"
-            }
+            className={cn(
+              "font-medium",
+              variante === "EDITORIAL" ? "font-heading text-xl italic" : "text-sm",
+              variante === "VITRINE" ? "text-foreground" : "text-white",
+            )}
           >
             {titulo}
           </span>
@@ -106,13 +118,13 @@ function ConteudoHero({
         {textoBotao && (
           <Link
             href={linkBotao || `/loja/${slug}/produtos`}
-            className="bg-background text-foreground rounded-md px-4 py-2 text-sm font-medium"
+            className="bg-background text-foreground w-fit rounded-md px-4 py-2 text-sm font-medium"
           >
             {textoBotao}
           </Link>
         )}
       </div>
-    </>
+    </div>
   );
 }
 
@@ -128,22 +140,10 @@ function SecaoHero({
   const classeSecao =
     variante === "MINIMALISTA" && !config.coladoNoCabecalho ? "px-6 pt-6" : variante === "MINIMALISTA" ? "px-6" : undefined;
 
-  // Sem banner cadastrado, ainda assim mostra título/botão se preenchidos —
-  // vira uma seção de hero "só texto" em vez de sumir por completo. Com
-  // banner, o texto/botão sobrepõe a mídia via renderOverlay do carrossel.
   if (config.banners.length === 0) {
     return (
       <section className={classeSecao}>
-        <div className={heroClassePorVariante[variante]}>
-          <ConteudoHero
-            variante={variante}
-            slug={slug}
-            titulo={config.titulo}
-            textoBotao={config.textoBotao}
-            linkBotao={config.linkBotao}
-            alinhamento={config.alinhamento}
-          />
-        </div>
+        <div className={heroClassePorVariante[variante]} />
       </section>
     );
   }
@@ -169,10 +169,11 @@ function SecaoHero({
             <ConteudoHero
               variante={variante}
               slug={slug}
-              titulo={banner.titulo || config.titulo}
-              textoBotao={config.textoBotao}
-              linkBotao={config.linkBotao}
-              alinhamento={config.alinhamento}
+              titulo={banner.titulo}
+              textoBotao={banner.textoBotao}
+              linkBotao={banner.linkBotao}
+              alinhamentoHorizontal={banner.alinhamentoHorizontal}
+              alinhamentoVertical={banner.alinhamentoVertical}
             />
           </>
         )}

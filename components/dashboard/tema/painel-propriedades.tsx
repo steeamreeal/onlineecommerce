@@ -1,7 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { X, Upload, AlignLeft, AlignCenter, AlignRight, Plus, Trash2 } from "lucide-react";
+import {
+  X,
+  Upload,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  AlignStartVertical,
+  AlignCenterVertical,
+  AlignEndVertical,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -27,6 +38,7 @@ import {
   type EstiloTema,
   type BannerTema,
   type AlinhamentoTexto,
+  type PosicaoVertical,
   type ColunaRodape,
   type TamanhoTexto,
 } from "@/lib/tema-loja";
@@ -91,6 +103,42 @@ function SeletorAlinhamento({
       <Label>Alinhamento do texto</Label>
       <div className="grid grid-cols-3 gap-2">
         {OPCOES_ALINHAMENTO.map(({ valor, label, Icone }) => (
+          <button
+            key={valor}
+            type="button"
+            onClick={() => onChange(valor)}
+            className={cn(
+              "flex flex-col items-center gap-1 rounded-md border px-2 py-2 text-xs font-medium transition-colors",
+              value === valor ? "border-primary ring-primary/30 ring-2" : "hover:border-primary/40",
+            )}
+          >
+            <Icone className="size-4" />
+            {label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const OPCOES_POSICAO_VERTICAL: { valor: PosicaoVertical; label: string; Icone: typeof AlignStartVertical }[] = [
+  { valor: "INICIO", label: "Em cima", Icone: AlignStartVertical },
+  { valor: "CENTRO", label: "No meio", Icone: AlignCenterVertical },
+  { valor: "FIM", label: "Em baixo", Icone: AlignEndVertical },
+];
+
+function SeletorPosicaoVertical({
+  value,
+  onChange,
+}: {
+  value: PosicaoVertical;
+  onChange: (valor: PosicaoVertical) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <Label>Posição vertical do texto</Label>
+      <div className="grid grid-cols-3 gap-2">
+        {OPCOES_POSICAO_VERTICAL.map(({ valor, label, Icone }) => (
           <button
             key={valor}
             type="button"
@@ -252,35 +300,73 @@ function EditorBannersHero({
     }
   }
 
+  function atualizarBanner(i: number, alteracoes: Partial<BannerTema>) {
+    onChange(banners.map((b, idx) => (idx === i ? { ...b, ...alteracoes } : b)));
+  }
+
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-3">
       <Label>Imagens/vídeos ({banners.length}/3)</Label>
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-4">
         {banners.map((banner, i) => (
-          <div key={banner.id ?? banner.url} className="flex items-start gap-2">
-            <div className="relative shrink-0">
-              {banner.tipo === "VIDEO" ? (
-                <video src={banner.url} className="aspect-[3/1] w-32 rounded-md border object-cover" muted />
-              ) : (
-                // eslint-disable-next-line @next/next/no-img-element -- URL dinâmica do Supabase Storage
-                <img src={banner.url} alt="" className="aspect-[3/1] w-32 rounded-md border object-cover" />
-              )}
-              <button
-                type="button"
-                onClick={() => onChange(banners.filter((_, idx) => idx !== i))}
-                className="bg-destructive text-destructive-foreground absolute -top-1.5 -right-1.5 rounded-full p-0.5"
-              >
-                <X className="size-3" />
-              </button>
+          <div key={banner.id ?? banner.url} className="flex flex-col gap-3 rounded-md border p-3">
+            <div className="flex items-start gap-2">
+              <div className="relative shrink-0">
+                {banner.tipo === "VIDEO" ? (
+                  <video src={banner.url} className="aspect-[3/1] w-28 rounded-md border object-cover" muted />
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element -- URL dinâmica do Supabase Storage
+                  <img src={banner.url} alt="" className="aspect-[3/1] w-28 rounded-md border object-cover" />
+                )}
+                <button
+                  type="button"
+                  onClick={() => onChange(banners.filter((_, idx) => idx !== i))}
+                  className="bg-destructive text-destructive-foreground absolute -top-1.5 -right-1.5 rounded-full p-0.5"
+                >
+                  <X className="size-3" />
+                </button>
+              </div>
+              <p className="text-muted-foreground pt-1 text-xs">
+                Conteúdo exclusivo deste banner — não aparece nos outros.
+              </p>
             </div>
+
             <Input
               value={banner.link ?? ""}
-              placeholder="Link ao clicar (ex: /loja/minha-loja/produtos)"
-              className="flex-1"
-              onChange={(e) =>
-                onChange(banners.map((b, idx) => (idx === i ? { ...b, link: e.target.value } : b)))
-              }
+              placeholder="Link ao clicar na imagem (ex: /loja/minha-loja/produtos)"
+              onChange={(e) => atualizarBanner(i, { link: e.target.value })}
             />
+
+            <Input
+              value={banner.titulo}
+              placeholder="Título sobre a imagem (opcional)"
+              onChange={(e) => atualizarBanner(i, { titulo: e.target.value })}
+            />
+
+            <Input
+              value={banner.textoBotao ?? ""}
+              placeholder="Texto do botão (opcional)"
+              onChange={(e) => atualizarBanner(i, { textoBotao: e.target.value })}
+            />
+
+            <Input
+              value={banner.linkBotao ?? ""}
+              placeholder="Link do botão (opcional)"
+              onChange={(e) => atualizarBanner(i, { linkBotao: e.target.value })}
+            />
+
+            {(banner.titulo || banner.textoBotao) && (
+              <>
+                <SeletorAlinhamento
+                  value={banner.alinhamentoHorizontal ?? "ESQUERDA"}
+                  onChange={(alinhamentoHorizontal) => atualizarBanner(i, { alinhamentoHorizontal })}
+                />
+                <SeletorPosicaoVertical
+                  value={banner.alinhamentoVertical ?? "FIM"}
+                  onChange={(alinhamentoVertical) => atualizarBanner(i, { alinhamentoVertical })}
+                />
+              </>
+            )}
           </div>
         ))}
         {banners.length < 3 && (
@@ -412,28 +498,6 @@ function FormularioSecao({
             lojaId={lojaId}
             banners={secao.config.banners}
             onChange={(banners) => onChange({ ...secao, config: { ...secao.config, banners } })}
-          />
-          <CampoTexto
-            label="Título (opcional)"
-            value={secao.config.titulo ?? ""}
-            placeholder="Browse our latest products"
-            onChange={(titulo) => onChange({ ...secao, config: { ...secao.config, titulo } })}
-          />
-          <CampoTexto
-            label="Texto do botão (opcional)"
-            value={secao.config.textoBotao ?? ""}
-            placeholder="Ver produtos"
-            onChange={(textoBotao) => onChange({ ...secao, config: { ...secao.config, textoBotao } })}
-          />
-          <CampoTexto
-            label="Link do botão (opcional)"
-            value={secao.config.linkBotao ?? ""}
-            placeholder="/loja/minha-loja/produtos"
-            onChange={(linkBotao) => onChange({ ...secao, config: { ...secao.config, linkBotao } })}
-          />
-          <SeletorAlinhamento
-            value={secao.config.alinhamento ?? "ESQUERDA"}
-            onChange={(alinhamento) => onChange({ ...secao, config: { ...secao.config, alinhamento } })}
           />
           <CampoSwitch
             label="Colado no cabeçalho (sem espaço acima)"
