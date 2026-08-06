@@ -122,7 +122,7 @@ export function SiteHeader({
         </div>
         {(categorias ?? []).length > 0 && (
           <div
-            className="flex items-center justify-center gap-4 border-t px-6 pb-2"
+            className="flex items-center justify-center gap-4 px-6 pb-2"
             style={{ paddingTop: espacamentoCabecalhoEmPx(espacamentoLinhas) }}
           >
             {nav}
@@ -138,7 +138,7 @@ export function SiteHeader({
         </div>
         {(categorias ?? []).length > 0 && (
           <div
-            className="flex items-center justify-center gap-4 border-t px-6 pb-2"
+            className="flex items-center justify-center gap-4 px-6 pb-2"
             style={{ paddingTop: espacamentoCabecalhoEmPx(espacamentoLinhas) }}
           >
             {nav}

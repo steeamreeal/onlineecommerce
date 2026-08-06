@@ -87,7 +87,7 @@ function PreviewCabecalho({
 
   const nav = (categorias ?? []).length > 0 && (
     <div
-      className="flex flex-wrap items-center justify-center gap-4 border-t px-6 pb-2 text-sm"
+      className="flex flex-wrap items-center justify-center gap-4 px-6 pb-2 text-sm"
       style={{ paddingTop: espacamentoCabecalhoEmPx(espacamentoLinhas), fontSize: tamanhoFonteEmPx(tamanhoFonteCategorias) }}
     >
       {(categorias ?? []).map((categoria) => (
