@@ -110,20 +110,26 @@ export function SiteHeader({
   // logo centralizada + ações), independente dessa configuração.
   const desktop =
     posicaoLogo === "CENTRO" ? (
-      <div className="hidden flex-wrap items-center gap-4 px-6 py-4 md:flex">
-        <div className="flex flex-1 items-center gap-4">{busca}</div>
-        {logo}
-        <div className="flex flex-1 items-center justify-end gap-4">
-          {nav}
-          {acoes}
+      <div className="hidden flex-col md:flex">
+        <div className="flex flex-wrap items-center gap-4 px-6 py-4">
+          <div className="flex flex-1 items-center gap-4">{busca}</div>
+          {logo}
+          <div className="flex flex-1 items-center justify-end gap-4">{acoes}</div>
         </div>
+        {(categorias ?? []).length > 0 && (
+          <div className="flex items-center justify-center gap-4 px-6 pb-4">{nav}</div>
+        )}
       </div>
     ) : (
-      <div className="hidden flex-wrap items-center gap-4 px-6 py-4 md:flex">
-        {logo}
-        <div className="flex flex-1 items-center gap-4">{busca}</div>
-        {nav}
-        {acoes}
+      <div className="hidden flex-col md:flex">
+        <div className="flex flex-wrap items-center gap-4 px-6 py-4">
+          {logo}
+          <div className="flex flex-1 items-center gap-4">{busca}</div>
+          {acoes}
+        </div>
+        {(categorias ?? []).length > 0 && (
+          <div className="flex items-center justify-center gap-4 px-6 pb-4">{nav}</div>
+        )}
       </div>
     );
 
