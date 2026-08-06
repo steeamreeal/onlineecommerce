@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCartOpcional } from "@/components/store/cart-context";
 import type { RouterOutputs } from "@/lib/trpc/types";
@@ -68,11 +69,11 @@ export function ProductCard({
   const midias = [...produto.fotos].sort((a, b) => a.ordem - b.ordem);
   // Vídeo não autoplay numa grade de cards — prioriza a primeira imagem como
   // capa; se o produto só tiver vídeo cadastrado, cai pra ele mesmo assim.
-  const capa = midias.find((f) => f.tipo === "IMAGEM") ?? midias[0];
+  const capaPadrao = midias.find((f) => f.tipo === "IMAGEM") ?? midias[0];
   // Segunda foto cadastrada no produto — trocada no hover do card (desktop),
   // igual à referência de mercado (Pandora). Sem segunda foto, o hover não
   // troca de imagem, só revela a seleção de variação/adicionar ao carrinho.
-  const capaHover = midias.find((f) => f.id !== capa?.id && f.tipo === "IMAGEM");
+  const capaHover = midias.find((f) => f.id !== capaPadrao?.id && f.tipo === "IMAGEM");
 
   const [variacaoId, setVariacaoId] = useState<string | undefined>(
     produto.variacoes.find((v) => v.estoque > 0)?.id,
@@ -81,6 +82,32 @@ export function ProductCard({
   const semVariacoes = produto.variacoes.length === 0;
   const podeComprar = !semEstoque && (semVariacoes || Boolean(variacaoSelecionada));
   const preco = precoPromo ?? precoNormal;
+  // Variação com foto própria cadastrada substitui a capa do card — o hover
+  // que troca pra segunda foto (capaHover) fica desligado nesse caso, pra
+  // não brigar com a foto da variação escolhida.
+  const capa = variacaoSelecionada?.foto ?? capaPadrao;
+
+  const variacoesRef = useRef<HTMLDivElement>(null);
+  const [podeRolarEsquerda, setPodeRolarEsquerda] = useState(false);
+  const [podeRolarDireita, setPodeRolarDireita] = useState(false);
+
+  function atualizarSetas() {
+    const el = variacoesRef.current;
+    if (!el) return;
+    setPodeRolarEsquerda(el.scrollLeft > 4);
+    setPodeRolarDireita(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+  }
+
+  function rolarVariacoes(direcao: 1 | -1) {
+    variacoesRef.current?.scrollBy({ left: direcao * 96, behavior: "smooth" });
+  }
+
+  // Verifica no primeiro render se a lista de variações já nasce maior que
+  // o espaço visível, pra mostrar a seta certa desde o início (sem precisar
+  // esperar o usuário rolar/passar o mouse primeiro).
+  useEffect(() => {
+    atualizarSetas();
+  }, [produto.variacoes.length]);
 
   function handleAdicionar(e: React.MouseEvent) {
     e.preventDefault();
@@ -94,7 +121,10 @@ export function ProductCard({
   }
 
   return (
-    <div className={cn("group flex flex-col gap-2 transition-colors", containerPorVariante[variante])}>
+    <div
+      onMouseEnter={atualizarSetas}
+      className={cn("group flex flex-col gap-2 transition-colors", containerPorVariante[variante])}
+    >
       <Link href={`/loja/${slug}/produtos/${produto.id}`} className="flex flex-col gap-2">
         <div className="bg-muted relative aspect-square overflow-hidden rounded-md">
           {capa &&
@@ -104,7 +134,7 @@ export function ProductCard({
               // eslint-disable-next-line @next/next/no-img-element -- URL dinâmica do Supabase Storage, sem domínio fixo para next/image
               <img src={capa.url} alt={produto.nome} className="size-full object-cover" />
             ))}
-          {capaHover && (
+          {!variacaoSelecionada?.foto && capaHover && (
             // eslint-disable-next-line @next/next/no-img-element -- URL dinâmica do Supabase Storage, sem domínio fixo para next/image
             <img
               src={capaHover.url}
@@ -122,7 +152,10 @@ export function ProductCard({
         <div className="flex flex-col gap-0.5">
           <span
             className={cn(
-              "line-clamp-2 text-sm",
+              // min-h reserva o espaço de 2 linhas mesmo quando o nome cabe
+              // numa linha só — sem isso, cards com nomes curtos ficavam
+              // mais baixos que os vizinhos e desalinhavam a fileira.
+              "line-clamp-2 min-h-10 text-sm",
               variante === "editorial" ? "font-heading" : "font-medium",
             )}
           >
@@ -149,34 +182,73 @@ export function ProductCard({
       {!semEstoque && cart && (
         <div className={cn("flex-col gap-2", expandido ? "flex" : "hidden group-hover:flex")}>
           {produto.variacoes.length > 0 && (
-            // Sem quebra de linha (mesmo com muitas variações) — evita que o
-            // botão "Adicionar ao carrinho" pule de altura entre produtos
-            // com números diferentes de variação. Vale tanto pro carrossel
-            // mobile (cada slide) quanto pra grade desktop (cada card no
-            // hover), pra manter a posição do botão sempre igual.
-            <div className="flex gap-1 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {produto.variacoes.map((variacao) => {
-                const esgotada = variacao.estoque === 0;
-                const selecionada = variacao.id === variacaoId;
-                return (
-                  <button
-                    key={variacao.id}
-                    type="button"
-                    disabled={esgotada}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setVariacaoId(variacao.id);
-                    }}
-                    className={cn(
-                      "shrink-0 rounded-md border px-2 py-1 text-xs whitespace-nowrap transition-colors",
-                      selecionada ? "border-[var(--loja-primary)] bg-[var(--loja-primary)]/5" : "hover:border-[var(--loja-primary)]/40",
-                      esgotada && "text-muted-foreground cursor-not-allowed line-through opacity-50",
-                    )}
-                  >
-                    {variacaoLabel(variacao)}
-                  </button>
-                );
-              })}
+            <div className="relative">
+              {/* Sem quebra de linha (mesmo com muitas variações) — evita
+                  que o botão "Adicionar ao carrinho" pule de altura entre
+                  produtos com números diferentes de variação. Vale tanto
+                  pro carrossel mobile (cada slide) quanto pra grade
+                  desktop (cada card no hover), pra manter a posição do
+                  botão sempre igual. As setas cobrem o caso em que, no
+                  desktop, o mouse não tem como rolar a lista pro lado. */}
+              <div
+                ref={variacoesRef}
+                onScroll={atualizarSetas}
+                onMouseEnter={atualizarSetas}
+                className={cn(
+                  "flex gap-1 overflow-x-auto scroll-smooth pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+                  podeRolarEsquerda && "pl-6",
+                  podeRolarDireita && "pr-6",
+                )}
+              >
+                {produto.variacoes.map((variacao) => {
+                  const esgotada = variacao.estoque === 0;
+                  const selecionada = variacao.id === variacaoId;
+                  return (
+                    <button
+                      key={variacao.id}
+                      type="button"
+                      disabled={esgotada}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setVariacaoId(variacao.id);
+                      }}
+                      className={cn(
+                        "shrink-0 rounded-md border px-2 py-1 text-xs whitespace-nowrap transition-colors",
+                        selecionada ? "border-[var(--loja-primary)] bg-[var(--loja-primary)]/5" : "hover:border-[var(--loja-primary)]/40",
+                        esgotada && "text-muted-foreground cursor-not-allowed line-through opacity-50",
+                      )}
+                    >
+                      {variacaoLabel(variacao)}
+                    </button>
+                  );
+                })}
+              </div>
+              {podeRolarEsquerda && (
+                <button
+                  type="button"
+                  aria-label="Ver variações anteriores"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    rolarVariacoes(-1);
+                  }}
+                  className="bg-background absolute top-1/2 left-0 flex size-5 -translate-y-1/2 items-center justify-center rounded-full border shadow-sm"
+                >
+                  <ChevronLeft className="size-3" />
+                </button>
+              )}
+              {podeRolarDireita && (
+                <button
+                  type="button"
+                  aria-label="Ver mais variações"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    rolarVariacoes(1);
+                  }}
+                  className="bg-background absolute top-1/2 right-0 flex size-5 -translate-y-1/2 items-center justify-center rounded-full border shadow-sm"
+                >
+                  <ChevronRight className="size-3" />
+                </button>
+              )}
             </div>
           )}
           <button

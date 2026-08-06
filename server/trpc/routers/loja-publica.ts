@@ -71,7 +71,7 @@ export const lojaPublicaRouter = router({
           categoriaId: input.categoriaId,
           nome: input.busca ? { contains: input.busca, mode: "insensitive" } : undefined,
         },
-        include: { fotos: { orderBy: { ordem: "asc" } }, variacoes: true, categoria: true },
+        include: { fotos: { orderBy: { ordem: "asc" } }, variacoes: { include: { foto: true } }, categoria: true },
         orderBy: { createdAt: "desc" },
       });
     }),
@@ -82,7 +82,7 @@ export const lojaPublicaRouter = router({
       const loja = await resolverLojaPorSlug(ctx.prisma, input.slug);
       const produto = await ctx.prisma.produto.findFirst({
         where: { id: input.id, lojaId: loja.id, status: { in: ["ATIVO", "DESTAQUE"] } },
-        include: { fotos: { orderBy: { ordem: "asc" } }, variacoes: true, categoria: true },
+        include: { fotos: { orderBy: { ordem: "asc" } }, variacoes: { include: { foto: true } }, categoria: true },
       });
       if (!produto) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Produto não encontrado." });
