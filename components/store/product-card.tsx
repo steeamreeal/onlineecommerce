@@ -186,12 +186,14 @@ export function ProductCard({
         </div>
       </Link>
 
-      {/* Revelado só no hover (desktop) — fora do <Link> pra cliques em
-          variação/carrinho não navegarem pra página do produto. Sem
-          CartProvider por perto (preview do editor de tema), cart é null e
-          esse bloco não aparece. */}
+      {/* No mobile fica sempre visível (não existe hover pra revelar
+          depois); no desktop (md+) continua só no hover, a não ser que
+          expandido force sempre visível ali também. Fora do <Link> pra
+          cliques em variação/carrinho não navegarem pra página do produto.
+          Sem CartProvider por perto (preview do editor de tema), cart é
+          null e esse bloco não aparece. */}
       {!semEstoque && cart && (
-        <div className={cn("flex-col gap-2", expandido ? "flex" : "hidden group-hover:flex")}>
+        <div className={cn("flex-col gap-2", expandido ? "flex" : "flex md:hidden md:group-hover:flex")}>
           {produto.variacoes.length > 0 && (
             <div className="relative">
               {/* Sem quebra de linha (mesmo com muitas variações) — evita
