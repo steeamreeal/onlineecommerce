@@ -19,6 +19,7 @@ function PreviewCabecalho({
   mostrarBusca,
   mostrarConta,
   posicaoLogo,
+  viewport,
 }: {
   nome: string;
   logoUrl: string | null | undefined;
@@ -27,6 +28,7 @@ function PreviewCabecalho({
   mostrarBusca: boolean;
   mostrarConta: boolean;
   posicaoLogo: "ESQUERDA" | "CENTRO";
+  viewport: "DESKTOP" | "MOBILE";
 }) {
   const logo =
     exibicaoLogo === "LOGO" && logoUrl ? (
@@ -58,6 +60,19 @@ function PreviewCabecalho({
       </div>
     </div>
   );
+
+  if (viewport === "MOBILE") {
+    return (
+      <div className="flex flex-col border-b">
+        <div className="flex items-center justify-between gap-4 px-6 py-4">
+          <div className="w-8" />
+          <div className="flex justify-center">{logo}</div>
+          <div className="flex items-center justify-end gap-4">{acoes}</div>
+        </div>
+        {busca && <div className="px-6 pb-4">{busca}</div>}
+      </div>
+    );
+  }
 
   if (posicaoLogo === "CENTRO") {
     return (
@@ -229,6 +244,7 @@ export function PreviewTema({
               mostrarBusca={cabecalho.config.mostrarBusca ?? true}
               mostrarConta={cabecalho.config.mostrarConta ?? true}
               posicaoLogo={cabecalho.config.posicaoLogo ?? "ESQUERDA"}
+              viewport={viewport}
             />
           </button>
         )}

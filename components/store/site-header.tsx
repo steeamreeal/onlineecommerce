@@ -95,14 +95,15 @@ export function SiteHeader({
   if (posicaoLogo === "CENTRO") {
     return (
       <div className="flex flex-col border-b">
-        <div className="flex flex-wrap items-center gap-4 px-6 py-4">
-          <div className="flex flex-1 items-center gap-4">{busca}</div>
-          {logo}
-          <div className="flex flex-1 items-center justify-end gap-4">
+        <div className="grid grid-cols-3 items-center gap-4 px-6 py-4 md:flex md:flex-wrap">
+          <div className="hidden items-center gap-4 md:flex md:flex-1">{busca}</div>
+          <div className="col-start-2 flex justify-center">{logo}</div>
+          <div className="col-start-3 flex items-center justify-end gap-4 md:flex-1">
             {nav}
             {acoes}
           </div>
         </div>
+        {busca && <div className="px-6 pb-4 md:hidden">{busca}</div>}
       </div>
     );
   }
@@ -111,10 +112,11 @@ export function SiteHeader({
     <div className="flex flex-col border-b">
       <div className={cn("flex flex-wrap items-center gap-4 px-6 py-4")}>
         {logo}
-        {busca}
+        <div className="hidden items-center gap-4 md:flex md:flex-1">{busca}</div>
         {nav}
         {acoes}
       </div>
+      {busca && <div className="px-6 pb-4 md:hidden">{busca}</div>}
     </div>
   );
 }
