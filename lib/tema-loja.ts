@@ -21,6 +21,9 @@ export const bannerTemaSchema = z.object({
   tipo: z.enum(["IMAGEM", "VIDEO"]).default("IMAGEM"),
   urlMobile: z.string().optional(),
   tipoMobile: z.enum(["IMAGEM", "VIDEO"]).optional(),
+  // Link/seção de destino ao clicar nessa imagem específica — independente
+  // do linkBotao da seção Hero, que é só o CTA do texto sobreposto.
+  link: z.string().trim().max(300).optional(),
 });
 
 export type BannerTema = z.infer<typeof bannerTemaSchema>;
@@ -64,6 +67,10 @@ export const secaoHeroSchema = secaoBaseSchema.extend({
     textoBotao: z.string().trim().max(40).optional(),
     linkBotao: z.string().trim().max(300).optional(),
     alinhamento: alinhamentoTextoSchema.default("ESQUERDA"),
+    // Quando true, remove o espaçamento entre o cabeçalho e o banner (fica
+    // rente/colado) — só tem efeito visual no template Minimalista, os
+    // outros templates já não têm esse espaçamento.
+    coladoNoCabecalho: z.boolean().default(false),
   }),
 });
 
@@ -73,6 +80,21 @@ export const secaoColecaoDestaqueSchema = secaoBaseSchema.extend({
     titulo: z.string().trim().max(80),
     categoriaId: z.string().optional(),
     linkVerTudo: z.boolean().default(true),
+    alinhamento: alinhamentoTextoSchema.default("ESQUERDA"),
+  }),
+});
+
+export const tamanhoTextoSchema = z.enum(["PEQUENO", "MEDIO", "GRANDE"]);
+export type TamanhoTexto = z.infer<typeof tamanhoTextoSchema>;
+
+export const secaoMenuCategoriasSchema = secaoBaseSchema.extend({
+  tipo: z.literal("MENU_CATEGORIAS"),
+  config: z.object({
+    cor: z
+      .string()
+      .regex(/^#[0-9A-Fa-f]{6}$/, "Informe uma cor no formato #RRGGBB")
+      .optional(),
+    tamanho: tamanhoTextoSchema.default("MEDIO"),
     alinhamento: alinhamentoTextoSchema.default("ESQUERDA"),
   }),
 });
@@ -120,6 +142,7 @@ export const secaoTemaSchema = z.discriminatedUnion("tipo", [
   secaoBarraAnuncioSchema,
   secaoCabecalhoSchema,
   secaoHeroSchema,
+  secaoMenuCategoriasSchema,
   secaoColecaoDestaqueSchema,
   secaoTextoSchema,
   secaoRodapeSchema,
@@ -168,9 +191,16 @@ export const NOMES_TIPO_SECAO: Record<TipoSecaoTema, string> = {
   BARRA_ANUNCIO: "Barra de anúncios",
   CABECALHO: "Cabeçalho",
   HERO: "Banner principal",
+  MENU_CATEGORIAS: "Menu de categorias",
   COLECAO_DESTAQUE: "Coleção em destaque",
   TEXTO: "Texto",
   RODAPE: "Rodapé",
+};
+
+export const NOMES_TAMANHO_TEXTO: Record<TamanhoTexto, string> = {
+  PEQUENO: "Pequeno",
+  MEDIO: "Médio",
+  GRANDE: "Grande",
 };
 
 export const NOMES_FONTE: Record<(typeof FONTES_TEMA)[number], string> = {
@@ -215,7 +245,17 @@ export function criarTemaConfigPadrao(opcoes: {
         id: criarId(),
         tipo: "HERO",
         visivel: true,
-        config: { banners: opcoes.bannersAntigos ?? [], alinhamento: "ESQUERDA" },
+        config: {
+          banners: opcoes.bannersAntigos ?? [],
+          alinhamento: "ESQUERDA",
+          coladoNoCabecalho: false,
+        },
+      },
+      {
+        id: criarId(),
+        tipo: "MENU_CATEGORIAS",
+        visivel: true,
+        config: { tamanho: "MEDIO", alinhamento: "ESQUERDA" },
       },
       {
         id: criarId(),

@@ -21,12 +21,14 @@ import { CORES_PRIMARIAS_SUGERIDAS } from "@/lib/cores-loja";
 import {
   NOMES_TIPO_SECAO,
   NOMES_FONTE,
+  NOMES_TAMANHO_TEXTO,
   FONTES_TEMA,
   type SecaoTema,
   type EstiloTema,
   type BannerTema,
   type AlinhamentoTexto,
   type ColunaRodape,
+  type TamanhoTexto,
 } from "@/lib/tema-loja";
 
 function CampoTexto({
@@ -253,22 +255,32 @@ function EditorBannersHero({
   return (
     <div className="flex flex-col gap-2">
       <Label>Imagens/vídeos ({banners.length}/3)</Label>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-col gap-3">
         {banners.map((banner, i) => (
-          <div key={banner.id ?? banner.url} className="relative">
-            {banner.tipo === "VIDEO" ? (
-              <video src={banner.url} className="aspect-[3/1] w-32 rounded-md border object-cover" muted />
-            ) : (
-              // eslint-disable-next-line @next/next/no-img-element -- URL dinâmica do Supabase Storage
-              <img src={banner.url} alt="" className="aspect-[3/1] w-32 rounded-md border object-cover" />
-            )}
-            <button
-              type="button"
-              onClick={() => onChange(banners.filter((_, idx) => idx !== i))}
-              className="bg-destructive text-destructive-foreground absolute -top-1.5 -right-1.5 rounded-full p-0.5"
-            >
-              <X className="size-3" />
-            </button>
+          <div key={banner.id ?? banner.url} className="flex items-start gap-2">
+            <div className="relative shrink-0">
+              {banner.tipo === "VIDEO" ? (
+                <video src={banner.url} className="aspect-[3/1] w-32 rounded-md border object-cover" muted />
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element -- URL dinâmica do Supabase Storage
+                <img src={banner.url} alt="" className="aspect-[3/1] w-32 rounded-md border object-cover" />
+              )}
+              <button
+                type="button"
+                onClick={() => onChange(banners.filter((_, idx) => idx !== i))}
+                className="bg-destructive text-destructive-foreground absolute -top-1.5 -right-1.5 rounded-full p-0.5"
+              >
+                <X className="size-3" />
+              </button>
+            </div>
+            <Input
+              value={banner.link ?? ""}
+              placeholder="Link ao clicar (ex: /loja/minha-loja/produtos)"
+              className="flex-1"
+              onChange={(e) =>
+                onChange(banners.map((b, idx) => (idx === i ? { ...b, link: e.target.value } : b)))
+              }
+            />
           </div>
         ))}
         {banners.length < 3 && (
@@ -419,6 +431,64 @@ function FormularioSecao({
             placeholder="/loja/minha-loja/produtos"
             onChange={(linkBotao) => onChange({ ...secao, config: { ...secao.config, linkBotao } })}
           />
+          <SeletorAlinhamento
+            value={secao.config.alinhamento ?? "ESQUERDA"}
+            onChange={(alinhamento) => onChange({ ...secao, config: { ...secao.config, alinhamento } })}
+          />
+          <CampoSwitch
+            label="Colado no cabeçalho (sem espaço acima)"
+            checked={secao.config.coladoNoCabecalho ?? false}
+            onChange={(coladoNoCabecalho) =>
+              onChange({ ...secao, config: { ...secao.config, coladoNoCabecalho } })
+            }
+          />
+        </div>
+      );
+
+    case "MENU_CATEGORIAS":
+      return (
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <Label>Cor do texto (opcional)</Label>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={secao.config.cor ?? "#000000"}
+                onChange={(e) => onChange({ ...secao, config: { ...secao.config, cor: e.target.value } })}
+                className="h-9 w-12 rounded-md border"
+              />
+              <Input
+                value={secao.config.cor ?? ""}
+                placeholder="Padrão do tema"
+                onChange={(e) =>
+                  onChange({
+                    ...secao,
+                    config: { ...secao.config, cor: e.target.value || undefined },
+                  })
+                }
+              />
+            </div>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label>Tamanho do texto</Label>
+            <div className="grid grid-cols-3 gap-2">
+              {(["PEQUENO", "MEDIO", "GRANDE"] as TamanhoTexto[]).map((tamanho) => (
+                <button
+                  key={tamanho}
+                  type="button"
+                  onClick={() => onChange({ ...secao, config: { ...secao.config, tamanho } })}
+                  className={cn(
+                    "rounded-md border px-2 py-2 text-xs font-medium transition-colors",
+                    (secao.config.tamanho ?? "MEDIO") === tamanho
+                      ? "border-primary ring-primary/30 ring-2"
+                      : "hover:border-primary/40",
+                  )}
+                >
+                  {NOMES_TAMANHO_TEXTO[tamanho]}
+                </button>
+              ))}
+            </div>
+          </div>
           <SeletorAlinhamento
             value={secao.config.alinhamento ?? "ESQUERDA"}
             onChange={(alinhamento) => onChange({ ...secao, config: { ...secao.config, alinhamento } })}

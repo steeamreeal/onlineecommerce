@@ -43,18 +43,26 @@ const ICONE_POR_TIPO: Record<TipoSecaoTema, React.ComponentType<{ className?: st
   BARRA_ANUNCIO: Megaphone,
   CABECALHO: PanelTop,
   HERO: ImageIcon,
+  MENU_CATEGORIAS: LayoutGrid,
   COLECAO_DESTAQUE: LayoutGrid,
   TEXTO: Type,
   RODAPE: PanelBottom,
 };
 
-const TIPOS_ADICIONAVEIS: TipoSecaoTema[] = ["HERO", "COLECAO_DESTAQUE", "TEXTO"];
+const TIPOS_ADICIONAVEIS: TipoSecaoTema[] = ["HERO", "MENU_CATEGORIAS", "COLECAO_DESTAQUE", "TEXTO"];
 
 function novaSecao(tipo: TipoSecaoTema): SecaoTema {
   const id = crypto.randomUUID();
   switch (tipo) {
     case "HERO":
-      return { id, tipo, visivel: true, config: { banners: [], alinhamento: "ESQUERDA" } };
+      return {
+        id,
+        tipo,
+        visivel: true,
+        config: { banners: [], alinhamento: "ESQUERDA", coladoNoCabecalho: false },
+      };
+    case "MENU_CATEGORIAS":
+      return { id, tipo, visivel: true, config: { tamanho: "MEDIO", alinhamento: "ESQUERDA" } };
     case "COLECAO_DESTAQUE":
       return {
         id,

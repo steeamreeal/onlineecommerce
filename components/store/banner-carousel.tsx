@@ -12,6 +12,7 @@ type Banner = {
   tipo?: TipoMidia;
   urlMobile?: string;
   tipoMobile?: TipoMidia;
+  link?: string;
 };
 
 const INTERVALO_AUTOPLAY_MS = 5000;

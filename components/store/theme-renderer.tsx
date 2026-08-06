@@ -125,12 +125,15 @@ function SecaoHero({
   config: Extract<SecaoTema, { tipo: "HERO" }>["config"];
   slug: string;
 }) {
+  const classeSecao =
+    variante === "MINIMALISTA" && !config.coladoNoCabecalho ? "px-6 pt-6" : variante === "MINIMALISTA" ? "px-6" : undefined;
+
   // Sem banner cadastrado, ainda assim mostra título/botão se preenchidos —
   // vira uma seção de hero "só texto" em vez de sumir por completo. Com
   // banner, o texto/botão sobrepõe a mídia via renderOverlay do carrossel.
   if (config.banners.length === 0) {
     return (
-      <section className={variante === "MINIMALISTA" ? "px-6 pt-6" : undefined}>
+      <section className={classeSecao}>
         <div className={heroClassePorVariante[variante]}>
           <ConteudoHero
             variante={variante}
@@ -150,21 +153,77 @@ function SecaoHero({
   const banners = config.banners.map((banner, i) => ({ ...banner, id: banner.id ?? `${i}` }));
 
   return (
-    <section className={variante === "MINIMALISTA" ? "px-6 pt-6" : undefined}>
+    <section className={classeSecao}>
       <BannerCarousel
         banners={banners}
         className={heroClassePorVariante[variante]}
         renderOverlay={(banner) => (
-          <ConteudoHero
-            variante={variante}
-            slug={slug}
-            titulo={banner.titulo || config.titulo}
-            textoBotao={config.textoBotao}
-            linkBotao={config.linkBotao}
-            alinhamento={config.alinhamento}
-          />
+          <>
+            {banner.link && (
+              <Link
+                href={banner.link}
+                aria-label={banner.titulo || "Ir para o link do banner"}
+                className="absolute inset-0"
+              />
+            )}
+            <ConteudoHero
+              variante={variante}
+              slug={slug}
+              titulo={banner.titulo || config.titulo}
+              textoBotao={config.textoBotao}
+              linkBotao={config.linkBotao}
+              alinhamento={config.alinhamento}
+            />
+          </>
         )}
       />
+    </section>
+  );
+}
+
+const tamanhoMenuCategoriasClasse: Record<"PEQUENO" | "MEDIO" | "GRANDE", string> = {
+  PEQUENO: "text-xs",
+  MEDIO: "text-sm",
+  GRANDE: "text-base",
+};
+
+function SecaoMenuCategorias({
+  variante,
+  config,
+  slug,
+  categorias,
+}: {
+  variante: Variante;
+  config: Extract<SecaoTema, { tipo: "MENU_CATEGORIAS" }>["config"];
+  slug: string;
+  categorias: Categoria[];
+}) {
+  if (categorias.length === 0) return null;
+
+  return (
+    <section className="flex flex-col gap-4 px-6">
+      <div
+        className={cn(
+          categoriasWrapperClassePorVariante[variante],
+          tamanhoMenuCategoriasClasse[config.tamanho ?? "MEDIO"],
+          config.alinhamento === "CENTRO"
+            ? "justify-center"
+            : config.alinhamento === "DIREITA"
+              ? "justify-end"
+              : undefined,
+        )}
+      >
+        {categorias.map((categoria) => (
+          <Link
+            key={categoria.id}
+            href={`/loja/${slug}/produtos?categoria=${categoria.id}`}
+            className={categoriaLinkClassePorVariante[variante]}
+            style={config.cor ? { color: config.cor } : undefined}
+          >
+            {categoria.nome}
+          </Link>
+        ))}
+      </div>
     </section>
   );
 }
@@ -173,13 +232,11 @@ function SecaoColecaoDestaque({
   variante,
   config,
   slug,
-  categorias,
   destaques,
 }: {
   variante: Variante;
   config: Extract<SecaoTema, { tipo: "COLECAO_DESTAQUE" }>["config"];
   slug: string;
-  categorias: Categoria[];
   destaques: Produto[];
 }) {
   const produtos = config.categoriaId
@@ -188,22 +245,6 @@ function SecaoColecaoDestaque({
 
   return (
     <>
-      {categorias.length > 0 && (
-        <section className="flex flex-col gap-4 px-6">
-          <div className={categoriasWrapperClassePorVariante[variante]}>
-            {categorias.map((categoria) => (
-              <Link
-                key={categoria.id}
-                href={`/loja/${slug}/produtos?categoria=${categoria.id}`}
-                className={categoriaLinkClassePorVariante[variante]}
-              >
-                {categoria.nome}
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
-
       {produtos.length > 0 && (
         <section className="flex flex-col gap-4 px-6">
           <div
@@ -293,6 +334,16 @@ export function ThemeRenderer({
             return (
               <SecaoHero key={secao.id} variante={template} config={secao.config} slug={slug} />
             );
+          case "MENU_CATEGORIAS":
+            return (
+              <SecaoMenuCategorias
+                key={secao.id}
+                variante={template}
+                config={secao.config}
+                slug={slug}
+                categorias={categorias}
+              />
+            );
           case "COLECAO_DESTAQUE":
             return (
               <SecaoColecaoDestaque
@@ -300,7 +351,6 @@ export function ThemeRenderer({
                 variante={template}
                 config={secao.config}
                 slug={slug}
-                categorias={categorias}
                 destaques={destaques}
               />
             );
