@@ -162,25 +162,32 @@ export function CartProvider({
     [itensDetalhados],
   );
 
-  return (
-    <CartContext.Provider
-      value={{
-        itens,
-        itensDetalhados,
-        quantidadeTotal,
-        subtotal,
-        aberto,
-        setAberto,
-        adicionarItem,
-        removerItem,
-        atualizarQuantidade,
-        limparCarrinho,
-        hidratado,
-      }}
-    >
-      {children}
-    </CartContext.Provider>
+  // Sem useMemo aqui, esse objeto era recriado a cada render do provider —
+  // qualquer useCart() (agora inclusive cada ProductCard de uma listagem
+  // inteira, não só cabeçalho/carrinho) re-renderizava junto, mesmo sem
+  // nenhum dado relevante para ele ter mudado. Numa loja com muitos
+  // produtos isso trava o main thread por alguns segundos bem na tela que
+  // mais precisa disso — o preview do editor de tema, que mostra o
+  // catálogo inteiro de uma vez.
+  const value = useMemo<CartContextValue>(
+    () => ({
+      itens,
+      itensDetalhados,
+      quantidadeTotal,
+      subtotal,
+      aberto,
+      setAberto,
+      adicionarItem,
+      removerItem,
+      atualizarQuantidade,
+      limparCarrinho,
+      hidratado,
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- as funções (adicionarItem, removerItem, atualizarQuantidade, limparCarrinho) são recriadas a cada render mas só fecham sobre setItens/setAberto (estáveis) — incluí-las quebraria a memoização sem motivo real
+    [itens, itensDetalhados, quantidadeTotal, subtotal, aberto, hidratado],
   );
+
+  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
 
 export function useCart() {
