@@ -7,9 +7,6 @@ import {
   AlignLeft,
   AlignCenter,
   AlignRight,
-  AlignStartVertical,
-  AlignCenterVertical,
-  AlignEndVertical,
   Plus,
   Trash2,
 } from "lucide-react";
@@ -121,37 +118,45 @@ function SeletorAlinhamento({
   );
 }
 
-const OPCOES_POSICAO_VERTICAL: { valor: PosicaoVertical; label: string; Icone: typeof AlignStartVertical }[] = [
-  { valor: "INICIO", label: "Em cima", Icone: AlignStartVertical },
-  { valor: "CENTRO", label: "No meio", Icone: AlignCenterVertical },
-  { valor: "FIM", label: "Em baixo", Icone: AlignEndVertical },
-];
+const LINHAS_POSICAO: PosicaoVertical[] = ["INICIO", "CENTRO", "FIM"];
+const COLUNAS_POSICAO: AlinhamentoTexto[] = ["ESQUERDA", "CENTRO", "DIREITA"];
 
-function SeletorPosicaoVertical({
-  value,
+// Nove pontos de ancoragem do conteúdo (título/botão) sobre a imagem do
+// banner — combina os dois eixos independentes já existentes no schema
+// (alinhamentoHorizontal x alinhamentoVertical) numa única grade de cliques,
+// em vez de dois seletores separados.
+function SeletorPosicaoConteudo({
+  horizontal,
+  vertical,
   onChange,
 }: {
-  value: PosicaoVertical;
-  onChange: (valor: PosicaoVertical) => void;
+  horizontal: AlinhamentoTexto;
+  vertical: PosicaoVertical;
+  onChange: (valor: { horizontal: AlinhamentoTexto; vertical: PosicaoVertical }) => void;
 }) {
   return (
     <div className="flex flex-col gap-2">
-      <Label>Posição vertical do texto</Label>
-      <div className="grid grid-cols-3 gap-2">
-        {OPCOES_POSICAO_VERTICAL.map(({ valor, label, Icone }) => (
-          <button
-            key={valor}
-            type="button"
-            onClick={() => onChange(valor)}
-            className={cn(
-              "flex flex-col items-center gap-1 rounded-md border px-2 py-2 text-xs font-medium transition-colors",
-              value === valor ? "border-primary ring-primary/30 ring-2" : "hover:border-primary/40",
-            )}
-          >
-            <Icone className="size-4" />
-            {label}
-          </button>
-        ))}
+      <Label>Onde o texto aparece sobre a imagem</Label>
+      <div className="bg-muted grid aspect-video grid-cols-3 gap-1.5 rounded-md p-1.5">
+        {LINHAS_POSICAO.map((linha) =>
+          COLUNAS_POSICAO.map((coluna) => {
+            const ativo = linha === vertical && coluna === horizontal;
+            return (
+              <button
+                key={`${linha}-${coluna}`}
+                type="button"
+                aria-label={`Posicionar em ${linha === "INICIO" ? "cima" : linha === "CENTRO" ? "meio" : "baixo"}, ${coluna === "ESQUERDA" ? "esquerda" : coluna === "CENTRO" ? "centro" : "direita"}`}
+                onClick={() => onChange({ horizontal: coluna, vertical: linha })}
+                className={cn(
+                  "bg-background flex items-center justify-center rounded-sm border transition-colors",
+                  ativo ? "border-primary ring-primary/30 ring-2" : "hover:border-primary/40",
+                )}
+              >
+                <span className={cn("size-2 rounded-full", ativo ? "bg-primary" : "bg-muted-foreground/40")} />
+              </button>
+            );
+          }),
+        )}
       </div>
     </div>
   );
@@ -481,16 +486,13 @@ function EditorBannersHero({
             />
 
             {(banner.titulo || banner.textoBotao) && (
-              <>
-                <SeletorAlinhamento
-                  value={banner.alinhamentoHorizontal ?? "ESQUERDA"}
-                  onChange={(alinhamentoHorizontal) => atualizarBanner(i, { alinhamentoHorizontal })}
-                />
-                <SeletorPosicaoVertical
-                  value={banner.alinhamentoVertical ?? "FIM"}
-                  onChange={(alinhamentoVertical) => atualizarBanner(i, { alinhamentoVertical })}
-                />
-              </>
+              <SeletorPosicaoConteudo
+                horizontal={banner.alinhamentoHorizontal ?? "ESQUERDA"}
+                vertical={banner.alinhamentoVertical ?? "FIM"}
+                onChange={({ horizontal, vertical }) =>
+                  atualizarBanner(i, { alinhamentoHorizontal: horizontal, alinhamentoVertical: vertical })
+                }
+              />
             )}
           </div>
         ))}

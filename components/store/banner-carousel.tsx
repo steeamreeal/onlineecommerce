@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { BannerMidia } from "@/components/store/banner-midia";
+import { cn } from "@/lib/utils";
 
 type TipoMidia = "IMAGEM" | "VIDEO";
 type AlinhamentoTexto = "ESQUERDA" | "CENTRO" | "DIREITA";
@@ -40,10 +41,13 @@ export function BannerCarousel({
   banners,
   className,
   renderOverlay,
+  viewport,
 }: {
   banners: Banner[];
   className: string;
   renderOverlay?: (banner: Banner) => ReactNode;
+  // Ver BannerMidia — força a versão mobile/desktop no preview do editor.
+  viewport?: "DESKTOP" | "MOBILE";
 }) {
   const trilhaRef = useRef<HTMLDivElement>(null);
   const navegandoProgramaticamente = useRef(false);
@@ -103,8 +107,8 @@ export function BannerCarousel({
 
   if (banners.length === 1) {
     return (
-      <div className={className}>
-        <BannerMidia banner={banners[0]} />
+      <div className={cn(className, viewport === "MOBILE" && "!aspect-[4/5]", viewport === "DESKTOP" && "!aspect-[3/1]")}>
+        <BannerMidia banner={banners[0]} viewport={viewport} />
         {renderOverlay?.(banners[0])}
       </div>
     );
@@ -124,13 +128,31 @@ export function BannerCarousel({
         className="flex snap-x snap-mandatory overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {banners.map((banner) => (
-          <div key={banner.id} className={`${className} shrink-0 snap-start`} style={{ width: "100%" }}>
-            <BannerMidia banner={banner} />
+          <div
+            key={banner.id}
+            className={cn(
+              className,
+              "shrink-0 snap-start",
+              viewport === "MOBILE" && "!aspect-[4/5]",
+              viewport === "DESKTOP" && "!aspect-[3/1]",
+            )}
+            style={{ width: "100%" }}
+          >
+            <BannerMidia banner={banner} viewport={viewport} />
             {renderOverlay?.(banner)}
           </div>
         ))}
-        <div aria-hidden className={`${className} shrink-0 snap-start`} style={{ width: "100%" }}>
-          <BannerMidia banner={banners[0]} />
+        <div
+          aria-hidden
+          className={cn(
+            className,
+            "shrink-0 snap-start",
+            viewport === "MOBILE" && "!aspect-[4/5]",
+            viewport === "DESKTOP" && "!aspect-[3/1]",
+          )}
+          style={{ width: "100%" }}
+        >
+          <BannerMidia banner={banners[0]} viewport={viewport} />
           {renderOverlay?.(banners[0])}
         </div>
       </div>

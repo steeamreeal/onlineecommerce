@@ -139,6 +139,7 @@ export function PreviewTema({
   corPrimaria,
   secaoSelecionadaId,
   onSelecionarSecao,
+  viewport = "DESKTOP",
 }: {
   slug: string;
   nomeLoja: string;
@@ -148,6 +149,7 @@ export function PreviewTema({
   corPrimaria: string;
   secaoSelecionadaId: string | null;
   onSelecionarSecao: (id: string, tipo: TipoSecaoTema) => void;
+  viewport?: "DESKTOP" | "MOBILE";
 }) {
   const { data: categorias } = trpc.lojaPublica.categorias.useQuery({ slug });
   const { data: produtos } = trpc.lojaPublica.produtos.useQuery({ slug });
@@ -169,7 +171,10 @@ export function PreviewTema({
     <div className="bg-muted/30 flex flex-1 justify-center overflow-y-auto p-6">
       <div
         onClick={handleClick}
-        className="min-h-full w-full max-w-3xl overflow-hidden rounded-md border bg-background shadow-sm"
+        className={cn(
+          "min-h-full w-full overflow-hidden rounded-md border bg-background shadow-sm transition-[max-width]",
+          viewport === "MOBILE" ? "max-w-sm" : "max-w-3xl",
+        )}
         style={{ "--loja-primary": corPrimaria } as React.CSSProperties}
       >
         {barraAnuncio && (
@@ -247,6 +252,7 @@ export function PreviewTema({
                 slug={slug}
                 categorias={categorias ?? []}
                 destaques={produtos ?? []}
+                viewport={viewport}
               />
             </button>
           ))}

@@ -132,10 +132,12 @@ function SecaoHero({
   variante,
   config,
   slug,
+  viewport,
 }: {
   variante: Variante;
   config: Extract<SecaoTema, { tipo: "HERO" }>["config"];
   slug: string;
+  viewport?: "DESKTOP" | "MOBILE";
 }) {
   const classeSecao =
     variante === "MINIMALISTA" && !config.coladoNoCabecalho ? "px-6 pt-6" : variante === "MINIMALISTA" ? "px-6" : undefined;
@@ -157,6 +159,7 @@ function SecaoHero({
       <BannerCarousel
         banners={banners}
         className={heroClassePorVariante[variante]}
+        viewport={viewport}
         renderOverlay={(banner) => (
           <>
             {banner.link && (
@@ -343,12 +346,17 @@ export function ThemeRenderer({
   slug,
   categorias,
   destaques,
+  viewport,
 }: {
   secoes: SecaoTema[];
   template: Variante;
   slug: string;
   categorias: Categoria[];
   destaques: Produto[];
+  // Só usado no preview do editor de tema, pra forçar a versão mobile/desktop
+  // do banner independente da largura real da janela. No site público, fica
+  // undefined e o banner volta a decidir sozinho via CSS responsivo (md:).
+  viewport?: "DESKTOP" | "MOBILE";
 }) {
   return (
     <div className="flex flex-1 flex-col gap-12 pb-12">
@@ -364,7 +372,7 @@ export function ThemeRenderer({
             return null;
           case "HERO":
             return (
-              <SecaoHero key={secao.id} variante={template} config={secao.config} slug={slug} />
+              <SecaoHero key={secao.id} variante={template} config={secao.config} slug={slug} viewport={viewport} />
             );
           case "MENU_CATEGORIAS":
             return (
