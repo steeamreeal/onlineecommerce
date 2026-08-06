@@ -22,7 +22,7 @@ export function SiteHeader({
   posicaoLogo = "ESQUERDA",
   exibicaoLogo = "NOME",
   tamanhoLogo = 40,
-  espacamentoLinhas = 20,
+  espacamentoLinhas = 8,
   tamanhoFonteCategorias = 30,
   corFundo,
   corTexto,
@@ -115,14 +115,14 @@ export function SiteHeader({
   const desktop =
     posicaoLogo === "CENTRO" ? (
       <div className="hidden flex-col md:flex">
-        <div className="flex flex-wrap items-center gap-4 px-6 pt-4 pb-2">
+        <div className="flex flex-wrap items-center gap-4 px-6 py-3">
           <div className="flex flex-1 items-center gap-4">{busca}</div>
           {logo}
           <div className="flex flex-1 items-center justify-end gap-4">{acoes}</div>
         </div>
         {(categorias ?? []).length > 0 && (
           <div
-            className="flex items-center justify-center gap-4 px-6 pb-3"
+            className="flex items-center justify-center gap-4 border-t px-6 pb-2"
             style={{ paddingTop: espacamentoCabecalhoEmPx(espacamentoLinhas) }}
           >
             {nav}
@@ -131,14 +131,14 @@ export function SiteHeader({
       </div>
     ) : (
       <div className="hidden flex-col md:flex">
-        <div className="flex flex-wrap items-center gap-4 px-6 pt-4 pb-2">
+        <div className="flex flex-wrap items-center gap-4 px-6 py-3">
           {logo}
           <div className="flex flex-1 items-center gap-4">{busca}</div>
           {acoes}
         </div>
         {(categorias ?? []).length > 0 && (
           <div
-            className="flex items-center justify-center gap-4 px-6 pb-3"
+            className="flex items-center justify-center gap-4 border-t px-6 pb-2"
             style={{ paddingTop: espacamentoCabecalhoEmPx(espacamentoLinhas) }}
           >
             {nav}

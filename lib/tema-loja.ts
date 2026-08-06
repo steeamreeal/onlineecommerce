@@ -89,10 +89,10 @@ export function arredondamentoBotaoEmPx(tamanho: number | undefined): number | u
 // Faixa de espaço vertical (px) que o slider 0-100 de espaçamento entre as
 // linhas do cabeçalho cobre.
 export const ESPACAMENTO_CABECALHO_MIN_PX = 0;
-export const ESPACAMENTO_CABECALHO_MAX_PX = 48;
+export const ESPACAMENTO_CABECALHO_MAX_PX = 32;
 
 export function espacamentoCabecalhoEmPx(espacamento: number | undefined): number {
-  const e = espacamento ?? 20;
+  const e = espacamento ?? 8;
   return (
     ESPACAMENTO_CABECALHO_MIN_PX +
     (e / 100) * (ESPACAMENTO_CABECALHO_MAX_PX - ESPACAMENTO_CABECALHO_MIN_PX)
@@ -218,7 +218,7 @@ export const secaoCabecalhoSchema = secaoBaseSchema.extend({
     // Escala 0-100 mapeada para o espaço vertical (px) entre a linha de
     // logo/busca e a linha de categorias no layout desktop (ver
     // ESPACAMENTO_CABECALHO_MIN_PX/MAX_PX) — sem efeito no mobile.
-    espacamentoLinhas: z.number().min(0).max(100).default(20),
+    espacamentoLinhas: z.number().min(0).max(100).default(8),
     // Escala 0-100 mapeada para o tamanho de fonte do menu de categorias
     // (mesma conversão de tamanhoFonteEmPx usada nos textos de outras seções).
     tamanhoFonteCategorias: z.number().min(0).max(100).default(30),
@@ -454,7 +454,7 @@ export function criarTemaConfigPadrao(opcoes: {
           posicaoLogo: "ESQUERDA",
           exibicaoLogo: "NOME",
           tamanhoLogo: 40,
-          espacamentoLinhas: 20,
+          espacamentoLinhas: 8,
           tamanhoFonteCategorias: 30,
         },
       },
