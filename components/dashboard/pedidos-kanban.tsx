@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Search } from "lucide-react";
+import { ArrowRight, Search, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,9 @@ export function PedidosKanban() {
   const avancarStatus = trpc.pedidos.atualizarStatus.useMutation({
     onSuccess: () => utils.pedidos.listar.invalidate(),
   });
+  const cancelarStatus = trpc.pedidos.atualizarStatus.useMutation({
+    onSuccess: () => utils.pedidos.listar.invalidate(),
+  });
 
   const pedidosFiltrados = useMemo(() => pedidos, [pedidos]);
 
@@ -48,6 +51,18 @@ export function PedidosKanban() {
     } catch (error) {
       const mensagem =
         error instanceof Error && error.message ? error.message : "Não foi possível avançar o pedido.";
+      toast.error(mensagem);
+    }
+  }
+
+  async function handleCancelar(pedido: (typeof pedidos)[number]) {
+    if (!window.confirm(`Cancelar o pedido #${pedido.id.slice(-6).toUpperCase()}?`)) return;
+    try {
+      await cancelarStatus.mutateAsync({ id: pedido.id, status: "CANCELADO" });
+      toast.success(`Pedido #${pedido.id.slice(-6).toUpperCase()} cancelado.`);
+    } catch (error) {
+      const mensagem =
+        error instanceof Error && error.message ? error.message : "Não foi possível cancelar o pedido.";
       toast.error(mensagem);
     }
   }
@@ -118,16 +133,28 @@ export function PedidosKanban() {
                           </span>
                         </div>
                         {proximo && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="mt-1 justify-between"
-                            disabled={avancarStatus.isPending}
-                            onClick={() => handleAvancar(pedido)}
-                          >
-                            {STATUS_PEDIDO_LABEL[proximo]}
-                            <ArrowRight className="size-3.5" />
-                          </Button>
+                          <div className="mt-1 flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1 justify-between"
+                              disabled={avancarStatus.isPending}
+                              onClick={() => handleAvancar(pedido)}
+                            >
+                              {STATUS_PEDIDO_LABEL[proximo]}
+                              <ArrowRight className="size-3.5" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-destructive hover:text-destructive"
+                              disabled={cancelarStatus.isPending}
+                              onClick={() => handleCancelar(pedido)}
+                              aria-label="Cancelar pedido"
+                            >
+                              <X className="size-3.5" />
+                            </Button>
+                          </div>
                         )}
                       </div>
                     );
