@@ -211,11 +211,23 @@ export const checkoutRouter = router({
           ? [...itemsComDesconto, { id: "frete", title: "Frete", quantity: 1, unit_price: valorFrete }]
           : itemsComDesconto;
 
+      // Sem essa restrição, o Checkout Pro do Mercado Pago abre com todas as
+      // abas (cartão, PIX, boleto) e cai por padrão na de cartão — ignorando
+      // a forma de pagamento que o cliente já escolheu no site.
+      const excludedPaymentTypesPorForma: Record<string, { id: string }[]> = {
+        PIX: [{ id: "credit_card" }, { id: "debit_card" }, { id: "ticket" }, { id: "atm" }],
+        CARTAO: [{ id: "ticket" }, { id: "bank_transfer" }, { id: "atm" }],
+        BOLETO: [{ id: "credit_card" }, { id: "debit_card" }, { id: "bank_transfer" }, { id: "atm" }],
+      };
+
       const preferencia = await getMpPreference(loja.mpAccessToken!).create({
         body: {
           items: itemsPreferencia,
           external_reference: pedido.id,
           payer: { name: pedido.cliente.nome, email: pedido.cliente.email ?? undefined },
+          payment_methods: {
+            excluded_payment_types: excludedPaymentTypesPorForma[input.formaPagamento] ?? [],
+          },
           back_urls: {
             success: `${baseUrl()}/loja/${loja.slug}/pedido/${pedido.id}`,
             pending: `${baseUrl()}/loja/${loja.slug}/pedido/${pedido.id}`,
