@@ -29,18 +29,32 @@ export async function POST(req: Request) {
     throw erro;
   }
 
-  const body = (await req.json()) as { type?: string; data?: { id?: string }; user_id?: number | string };
+  const body = (await req.json()) as {
+    type?: string;
+    action?: string;
+    data?: { id?: string };
+    user_id?: number | string;
+  };
   const paymentId = body.data?.id ?? dataId;
 
   if (body.type !== "payment" || !paymentId) {
     return NextResponse.json({ recebido: true });
   }
 
+  // O Mercado Pago manda mais de uma notificação para o MESMO pagamento
+  // (payment.created quando o PIX é gerado, ainda "pending"; payment.updated
+  // quando é de fato pago, "approved") — as duas com o mesmo data.id. Se a
+  // chave de idempotência fosse só o data.id, a primeira (created, sem
+  // efeito) consumiria a chave e a segunda (updated, a que realmente
+  // confirma o pagamento) seria descartada como "duplicata".
+  const eventoId = `${paymentId}:${body.action ?? body.type}`;
+
   try {
-    await prisma.webhookEvent.create({ data: { origem: "MERCADO_PAGO", eventoId: paymentId } });
+    await prisma.webhookEvent.create({ data: { origem: "MERCADO_PAGO", eventoId } });
   } catch {
-    // Evento já processado (unique constraint em origem+eventoId) — o
-    // Mercado Pago pode reenviar a mesma notificação mais de uma vez.
+    // Essa ação específica já foi processada (unique constraint em
+    // origem+eventoId) — o Mercado Pago pode reenviar a mesma notificação
+    // mais de uma vez.
     return NextResponse.json({ recebido: true });
   }
 
