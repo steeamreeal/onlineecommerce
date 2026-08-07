@@ -17,19 +17,28 @@ export async function GET(req: Request) {
     return NextResponse.redirect(`${painel}?mp=erro`);
   }
 
+  if (!process.env.MERCADOPAGO_CLIENT_ID || !process.env.MERCADOPAGO_CLIENT_SECRET) {
+    return NextResponse.redirect(`${painel}?mp=erro`);
+  }
+
   const lojaId = verificarState(state);
   if (!lojaId) {
     return NextResponse.redirect(`${painel}?mp=erro`);
   }
 
-  const resultado = await getMpOAuth().create({
-    body: {
-      client_id: process.env.MERCADOPAGO_CLIENT_ID!,
-      client_secret: process.env.MERCADOPAGO_CLIENT_SECRET!,
-      code,
-      redirect_uri: `${baseUrl()}/api/mercadopago/callback`,
-    },
-  });
+  let resultado;
+  try {
+    resultado = await getMpOAuth().create({
+      body: {
+        client_id: process.env.MERCADOPAGO_CLIENT_ID,
+        client_secret: process.env.MERCADOPAGO_CLIENT_SECRET,
+        code,
+        redirect_uri: `${baseUrl()}/api/mercadopago/callback`,
+      },
+    });
+  } catch {
+    return NextResponse.redirect(`${painel}?mp=erro`);
+  }
 
   if (!resultado.access_token || !resultado.user_id) {
     return NextResponse.redirect(`${painel}?mp=erro`);

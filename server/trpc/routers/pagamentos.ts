@@ -86,6 +86,14 @@ export const pagamentosRouter = router({
   // para lá, autoriza a plataforma, e volta em app/api/mercadopago/callback
   // com os tokens da própria conta (o dinheiro do checkout cai direto nela).
   iniciarConexaoMercadoPago: financeiroProcedure.mutation(({ ctx }) => {
+    if (!process.env.MERCADOPAGO_CLIENT_ID || !process.env.MERCADOPAGO_CLIENT_SECRET) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message:
+          "A integração com o Mercado Pago ainda não foi configurada nesta plataforma. Avise o suporte.",
+      });
+    }
+
     const url = getMpOAuth().getAuthorizationURL({
       options: {
         client_id: process.env.MERCADOPAGO_CLIENT_ID!,
