@@ -18,6 +18,7 @@ export async function POST(req: Request) {
     });
   } catch (erro) {
     if (erro instanceof InvalidWebhookSignatureError) {
+      console.error("Webhook Mercado Pago rejeitado:", erro.reason, { requestId: erro.requestId });
       return NextResponse.json({ error: "Assinatura inválida." }, { status: 400 });
     }
     throw erro;
