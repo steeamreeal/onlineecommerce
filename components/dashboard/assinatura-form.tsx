@@ -51,8 +51,8 @@ export function AssinaturaForm() {
     onSuccess: ({ url }) => {
       window.location.href = url;
     },
-    onError: () => {
-      toast.error("Não foi possível iniciar a conexão com o Mercado Pago.");
+    onError: (erro) => {
+      toast.error(erro.message || "Não foi possível iniciar a conexão com o Mercado Pago.");
     },
   });
 
