@@ -18,7 +18,17 @@ export default function DashboardLayout({
     // dentro do PAINEL — por isso ThemeProvider/AccentColorProvider ficam
     // aqui (e em (admin)/layout.tsx), não no layout raiz. O site público
     // da loja (app/(public-store)) não deve herdar nada disso.
-    <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
+    // enableSystem=false: "Sistema" aqui não é "seguir o SO" (padrão do
+    // next-themes) — é uma terceira paleta fixa própria (a bege que já
+    // existia antes de "Claro" virar neutro), então não pode ser resolvida
+    // automaticamente para light/dark.
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="light"
+      themes={["light", "dark", "system"]}
+      enableSystem={false}
+      disableTransitionOnChange
+    >
       <AccentColorProvider>
         <div className="flex min-h-full flex-1">
           <aside className="bg-sidebar text-sidebar-foreground flex w-64 flex-col border-r">

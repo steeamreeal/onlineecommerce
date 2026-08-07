@@ -32,7 +32,13 @@ export default async function AdminLayout({
   return (
     // Tema claro/escuro e cor de destaque são preferências de quem usa o
     // painel admin — ver o mesmo comentário em (dashboard)/layout.tsx.
-    <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="light"
+      themes={["light", "dark", "system"]}
+      enableSystem={false}
+      disableTransitionOnChange
+    >
       <AccentColorProvider>
         <div className="flex min-h-full flex-1">
           <aside className="bg-sidebar text-sidebar-foreground flex w-64 flex-col border-r">
