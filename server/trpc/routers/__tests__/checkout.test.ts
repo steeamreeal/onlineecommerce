@@ -49,6 +49,7 @@ function criarPrismaMock(overrides: Record<string, unknown> = {}) {
     cliente: {
       findFirst: vi.fn().mockResolvedValue(cliente),
       create: vi.fn().mockResolvedValue(cliente),
+      update: vi.fn().mockResolvedValue(cliente),
     },
     enderecoCliente: { create: vi.fn() },
     variacaoProduto: {
