@@ -199,7 +199,7 @@ export function CheckoutWizard({ slug }: { slug: string }) {
       return (
         identificacao.nome.trim().length > 1 &&
         identificacao.telefone.trim().length > 7 &&
-        (identificacao.email.trim().length === 0 || identificacao.email.trim().includes("@"))
+        identificacao.email.trim().includes("@")
       );
     }
     if (step === 1) {
@@ -224,7 +224,7 @@ export function CheckoutWizard({ slug }: { slug: string }) {
         cliente: {
           nome: identificacao.nome.trim(),
           telefone: identificacao.telefone.trim(),
-          email: identificacao.email.trim() || undefined,
+          email: identificacao.email.trim(),
         },
         modoEntrega: entrega.modo,
         endereco:
@@ -357,12 +357,15 @@ export function CheckoutWizard({ slug }: { slug: string }) {
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label>E-mail (opcional)</Label>
+            <Label>E-mail</Label>
             <Input
               type="email"
               value={identificacao.email}
               onChange={(e) => setIdentificacao((v) => ({ ...v, email: e.target.value }))}
             />
+            <p className="text-muted-foreground text-xs">
+              Usamos para avisar sobre o status do seu pedido (pagamento confirmado, envio, etc).
+            </p>
           </div>
         </div>
       )}

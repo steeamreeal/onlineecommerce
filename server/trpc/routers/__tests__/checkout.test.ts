@@ -85,7 +85,7 @@ describe("checkoutRouter.criarPedido", () => {
 
   const inputBase = {
     slug: LOJA.slug,
-    cliente: { nome: "Ana", telefone: "11999999999" },
+    cliente: { nome: "Ana", telefone: "11999999999", email: "ana@example.com" },
     modoEntrega: "RETIRADA" as const,
     itens: [{ produtoId: PRODUTO.id, quantidade: 1 }],
   };

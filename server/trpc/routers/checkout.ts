@@ -32,7 +32,7 @@ export const checkoutRouter = router({
         cliente: z.object({
           nome: z.string().min(1),
           telefone: z.string().min(8),
-          email: z.string().email().optional(),
+          email: z.string().email(),
         }),
         modoEntrega: z.enum(["RETIRADA", "ENTREGA"]),
         endereco: enderecoInputSchema.optional(),
