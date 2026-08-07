@@ -1,36 +1,80 @@
 import { z } from "zod";
+import type { StatusPedido } from "@prisma/client";
 import { router, storeProcedure } from "../trpc";
 import { ESTOQUE_BAIXO_LIMITE } from "@/lib/estoque";
 
+// Status que representam dinheiro que de fato entrou — usado para o card de
+// "Vendas pagas", separado do Faturamento (que soma todo pedido não
+// cancelado, incluindo os ainda aguardando pagamento).
+const STATUS_PAGOS: StatusPedido[] = ["PAGO", "EM_PREPARACAO", "ENVIADO", "PRONTO_RETIRADA", "ENTREGUE"];
+
+const periodoSchema = z
+  .object({
+    dataInicio: z.string().optional(),
+    dataFim: z.string().optional(),
+  })
+  .optional();
+
+function rangeCreatedAt(input?: { dataInicio?: string; dataFim?: string }) {
+  if (!input?.dataInicio && !input?.dataFim) return undefined;
+  const gte = input.dataInicio ? new Date(`${input.dataInicio}T00:00:00`) : undefined;
+  const lte = input.dataFim ? new Date(`${input.dataFim}T23:59:59.999`) : undefined;
+  return { ...(gte ? { gte } : {}), ...(lte ? { lte } : {}) };
+}
+
 export const dashboardRouter = router({
-  // Agrega faturamento, nº de pedidos e ticket médio (ignora CANCELADO,
-  // igual à lógica de lib/mocks/dashboard.ts) em uma única query.
-  kpis: storeProcedure.query(async ({ ctx }) => {
-    const [agregadoPedidosValidos, pedidosPendentes, produtosEstoqueBaixo] = await Promise.all([
-      ctx.prisma.pedido.aggregate({
-        where: { lojaId: ctx.lojaId, status: { not: "CANCELADO" } },
-        _sum: { valorTotal: true },
-        _count: true,
-      }),
-      ctx.prisma.pedido.count({
-        where: { lojaId: ctx.lojaId, status: { notIn: ["ENTREGUE", "CANCELADO"] } },
-      }),
-      ctx.prisma.produto.count({
-        where: {
-          lojaId: ctx.lojaId,
-          variacoes: {
-            some: {},
-            every: { estoque: { lte: ESTOQUE_BAIXO_LIMITE } },
+  // Agrega faturamento, nº de pedidos, ticket médio e vendas pagas (ignora
+  // CANCELADO no faturamento geral) em uma única query. Aceita um período
+  // opcional (dataInicio/dataFim, formato YYYY-MM-DD) para filtrar tudo pela
+  // data de criação do pedido — sem período, considera a loja inteira.
+  kpis: storeProcedure.input(periodoSchema).query(async ({ ctx, input }) => {
+    const createdAt = rangeCreatedAt(input);
+
+    const [agregadoPedidosValidos, agregadoPedidosPagos, pedidosPendentes, produtosEstoqueBaixo] =
+      await Promise.all([
+        ctx.prisma.pedido.aggregate({
+          where: { lojaId: ctx.lojaId, status: { not: "CANCELADO" }, ...(createdAt ? { createdAt } : {}) },
+          _sum: { valorTotal: true },
+          _count: true,
+        }),
+        ctx.prisma.pedido.aggregate({
+          where: {
+            lojaId: ctx.lojaId,
+            status: { in: STATUS_PAGOS },
+            ...(createdAt ? { createdAt } : {}),
           },
-        },
-      }),
-    ]);
+          _sum: { valorTotal: true },
+          _count: true,
+        }),
+        ctx.prisma.pedido.count({
+          where: { lojaId: ctx.lojaId, status: { notIn: ["ENTREGUE", "CANCELADO"] } },
+        }),
+        ctx.prisma.produto.count({
+          where: {
+            lojaId: ctx.lojaId,
+            variacoes: {
+              some: {},
+              every: { estoque: { lte: ESTOQUE_BAIXO_LIMITE } },
+            },
+          },
+        }),
+      ]);
 
     const faturamentoTotal = Number(agregadoPedidosValidos._sum.valorTotal ?? 0);
     const numeroPedidos = agregadoPedidosValidos._count;
     const ticketMedio = numeroPedidos > 0 ? faturamentoTotal / numeroPedidos : 0;
+    const vendasPagas = Number(agregadoPedidosPagos._sum.valorTotal ?? 0);
+    const numeroVendasPagas = agregadoPedidosPagos._count;
 
-    return { faturamentoTotal, numeroPedidos, ticketMedio, pedidosPendentes, produtosEstoqueBaixo };
+    return {
+      faturamentoTotal,
+      numeroPedidos,
+      ticketMedio,
+      pedidosPendentes,
+      produtosEstoqueBaixo,
+      vendasPagas,
+      numeroVendasPagas,
+    };
   }),
 
   produtosMaisVendidos: storeProcedure
