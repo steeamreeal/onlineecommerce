@@ -4,7 +4,7 @@ import { router, storeProcedure, roleProcedure } from "../trpc";
 
 // Criar/remover categorias afeta a organização de produtos em toda a loja —
 // restrito a quem administra ou gerencia, não a Vendedor/Estoquista/Separador.
-const gestorProcedure = roleProcedure(["ADMINISTRADOR", "GERENTE"]);
+const gestorProcedure = roleProcedure(["ADMINISTRADOR", "DONO", "GERENTE"]);
 
 export const categoriasRouter = router({
   listar: storeProcedure.query(({ ctx }) => {

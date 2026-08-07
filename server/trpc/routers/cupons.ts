@@ -4,7 +4,7 @@ import { router, storeProcedure, roleProcedure } from "../trpc";
 
 // Criar/editar/remover cupons afeta descontos em toda a loja — restrito a
 // quem administra ou gerencia, não a Vendedor/Estoquista/Separador.
-const gestorProcedure = roleProcedure(["ADMINISTRADOR", "GERENTE"]);
+const gestorProcedure = roleProcedure(["ADMINISTRADOR", "DONO", "GERENTE"]);
 
 const tipoCupomSchema = z.enum(["PERCENTUAL", "VALOR_FIXO", "FRETE_GRATIS"]);
 

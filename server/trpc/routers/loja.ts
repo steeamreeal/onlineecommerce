@@ -9,6 +9,11 @@ import {
   VercelDomainsIndisponivelError,
 } from "@/lib/vercel-domains";
 
+// Identidade, domínio próprio, personalização e tema da loja são decisões de
+// quem administra a loja. DONO tem tudo que ADMINISTRADOR tem (ver
+// equipeProcedure em usuarios-loja.ts).
+const lojaProcedure = roleProcedure(["ADMINISTRADOR", "DONO"]);
+
 export const lojaRouter = router({
   atual: storeProcedure.query(({ ctx }) => {
     return ctx.prisma.loja.findUniqueOrThrow({
@@ -41,7 +46,7 @@ export const lojaRouter = router({
   // Nome e slug (URL da loja) não entram aqui: são geridos pelo admin da
   // plataforma via admin.atualizarLoja, já que a criação da loja não é mais
   // self-service (M14) e o slug é usado na resolução de tenant por host.
-  atualizarIdentidade: roleProcedure(["ADMINISTRADOR"])
+  atualizarIdentidade: lojaProcedure
     .input(
       z.object({
         corPrimaria: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Informe uma cor no formato #RRGGBB"),
@@ -91,7 +96,7 @@ export const lojaRouter = router({
   // e nada é salvo — o lojista só vê "salvo" quando de fato está ativo.
   // Se a integração não estiver configurada (sem VERCEL_API_TOKEN), cai de
   // volta pro fluxo manual antigo: salva no banco e o admin cadastra à mão.
-  atualizarDominioProprio: roleProcedure(["ADMINISTRADOR"])
+  atualizarDominioProprio: lojaProcedure
     .input(z.object({ dominioProprio: z.string().trim().toLowerCase().min(1).nullable() }))
     .mutation(async ({ ctx, input }) => {
       const dominio = input.dominioProprio?.replace(/^https?:\/\//, "").replace(/\/$/, "") || null;
@@ -148,7 +153,7 @@ export const lojaRouter = router({
   // Consulta se o DNS do domínio próprio já está apontando corretamente
   // para a Vercel — usado pela tela de domínio próprio pra mostrar ao
   // lojista o status real em vez de só a instrução estática de CNAME.
-  statusDominioProprio: roleProcedure(["ADMINISTRADOR"]).query(async ({ ctx }) => {
+  statusDominioProprio: lojaProcedure.query(async ({ ctx }) => {
     const loja = await ctx.prisma.loja.findUniqueOrThrow({
       where: { id: ctx.lojaId },
       select: { dominioProprio: true },
@@ -166,7 +171,7 @@ export const lojaRouter = router({
     }
   }),
 
-  atualizarPersonalizacao: roleProcedure(["ADMINISTRADOR"])
+  atualizarPersonalizacao: lojaProcedure
     .input(
       z.object({
         template: z.enum(["MINIMALISTA", "EDITORIAL", "VITRINE"]),
@@ -184,7 +189,7 @@ export const lojaRouter = router({
   // Sobrescreve o array inteiro a cada chamada (banners não é uma relação
   // Prisma separada, é Json) — sem diff por id, mais simples que o padrão
   // usado em produtos.fotos.
-  atualizarBanners: roleProcedure(["ADMINISTRADOR"])
+  atualizarBanners: lojaProcedure
     .input(
       z.object({
         banners: z
@@ -213,7 +218,7 @@ export const lojaRouter = router({
   // de atualizarBanners (Json puro, sem diff por id). O template continua
   // sendo trocado por atualizarPersonalizacao — temaConfig só guarda a
   // composição de seções e o estilo (cor/fonte), não qual template está ativo.
-  atualizarTema: roleProcedure(["ADMINISTRADOR"])
+  atualizarTema: lojaProcedure
     .input(temaConfigSchema)
     .mutation(async ({ ctx, input }) => {
       return ctx.prisma.loja.update({
