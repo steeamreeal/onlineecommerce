@@ -194,14 +194,26 @@ export const checkoutRouter = router({
       // retomado, em vez de perder a baixa de estoque já confirmada.
       // mpAccessToken é da própria loja (Mercado Pago Connect) — o dinheiro
       // cai direto na conta do lojista, nunca numa conta da plataforma.
+      // A preferência precisa somar exatamente o valorTotal do pedido (produtos
+      // + frete - desconto). O Mercado Pago não aceita item com preço negativo,
+      // então o desconto do cupom é rateado proporcionalmente entre os itens de
+      // produto, e o frete entra como item de linha à parte.
+      const fatorDesconto = valorProdutos > 0 ? 1 - valorDesconto / valorProdutos : 1;
+      const itemsComDesconto = pedido.itens.map((item) => ({
+        id: item.produtoId,
+        title: `Item do pedido ${pedido.id}`,
+        quantity: item.quantidade,
+        unit_price: Number((Number(item.precoUnit) * fatorDesconto).toFixed(2)),
+      }));
+
+      const itemsPreferencia =
+        valorFrete > 0
+          ? [...itemsComDesconto, { id: "frete", title: "Frete", quantity: 1, unit_price: valorFrete }]
+          : itemsComDesconto;
+
       const preferencia = await getMpPreference(loja.mpAccessToken!).create({
         body: {
-          items: pedido.itens.map((item) => ({
-            id: item.produtoId,
-            title: `Item do pedido ${pedido.id}`,
-            quantity: item.quantidade,
-            unit_price: Number(item.precoUnit),
-          })),
+          items: itemsPreferencia,
           external_reference: pedido.id,
           payer: { name: pedido.cliente.nome, email: pedido.cliente.email ?? undefined },
           back_urls: {
