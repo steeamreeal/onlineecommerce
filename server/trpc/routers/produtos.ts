@@ -4,7 +4,7 @@ import { router, storeProcedure, roleProcedure } from "../trpc";
 
 // Inativar um produto some com ele da vitrine pública — só Administrador e
 // Gerente, não Estoquista (que cadastra/edita) nem Vendedor/Separador.
-const gestorProcedure = roleProcedure(["ADMINISTRADOR", "GERENTE"]);
+const gestorProcedure = roleProcedure(["ADMINISTRADOR", "DONO", "GERENTE"]);
 import { ESTOQUE_BAIXO_LIMITE, variacaoLabel } from "@/lib/estoque";
 import { buscarEmailAdministradorLoja, notificarEstoqueBaixo } from "@/lib/email/notificacoes";
 

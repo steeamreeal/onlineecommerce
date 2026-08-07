@@ -4,7 +4,8 @@ import { router, storeProcedure, roleProcedure } from "../trpc";
 
 // Assinatura do SaaS e conexão de pagamento da loja são decisões financeiras
 // — restritas a quem administra a loja, não a qualquer usuário vinculado.
-const financeiroProcedure = roleProcedure(["ADMINISTRADOR"]);
+// DONO tem tudo que ADMINISTRADOR tem (ver equipeProcedure em usuarios-loja.ts).
+const financeiroProcedure = roleProcedure(["ADMINISTRADOR", "DONO"]);
 import { getStripe } from "@/lib/stripe";
 import { getMpOAuth } from "@/lib/mercadopago";
 import { assinarState } from "@/lib/mercadopago-state";
