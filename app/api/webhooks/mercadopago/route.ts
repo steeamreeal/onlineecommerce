@@ -9,12 +9,17 @@ export async function POST(req: Request) {
   const dataId = searchParams.get("data.id");
 
   try {
+    // O `ts` do header x-signature é epoch em SEGUNDOS (padrão do Mercado
+    // Pago), mas Date.now() é em milissegundos — sem converter aqui, a
+    // checagem de tolerância compara unidades diferentes e rejeita toda
+    // notificação real como se estivesse anos fora da janela.
     WebhookSignatureValidator.validate({
       xSignature: req.headers.get("x-signature"),
       xRequestId: req.headers.get("x-request-id"),
       dataId,
       secret: process.env.MERCADOPAGO_WEBHOOK_SECRET!,
       toleranceSeconds: 300,
+      now: () => Math.floor(Date.now() / 1000),
     });
   } catch (erro) {
     if (erro instanceof InvalidWebhookSignatureError) {
