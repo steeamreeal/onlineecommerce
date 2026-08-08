@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Truck, ShieldCheck, CreditCard, RefreshCw, BadgeCheck } from "lucide-react";
 import { ProductCard } from "@/components/store/product-card";
 import { ProductCarousel } from "@/components/store/product-carousel";
 import { BannerCarousel } from "@/components/store/banner-carousel";
@@ -10,10 +11,19 @@ import {
   paddingBotaoEmPx,
   arredondamentoBotaoEmPx,
   tamanhoImagemEmPx,
+  tamanhoIconeSeloEmPx,
   resolverConteudoBannerMobile,
 } from "@/lib/tema-loja";
 import type { RouterOutputs } from "@/lib/trpc/types";
-import type { AlinhamentoTexto, PosicaoVertical, SecaoTema, FonteTema } from "@/lib/tema-loja";
+import type { AlinhamentoTexto, PosicaoVertical, SecaoTema, FonteTema, IconeSelo } from "@/lib/tema-loja";
+
+const ICONE_POR_SELO: Record<IconeSelo, React.ComponentType<{ className?: string; style?: React.CSSProperties }>> = {
+  ENTREGA: Truck,
+  GARANTIA: ShieldCheck,
+  PAGAMENTO: CreditCard,
+  TROCA: RefreshCw,
+  QUALIDADE: BadgeCheck,
+};
 
 type Variante = "MINIMALISTA" | "EDITORIAL" | "VITRINE";
 type Categoria = RouterOutputs["lojaPublica"]["categorias"][number];
@@ -544,6 +554,42 @@ function SecaoBarraAnuncio({ config }: { config: Extract<SecaoTema, { tipo: "BAR
   );
 }
 
+function SecaoSelos({ config }: { config: Extract<SecaoTema, { tipo: "SELOS" }>["config"] }) {
+  const itens = config.itens ?? [];
+  if (itens.length === 0) return null;
+  const tamanhoIcone = tamanhoIconeSeloEmPx(config.tamanhoIcone);
+  const tamanhoTitulo = tamanhoFonteEmPx(config.tamanhoTitulo);
+  return (
+    <section
+      className="mx-6 flex flex-wrap justify-center gap-x-10 gap-y-6 rounded-md border p-6"
+      style={{ backgroundColor: config.corFundo }}
+    >
+      {itens.map((selo) => {
+        const Icone = ICONE_POR_SELO[selo.icone ?? "QUALIDADE"];
+        return (
+          <div key={selo.id} className="flex max-w-[180px] flex-col items-center gap-1.5 text-center">
+            <Icone
+              className="text-muted-foreground shrink-0"
+              style={{ width: tamanhoIcone, height: tamanhoIcone, color: config.corIcone }}
+            />
+            <span
+              className="text-sm font-semibold tracking-wide uppercase"
+              style={{ color: config.corTitulo, fontSize: tamanhoTitulo }}
+            >
+              {selo.titulo}
+            </span>
+            {selo.descricao && (
+              <span className="text-muted-foreground text-xs" style={{ color: config.corTexto }}>
+                {selo.descricao}
+              </span>
+            )}
+          </div>
+        );
+      })}
+    </section>
+  );
+}
+
 /**
  * Monta a home pública da loja a partir de temaConfig.secoes, despachando
  * cada seção para o componente correspondente e aplicando a aparência do
@@ -613,6 +659,12 @@ export function ThemeRenderer({
             return (
               <RevealOnScroll key={secao.id}>
                 <SecaoTexto config={secao.config} />
+              </RevealOnScroll>
+            );
+          case "SELOS":
+            return (
+              <RevealOnScroll key={secao.id}>
+                <SecaoSelos config={secao.config} />
               </RevealOnScroll>
             );
           default:

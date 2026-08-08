@@ -1,29 +1,20 @@
 "use client";
 
-import { X, AlignLeft, AlignCenter, AlignRight, Plus, Trash2 } from "lucide-react";
+import { X, AlignLeft, AlignCenter, AlignRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc/client";
+import { FormularioSelos } from "@/components/dashboard/tema/editor-selos";
 import {
   NOMES_TIPO_SECAO_PRODUTO,
-  NOMES_ICONE_SELO,
   NOMES_MODO_RELACIONADOS,
-  iconeSeloSchema,
   modoRelacionadosSchema,
   type SecaoProdutoTema,
   type AlinhamentoTexto,
-  type SeloProduto,
   type ModoRelacionados,
 } from "@/lib/tema-loja";
 
@@ -132,70 +123,6 @@ function SeletorAlinhamento({
           </button>
         ))}
       </div>
-    </div>
-  );
-}
-
-function EditorSelos({
-  itens,
-  onChange,
-}: {
-  itens: SeloProduto[];
-  onChange: (itens: SeloProduto[]) => void;
-}) {
-  function adicionar() {
-    if (itens.length >= 6) return;
-    onChange([...itens, { id: crypto.randomUUID(), icone: "QUALIDADE", texto: "" }]);
-  }
-
-  function atualizar(id: string, alteracoes: Partial<SeloProduto>) {
-    onChange(itens.map((s) => (s.id === id ? { ...s, ...alteracoes } : s)));
-  }
-
-  function remover(id: string) {
-    onChange(itens.filter((s) => s.id !== id));
-  }
-
-  return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <Label>Selos ({itens.length}/6)</Label>
-        {itens.length < 6 && (
-          <Button type="button" variant="ghost" size="icon-sm" onClick={adicionar} aria-label="Adicionar selo">
-            <Plus className="size-4" />
-          </Button>
-        )}
-      </div>
-      {itens.map((selo) => (
-        <div key={selo.id} className="flex items-center gap-2 rounded-md border p-2">
-          <Select value={selo.icone} onValueChange={(v) => atualizar(selo.id, { icone: v as SeloProduto["icone"] })}>
-            <SelectTrigger className="w-36 shrink-0">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {iconeSeloSchema.options.map((icone) => (
-                <SelectItem key={icone} value={icone}>
-                  {NOMES_ICONE_SELO[icone]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Input
-            value={selo.texto}
-            placeholder="Ex: Envio em 24h"
-            className="flex-1"
-            onChange={(e) => atualizar(selo.id, { texto: e.target.value })}
-          />
-          <button type="button" onClick={() => remover(selo.id)} aria-label="Remover selo">
-            <Trash2 className="text-destructive size-4" />
-          </button>
-        </div>
-      ))}
-      {itens.length === 0 && (
-        <p className="text-muted-foreground text-xs">
-          Nenhum selo ainda — ex: &quot;Entrega em 24h&quot;, &quot;Garantia de 30 dias&quot;.
-        </p>
-      )}
     </div>
   );
 }
@@ -355,12 +282,7 @@ function FormularioSecao({
       );
 
     case "SELOS_PRODUTO":
-      return (
-        <EditorSelos
-          itens={secao.config.itens ?? []}
-          onChange={(itens) => onChange({ ...secao, config: { ...secao.config, itens } })}
-        />
-      );
+      return <FormularioSelos config={secao.config} onChange={(config) => onChange({ ...secao, config })} />;
 
     case "TEXTO_PRODUTO":
       return (
