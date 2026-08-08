@@ -11,6 +11,7 @@ import {
   Image as ImageIcon,
   LayoutGrid,
   Type,
+  BadgeCheck,
   PanelBottom,
   PanelTop,
   Plus,
@@ -48,10 +49,11 @@ const ICONE_POR_TIPO: Record<TipoSecaoTema, React.ComponentType<{ className?: st
   MENU_CATEGORIAS: LayoutGrid,
   COLECAO_DESTAQUE: LayoutGrid,
   TEXTO: Type,
+  SELOS: BadgeCheck,
   RODAPE: PanelBottom,
 };
 
-const TIPOS_ADICIONAVEIS: TipoSecaoTema[] = ["HERO", "MENU_CATEGORIAS", "COLECAO_DESTAQUE", "TEXTO"];
+const TIPOS_ADICIONAVEIS: TipoSecaoTema[] = ["HERO", "MENU_CATEGORIAS", "COLECAO_DESTAQUE", "TEXTO", "SELOS"];
 
 function novaSecao(tipo: TipoSecaoTema): SecaoTema {
   const id = crypto.randomUUID();
@@ -81,6 +83,8 @@ function novaSecao(tipo: TipoSecaoTema): SecaoTema {
       };
     case "TEXTO":
       return { id, tipo, visivel: true, config: { corpo: "", alinhamento: "ESQUERDA" } };
+    case "SELOS":
+      return { id, tipo, visivel: true, config: { itens: [] } };
     default:
       throw new Error(`Tipo de seção não pode ser adicionado manualmente: ${tipo}`);
   }

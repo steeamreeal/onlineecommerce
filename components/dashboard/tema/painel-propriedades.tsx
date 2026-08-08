@@ -28,6 +28,7 @@ import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc/client";
 import { enviarBannerLoja, enviarVideoBannerLoja } from "@/lib/supabase/storage";
 import { CORES_PRIMARIAS_SUGERIDAS } from "@/lib/cores-loja";
+import { FormularioSelos } from "@/components/dashboard/tema/editor-selos";
 import {
   NOMES_TIPO_SECAO,
   NOMES_FONTE,
@@ -1373,6 +1374,9 @@ function FormularioSecao({
           />
         </div>
       );
+
+    case "SELOS":
+      return <FormularioSelos config={secao.config} onChange={(config) => onChange({ ...secao, config })} />;
 
     case "RODAPE":
       return (

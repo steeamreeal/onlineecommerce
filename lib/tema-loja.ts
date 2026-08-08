@@ -355,6 +355,72 @@ export const secaoRodapeSchema = secaoBaseSchema.extend({
   }),
 });
 
+// Selos de confiança — seção compartilhada entre a home (tipo "SELOS") e a
+// página de produto (tipo "SELOS_PRODUTO", ver mais abaixo), mesmo shape de
+// config nos dois casos, já que representam a mesma coisa (parcelamento,
+// troca fácil, entrega etc.) em lugares diferentes do site.
+export const iconeSeloSchema = z.enum(["ENTREGA", "GARANTIA", "PAGAMENTO", "TROCA", "QUALIDADE"]);
+export type IconeSelo = z.infer<typeof iconeSeloSchema>;
+
+export const NOMES_ICONE_SELO: Record<IconeSelo, string> = {
+  ENTREGA: "Entrega",
+  GARANTIA: "Garantia",
+  PAGAMENTO: "Pagamento seguro",
+  TROCA: "Troca fácil",
+  QUALIDADE: "Qualidade",
+};
+
+export const seloProdutoSchema = z.object({
+  id: z.string(),
+  icone: iconeSeloSchema.default("QUALIDADE"),
+  titulo: z.string().trim().max(40),
+  // Linha menor abaixo do título (opcional) — ex.: título "Troca fácil",
+  // descrição "Não serviu? Trocamos gratuitamente em até 30 dias."
+  descricao: z.string().trim().max(100).optional(),
+});
+
+export type SeloProduto = z.infer<typeof seloProdutoSchema>;
+
+// Escala 0-100 → largura/altura do ícone em px, mesmo princípio de
+// alturaLogoEmPx — sem valor definido, usa 30 como padrão (~28px, próximo do
+// tamanho fixo que a seção sempre teve antes de virar configurável).
+const TAMANHO_ICONE_SELO_MIN_PX = 16;
+const TAMANHO_ICONE_SELO_MAX_PX = 48;
+
+export function tamanhoIconeSeloEmPx(tamanho: number | undefined): number {
+  const t = tamanho ?? 30;
+  return TAMANHO_ICONE_SELO_MIN_PX + (t / 100) * (TAMANHO_ICONE_SELO_MAX_PX - TAMANHO_ICONE_SELO_MIN_PX);
+}
+
+const configSelosSchema = z.object({
+  itens: z.array(seloProdutoSchema).max(6, "No máximo 6 selos."),
+  corFundo: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/, "Informe uma cor no formato #RRGGBB")
+    .optional(),
+  // Cor da descrição (linha menor) de cada selo — o título tem cor própria
+  // (corTitulo), independente desta.
+  corTexto: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/, "Informe uma cor no formato #RRGGBB")
+    .optional(),
+  corTitulo: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/, "Informe uma cor no formato #RRGGBB")
+    .optional(),
+  corIcone: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/, "Informe uma cor no formato #RRGGBB")
+    .optional(),
+  tamanhoIcone: z.number().min(0).max(100).optional(),
+  tamanhoTitulo: z.number().min(0).max(100).optional(),
+});
+
+export const secaoSelosSchema = secaoBaseSchema.extend({
+  tipo: z.literal("SELOS"),
+  config: configSelosSchema,
+});
+
 export const secaoTemaSchema = z.discriminatedUnion("tipo", [
   secaoBarraAnuncioSchema,
   secaoCabecalhoSchema,
@@ -362,6 +428,7 @@ export const secaoTemaSchema = z.discriminatedUnion("tipo", [
   secaoMenuCategoriasSchema,
   secaoColecaoDestaqueSchema,
   secaoTextoSchema,
+  secaoSelosSchema,
   secaoRodapeSchema,
 ]);
 
@@ -412,6 +479,7 @@ export const NOMES_TIPO_SECAO: Record<TipoSecaoTema, string> = {
   MENU_CATEGORIAS: "Menu de categorias",
   COLECAO_DESTAQUE: "Coleção em destaque",
   TEXTO: "Texto",
+  SELOS: "Selos de confiança",
   RODAPE: "Rodapé",
 };
 
@@ -439,25 +507,6 @@ function criarId(): string {
 // produto. Galeria e Informações do produto são fixas (a página não faz
 // sentido sem elas); as demais são o "Modelo" reordenável/removível, igual
 // à home.
-
-export const iconeSeloSchema = z.enum(["ENTREGA", "GARANTIA", "PAGAMENTO", "TROCA", "QUALIDADE"]);
-export type IconeSelo = z.infer<typeof iconeSeloSchema>;
-
-export const NOMES_ICONE_SELO: Record<IconeSelo, string> = {
-  ENTREGA: "Entrega",
-  GARANTIA: "Garantia",
-  PAGAMENTO: "Pagamento seguro",
-  TROCA: "Troca fácil",
-  QUALIDADE: "Qualidade",
-};
-
-export const seloProdutoSchema = z.object({
-  id: z.string(),
-  icone: iconeSeloSchema.default("QUALIDADE"),
-  texto: z.string().trim().max(60),
-});
-
-export type SeloProduto = z.infer<typeof seloProdutoSchema>;
 
 const secaoProdutoBaseSchema = z.object({
   id: z.string(),
@@ -512,9 +561,7 @@ export const secaoDescricaoProdutoSchema = secaoProdutoBaseSchema.extend({
 
 export const secaoSelosProdutoSchema = secaoProdutoBaseSchema.extend({
   tipo: z.literal("SELOS_PRODUTO"),
-  config: z.object({
-    itens: z.array(seloProdutoSchema).max(6, "No máximo 6 selos."),
-  }),
+  config: configSelosSchema,
 });
 
 export const secaoTextoProdutoSchema = secaoProdutoBaseSchema.extend({

@@ -9,6 +9,7 @@ import { ProdutoGaleria } from "@/components/store/produto-galeria";
 import { useCartOpcional } from "@/components/store/cart-context";
 import { trpc } from "@/lib/trpc/client";
 import { cn } from "@/lib/utils";
+import { tamanhoIconeSeloEmPx, tamanhoFonteEmPx } from "@/lib/tema-loja";
 import type { RouterOutputs } from "@/lib/trpc/types";
 import type { SecaoProdutoTema, IconeSelo, AlinhamentoTexto } from "@/lib/tema-loja";
 
@@ -19,7 +20,7 @@ const formatoMoeda = new Intl.NumberFormat("pt-BR", {
   currency: "BRL",
 });
 
-const ICONE_POR_SELO: Record<IconeSelo, React.ComponentType<{ className?: string }>> = {
+const ICONE_POR_SELO: Record<IconeSelo, React.ComponentType<{ className?: string; style?: React.CSSProperties }>> = {
   ENTREGA: Truck,
   GARANTIA: ShieldCheck,
   PAGAMENTO: CreditCard,
@@ -222,14 +223,32 @@ function SecaoDescricao({
 function SecaoSelos({ config }: { config: Extract<SecaoProdutoTema, { tipo: "SELOS_PRODUTO" }>["config"] }) {
   const itens = config.itens ?? [];
   if (itens.length === 0) return null;
+  const tamanhoIcone = tamanhoIconeSeloEmPx(config.tamanhoIcone);
+  const tamanhoTitulo = tamanhoFonteEmPx(config.tamanhoTitulo);
   return (
-    <section className="flex flex-wrap justify-center gap-x-8 gap-y-4 rounded-md border p-4">
+    <section
+      className="flex flex-wrap justify-center gap-x-10 gap-y-6 rounded-md border p-6"
+      style={{ backgroundColor: config.corFundo }}
+    >
       {itens.map((selo) => {
         const Icone = ICONE_POR_SELO[selo.icone ?? "QUALIDADE"];
         return (
-          <div key={selo.id} className="flex flex-col items-center gap-1.5 text-center text-xs">
-            <Icone className="text-muted-foreground size-5 shrink-0" />
-            <span>{selo.texto}</span>
+          <div key={selo.id} className="flex max-w-[180px] flex-col items-center gap-1.5 text-center">
+            <Icone
+              className="text-muted-foreground shrink-0"
+              style={{ width: tamanhoIcone, height: tamanhoIcone, color: config.corIcone }}
+            />
+            <span
+              className="text-sm font-semibold tracking-wide uppercase"
+              style={{ color: config.corTitulo, fontSize: tamanhoTitulo }}
+            >
+              {selo.titulo}
+            </span>
+            {selo.descricao && (
+              <span className="text-muted-foreground text-xs" style={{ color: config.corTexto }}>
+                {selo.descricao}
+              </span>
+            )}
           </div>
         );
       })}
