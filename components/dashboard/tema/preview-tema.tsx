@@ -125,6 +125,13 @@ function PreviewCabecalho({
 
 function PreviewRodape({
   nome,
+  endereco,
+  horarioAtend,
+  instagram,
+  facebook,
+  mostrarRedesSociais,
+  mostrarPoliticas,
+  politicas,
   mostrarNewsletter,
   mostrarFormasPagamento,
   mostrarPaginasInstitucionais,
@@ -135,6 +142,13 @@ function PreviewRodape({
   colunas,
 }: {
   nome: string;
+  endereco?: string | null;
+  horarioAtend?: string | null;
+  instagram?: string | null;
+  facebook?: string | null;
+  mostrarRedesSociais: boolean;
+  mostrarPoliticas: boolean;
+  politicas?: string | null;
   mostrarNewsletter: boolean;
   mostrarFormasPagamento: boolean;
   mostrarPaginasInstitucionais: boolean;
@@ -151,8 +165,34 @@ function PreviewRodape({
           <span className="font-medium">Receba novidades e ofertas exclusivas</span>
         </div>
       )}
-      <div className="grid gap-4 px-6 py-6 text-sm sm:grid-cols-3">
-        <span className="font-medium">{nome}</span>
+      <div className="grid gap-4 px-6 py-6 text-sm sm:grid-cols-3 lg:grid-cols-4">
+        <div className="flex flex-col gap-1">
+          <span className="font-medium">{nome}</span>
+          {endereco && <span className="text-muted-foreground">{endereco}</span>}
+          {horarioAtend && <span className="text-muted-foreground">{horarioAtend}</span>}
+          {mostrarRedesSociais && (instagram || facebook) && (
+            <div className="text-muted-foreground mt-1 flex items-center gap-2 text-xs">
+              {instagram && <span>@</span>}
+              {facebook && <span>f</span>}
+            </div>
+          )}
+        </div>
+
+        {(whatsapp || instagram) && (
+          <div className="flex flex-col gap-1">
+            <span className="font-medium">Contato</span>
+            {whatsapp && <span className="text-muted-foreground">WhatsApp: {whatsapp}</span>}
+            {instagram && <span className="text-muted-foreground">Instagram: {instagram}</span>}
+          </div>
+        )}
+
+        {mostrarPoliticas && politicas && (
+          <div className="flex flex-col gap-1">
+            <span className="font-medium">Trocas e devoluções</span>
+            <span className="text-muted-foreground">{politicas}</span>
+          </div>
+        )}
+
         {mostrarPaginasInstitucionais && paginasInstitucionais.length > 0 && (
           <div className="flex flex-col gap-1">
             <span className="font-medium">Institucional</span>
@@ -357,6 +397,13 @@ export function PreviewTema({
           >
             <PreviewRodape
               nome={nomeLoja}
+              endereco={config?.endereco}
+              horarioAtend={config?.horarioAtend}
+              instagram={config?.instagram}
+              facebook={config?.facebook}
+              mostrarRedesSociais={rodape.config.mostrarRedesSociais ?? true}
+              mostrarPoliticas={rodape.config.mostrarPoliticas ?? true}
+              politicas={config?.politicas}
               mostrarNewsletter={rodape.config.mostrarNewsletter ?? false}
               mostrarFormasPagamento={rodape.config.mostrarFormasPagamento ?? false}
               mostrarPaginasInstitucionais={rodape.config.mostrarPaginasInstitucionais ?? false}
