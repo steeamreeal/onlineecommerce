@@ -6,7 +6,7 @@ import { ChevronRight, Truck, ShieldCheck, CreditCard, RefreshCw, BadgeCheck } f
 import { Button } from "@/components/ui/button";
 import { ProductCard } from "@/components/store/product-card";
 import { ProdutoGaleria } from "@/components/store/produto-galeria";
-import { useCart } from "@/components/store/cart-context";
+import { useCartOpcional } from "@/components/store/cart-context";
 import { trpc } from "@/lib/trpc/client";
 import { cn } from "@/lib/utils";
 import type { RouterOutputs } from "@/lib/trpc/types";
@@ -99,15 +99,17 @@ function SecaoInfo({
   variacaoId: string | undefined;
   onSelecionarVariacao: (variacaoId: string, fotoId?: string | null) => void;
 }) {
-  const { adicionarItem } = useCart();
+  // Opcional porque o preview do editor de tema roda sem CartProvider por
+  // perto (ver useCartOpcional) — mesmo padrão do ProductCard.
+  const cart = useCartOpcional();
   const semVariacoes = produto.variacoes.length === 0;
   const variacaoSelecionada = semVariacoes ? undefined : produto.variacoes.find((v) => v.id === variacaoId);
   const podeComprar = semVariacoes || Boolean(variacaoSelecionada);
   const preco = Number(produto.precoPromo ?? produto.precoNormal);
 
   function handleAdicionar() {
-    if (!podeComprar) return;
-    adicionarItem({
+    if (!podeComprar || !cart) return;
+    cart.adicionarItem({
       produtoId: produto.id,
       variacaoId: variacaoSelecionada?.id ?? produto.id,
       quantidade: 1,
