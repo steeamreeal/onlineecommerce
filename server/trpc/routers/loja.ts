@@ -39,6 +39,7 @@ export const lojaRouter = router({
         endereco: true,
         horarioAtend: true,
         politicas: true,
+        telefoneSac: true,
         plano: { select: { id: true, nome: true, precoMensal: true } },
       },
     });
@@ -58,6 +59,7 @@ export const lojaRouter = router({
         endereco: z.string().trim().max(300).optional(),
         horarioAtend: z.string().trim().max(120).optional(),
         politicas: z.string().trim().max(2000).optional(),
+        telefoneSac: z.string().trim().max(30).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -72,6 +74,7 @@ export const lojaRouter = router({
           endereco: input.endereco || null,
           horarioAtend: input.horarioAtend || null,
           politicas: input.politicas || null,
+          telefoneSac: input.telefoneSac || null,
         },
         select: {
           corPrimaria: true,
@@ -82,6 +85,7 @@ export const lojaRouter = router({
           endereco: true,
           horarioAtend: true,
           politicas: true,
+          telefoneSac: true,
         },
       });
     }),

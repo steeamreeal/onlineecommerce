@@ -62,6 +62,7 @@ model Loja {
   endereco          String?
   horarioAtend      String?
   politicas         String?
+  telefoneSac       String?
   dominioProprio    String?      @unique
   planoId           String?
   plano             Plano?       @relation(fields: [planoId], references: [id])
@@ -87,9 +88,32 @@ model Loja {
   cupons       Cupom[]
   opcoesFrete  OpcaoFrete[]
   notificacoes Notificacao[]
+  paginasInstitucionais PaginaInstitucional[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// Conteúdo institucional escrito pelo próprio lojista no painel (política de
+// privacidade, trocas e devoluções, garantia etc.) e publicado como página
+// real no site da loja — ver CLAUDE.md/spec do rodapé institucional.
+// Um subconjunto de títulos é sugerido/pré-criado (conteúdo vazio) na
+// primeira vez que o lojista abre a tela; não há flag "é sugerida", depois
+// de criada é um registro comum, editável/excluível como qualquer outro.
+// Página com conteúdo vazio não aparece no rodapé nem tem rota pública
+// acessível.
+model PaginaInstitucional {
+  id           String   @id @default(cuid())
+  lojaId       String
+  loja         Loja     @relation(fields: [lojaId], references: [id])
+  slug         String
+  titulo       String
+  conteudo     String   @default("") @db.Text
+  ordem        Int      @default(0)
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@unique([lojaId, slug])
 }
 
 // ---------- Usuários e permissões ----------

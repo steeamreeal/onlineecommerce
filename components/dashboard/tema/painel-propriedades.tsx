@@ -1415,6 +1415,24 @@ function FormularioSecao({
               checkout dependem da conta Mercado Pago conectada em Configurações → Assinatura.
             </p>
           )}
+          <CampoSwitch
+            label="Mostrar páginas institucionais"
+            checked={secao.config.mostrarPaginasInstitucionais}
+            onChange={(mostrarPaginasInstitucionais) =>
+              onChange({ ...secao, config: { ...secao.config, mostrarPaginasInstitucionais } })
+            }
+          />
+          {secao.config.mostrarPaginasInstitucionais && (
+            <p className="text-muted-foreground text-xs">
+              Escreva o conteúdo em Páginas institucionais, no menu do painel. Só páginas com
+              conteúdo preenchido aparecem no rodapé.
+            </p>
+          )}
+          <CampoSwitch
+            label="Mostrar SAC (WhatsApp e telefone)"
+            checked={secao.config.mostrarSac}
+            onChange={(mostrarSac) => onChange({ ...secao, config: { ...secao.config, mostrarSac } })}
+          />
           <EditorColunasRodape
             colunas={secao.config.colunas ?? []}
             onChange={(colunas) => onChange({ ...secao, config: { ...secao.config, colunas } })}

@@ -94,11 +94,14 @@ export default function LojaLayoutClient({
         />
         <main className="flex flex-1 flex-col">{children}</main>
         <SiteFooter
+          slug={slug}
           config={config}
           mostrarRedesSociais={secaoRodape?.config.mostrarRedesSociais}
           mostrarPoliticas={secaoRodape?.config.mostrarPoliticas}
           mostrarNewsletter={secaoRodape?.config.mostrarNewsletter}
           mostrarFormasPagamento={secaoRodape?.config.mostrarFormasPagamento}
+          mostrarPaginasInstitucionais={secaoRodape?.config.mostrarPaginasInstitucionais}
+          mostrarSac={secaoRodape?.config.mostrarSac}
           colunas={secaoRodape?.config.colunas}
         />
       </div>

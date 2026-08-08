@@ -34,6 +34,7 @@ export const lojaPublicaRouter = router({
         endereco: loja.endereco,
         horarioAtend: loja.horarioAtend,
         politicas: loja.politicas,
+        telefoneSac: loja.telefoneSac,
         dominioProprio: loja.dominioProprio,
         // Booleano derivado (nunca o token) — usado pelo checkout para
         // esconder PIX/cartão/boleto quando a loja não conectou o Mercado
@@ -89,6 +90,35 @@ export const lojaPublicaRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Produto não encontrado." });
       }
       return produto;
+    }),
+
+  // Só páginas com conteúdo preenchido aparecem no rodapé/são navegáveis —
+  // uma página sugerida ainda vazia não é "publicada" (ver
+  // paginas-institucionais.ts).
+  paginasInstitucionais: publicProcedure
+    .input(z.object({ slug: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const loja = await resolverLojaPorSlug(ctx.prisma, input.slug);
+      const paginas = await ctx.prisma.paginaInstitucional.findMany({
+        where: { lojaId: loja.id },
+        orderBy: { ordem: "asc" },
+      });
+      return paginas
+        .filter((pagina) => pagina.conteudo.trim().length > 0)
+        .map((pagina) => ({ slug: pagina.slug, titulo: pagina.titulo }));
+    }),
+
+  paginaInstitucionalPorSlug: publicProcedure
+    .input(z.object({ slug: z.string(), paginaSlug: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const loja = await resolverLojaPorSlug(ctx.prisma, input.slug);
+      const pagina = await ctx.prisma.paginaInstitucional.findUnique({
+        where: { lojaId_slug: { lojaId: loja.id, slug: input.paginaSlug } },
+      });
+      if (!pagina || pagina.conteudo.trim().length === 0) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Página não encontrada." });
+      }
+      return { titulo: pagina.titulo, conteudo: pagina.conteudo };
     }),
 
   frete: publicProcedure

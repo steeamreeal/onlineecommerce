@@ -35,6 +35,7 @@ const lojaSchema = z.object({
   endereco: z.string().optional(),
   horarioAtend: z.string().optional(),
   politicas: z.string().optional(),
+  telefoneSac: z.string().optional(),
 });
 
 type LojaFormValues = z.infer<typeof lojaSchema>;
@@ -60,6 +61,7 @@ export function LojaForm() {
       endereco: loja?.endereco ?? "",
       horarioAtend: loja?.horarioAtend ?? "",
       politicas: loja?.politicas ?? "",
+      telefoneSac: loja?.telefoneSac ?? "",
     },
   });
 
@@ -220,6 +222,19 @@ export function LojaForm() {
                     <FormLabel>WhatsApp</FormLabel>
                     <FormControl>
                       <Input placeholder="(11) 91234-5678" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="telefoneSac"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Telefone / SAC</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Opcional, ex.: (11) 4000-0000" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

@@ -16,6 +16,7 @@ import { pagamentosRouter } from "./routers/pagamentos";
 import { notificacoesRouter } from "./routers/notificacoes";
 import { adminRouter } from "./routers/admin";
 import { usuariosLojaRouter } from "./routers/usuarios-loja";
+import { paginasInstitucionaisRouter } from "./routers/paginas-institucionais";
 
 export const appRouter = router({
   produtos: produtosRouter,
@@ -35,6 +36,7 @@ export const appRouter = router({
   notificacoes: notificacoesRouter,
   admin: adminRouter,
   usuariosLoja: usuariosLojaRouter,
+  paginasInstitucionais: paginasInstitucionaisRouter,
 });
 
 export type AppRouter = typeof appRouter;

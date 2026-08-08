@@ -351,6 +351,12 @@ export const secaoRodapeSchema = secaoBaseSchema.extend({
     // escopo. Ver painel-propriedades.tsx para o aviso mostrado ao lojista.
     mostrarNewsletter: z.boolean().default(false),
     mostrarFormasPagamento: z.boolean().default(false),
+    // Coluna "Institucional" (páginas escritas pelo lojista, ver
+    // server/trpc/routers/paginas-institucionais.ts) e coluna "SAC"
+    // (WhatsApp + telefone da loja) — cada uma opcional, independente das
+    // colunas de link genéricas abaixo.
+    mostrarPaginasInstitucionais: z.boolean().default(false),
+    mostrarSac: z.boolean().default(false),
     colunas: z.array(colunaRodapeSchema).max(4, "No máximo 4 colunas no rodapé.").default([]),
   }),
 });
@@ -742,6 +748,8 @@ export function criarTemaConfigPadrao(opcoes: {
           mostrarPoliticas: true,
           mostrarNewsletter: false,
           mostrarFormasPagamento: false,
+          mostrarPaginasInstitucionais: false,
+          mostrarSac: false,
           colunas: [],
         },
       },
