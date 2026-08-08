@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, Truck, ShieldCheck, CreditCard, RefreshCw, BadgeCheck } from "lucide-react";
+import { ChevronLeft, ChevronRight, Truck, ShieldCheck, CreditCard, RefreshCw, BadgeCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductCard } from "@/components/store/product-card";
 import { ProdutoGaleria } from "@/components/store/produto-galeria";
@@ -246,6 +246,62 @@ function SecaoTexto({ config }: { config: Extract<SecaoProdutoTema, { tipo: "TEX
   );
 }
 
+// Scroll horizontal com setas, mostrando vários cards por vez em qualquer
+// tamanho de tela — diferente do ProductCarousel da home (Coleção em
+// destaque), que é um produto só por slide e existe só no mobile.
+function CarrosselRelacionados({
+  produtos,
+  slug,
+  corBotao,
+  corTextoBotao,
+}: {
+  produtos: Produto[];
+  slug: string;
+  corBotao?: string;
+  corTextoBotao?: string;
+}) {
+  const trilhaRef = useRef<HTMLDivElement>(null);
+
+  function rolar(direcao: -1 | 1) {
+    trilhaRef.current?.scrollBy({ left: direcao * trilhaRef.current.clientWidth * 0.8, behavior: "smooth" });
+  }
+
+  return (
+    <div className="group relative">
+      <div
+        ref={trilhaRef}
+        className="flex snap-x gap-4 overflow-x-auto scroll-smooth pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {produtos.map((p) => (
+          <div key={p.id} className="w-40 shrink-0 snap-start sm:w-48 lg:w-56">
+            <ProductCard produto={p} slug={slug} corBotao={corBotao} corTextoBotao={corTextoBotao} />
+          </div>
+        ))}
+      </div>
+      {produtos.length > 2 && (
+        <>
+          <button
+            type="button"
+            onClick={() => rolar(-1)}
+            aria-label="Produtos anteriores"
+            className="bg-background absolute top-[38%] -left-3 hidden -translate-y-1/2 rounded-full border p-1.5 shadow-sm group-hover:flex"
+          >
+            <ChevronLeft className="size-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => rolar(1)}
+            aria-label="Próximos produtos"
+            className="bg-background absolute top-[38%] -right-3 hidden -translate-y-1/2 rounded-full border p-1.5 shadow-sm group-hover:flex"
+          >
+            <ChevronRight className="size-4" />
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
 function SecaoRelacionados({
   produto,
   slug,
@@ -304,17 +360,26 @@ function SecaoRelacionados({
   return (
     <section className="flex flex-col gap-4">
       <h2 className="text-lg font-semibold">{config.titulo || "Você também pode gostar"}</h2>
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-        {relacionados.map((p) => (
-          <ProductCard
-            key={p.id}
-            produto={p}
-            slug={slug}
-            corBotao={config.corBotao}
-            corTextoBotao={config.corTextoBotao}
-          />
-        ))}
-      </div>
+      {(config.layout ?? "GRADE") === "CARROSSEL" ? (
+        <CarrosselRelacionados
+          produtos={relacionados}
+          slug={slug}
+          corBotao={config.corBotao}
+          corTextoBotao={config.corTextoBotao}
+        />
+      ) : (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          {relacionados.map((p) => (
+            <ProductCard
+              key={p.id}
+              produto={p}
+              slug={slug}
+              corBotao={config.corBotao}
+              corTextoBotao={config.corTextoBotao}
+            />
+          ))}
+        </div>
+      )}
     </section>
   );
 }

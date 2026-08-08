@@ -546,6 +546,11 @@ export const secaoRelacionadosProdutoSchema = secaoProdutoBaseSchema.extend({
     titulo: z.string().trim().max(80).default("Você também pode gostar"),
     quantidade: z.number().int().min(1).max(20).optional(),
     modo: modoRelacionadosSchema.default("CATEGORIA"),
+    // GRADE: grid fixo (como sempre foi). CARROSSEL: scroll horizontal com
+    // setas, mostrando alguns cards por vez em qualquer tamanho de tela —
+    // diferente do layoutMobile "CARROSSEL" da home (Coleção em destaque),
+    // que é um produto por slide e só existe no mobile.
+    layout: z.enum(["GRADE", "CARROSSEL"]).default("GRADE"),
     // Só usado quando modo é "MANUAL" — lista de Produto.id na ordem
     // escolhida pelo lojista, igual em toda página de produto.
     produtosSelecionados: z.array(z.string()).optional(),
@@ -620,7 +625,7 @@ export function criarTemaProdutoConfigPadrao(): TemaProdutoConfig {
         id: criarId(),
         tipo: "RELACIONADOS_PRODUTO",
         visivel: true,
-        config: { titulo: "Você também pode gostar", modo: "CATEGORIA" },
+        config: { titulo: "Você também pode gostar", modo: "CATEGORIA", layout: "GRADE" },
       },
     ],
   };

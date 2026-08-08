@@ -63,7 +63,12 @@ function novaSecao(tipo: TipoSecaoProdutoTema): SecaoProdutoTema {
     case "TEXTO_PRODUTO":
       return { id, tipo, visivel: true, config: { corpo: "", alinhamento: "ESQUERDA" } };
     case "RELACIONADOS_PRODUTO":
-      return { id, tipo, visivel: true, config: { titulo: "Você também pode gostar", modo: "CATEGORIA" } };
+      return {
+        id,
+        tipo,
+        visivel: true,
+        config: { titulo: "Você também pode gostar", modo: "CATEGORIA", layout: "GRADE" },
+      };
     default:
       throw new Error(`Tipo de seção não pode ser adicionado manualmente: ${tipo}`);
   }
