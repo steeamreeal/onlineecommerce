@@ -486,6 +486,20 @@ export const secaoInfoProdutoSchema = secaoProdutoBaseSchema.extend({
       .string()
       .regex(/^#[0-9A-Fa-f]{6}$/, "Informe uma cor no formato #RRGGBB")
       .optional(),
+    // Cor do título do produto (h1) — independente da cor do texto da
+    // descrição curta e da cor do preço, cada uma editável separadamente.
+    corTitulo: z
+      .string()
+      .regex(/^#[0-9A-Fa-f]{6}$/, "Informe uma cor no formato #RRGGBB")
+      .optional(),
+    corTexto: z
+      .string()
+      .regex(/^#[0-9A-Fa-f]{6}$/, "Informe uma cor no formato #RRGGBB")
+      .optional(),
+    corPreco: z
+      .string()
+      .regex(/^#[0-9A-Fa-f]{6}$/, "Informe uma cor no formato #RRGGBB")
+      .optional(),
   }),
 });
 

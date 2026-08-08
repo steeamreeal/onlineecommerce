@@ -137,9 +137,13 @@ function SecaoInfo({
       )}
 
       <div>
-        <h1 className="text-2xl font-semibold">{produto.nome}</h1>
+        <h1 className="text-2xl font-semibold" style={{ color: config.corTitulo }}>
+          {produto.nome}
+        </h1>
         {(config.mostrarDescricaoCurta ?? true) && produto.descricao && (
-          <p className="text-muted-foreground mt-1 text-sm">{produto.descricao}</p>
+          <p className="text-muted-foreground mt-1 text-sm" style={{ color: config.corTexto }}>
+            {produto.descricao}
+          </p>
         )}
       </div>
 
@@ -149,7 +153,9 @@ function SecaoInfo({
             {formatoMoeda.format(Number(produto.precoNormal))}
           </span>
         )}
-        <span className="text-2xl font-semibold">{formatoMoeda.format(preco)}</span>
+        <span className="text-2xl font-semibold" style={{ color: config.corPreco }}>
+          {formatoMoeda.format(preco)}
+        </span>
       </div>
 
       {produto.variacoes.length > 0 && (
@@ -217,11 +223,11 @@ function SecaoSelos({ config }: { config: Extract<SecaoProdutoTema, { tipo: "SEL
   const itens = config.itens ?? [];
   if (itens.length === 0) return null;
   return (
-    <section className="grid grid-cols-2 gap-4 rounded-md border p-4 sm:grid-cols-3">
+    <section className="flex flex-wrap justify-center gap-x-8 gap-y-4 rounded-md border p-4">
       {itens.map((selo) => {
         const Icone = ICONE_POR_SELO[selo.icone ?? "QUALIDADE"];
         return (
-          <div key={selo.id} className="flex items-center gap-2 text-sm">
+          <div key={selo.id} className="flex flex-col items-center gap-1.5 text-center text-xs">
             <Icone className="text-muted-foreground size-5 shrink-0" />
             <span>{selo.texto}</span>
           </div>

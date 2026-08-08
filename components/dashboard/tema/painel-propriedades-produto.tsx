@@ -243,6 +243,24 @@ function FormularioSecao({
             onChange={(textoBotaoEsgotado) => onChange({ ...secao, config: { ...secao.config, textoBotaoEsgotado } })}
           />
           <CampoCor
+            label="Cor do título do produto"
+            value={secao.config.corTitulo}
+            placeholder="#000000"
+            onChange={(corTitulo) => onChange({ ...secao, config: { ...secao.config, corTitulo } })}
+          />
+          <CampoCor
+            label="Cor da descrição curta"
+            value={secao.config.corTexto}
+            placeholder="#000000"
+            onChange={(corTexto) => onChange({ ...secao, config: { ...secao.config, corTexto } })}
+          />
+          <CampoCor
+            label="Cor do preço"
+            value={secao.config.corPreco}
+            placeholder="#000000"
+            onChange={(corPreco) => onChange({ ...secao, config: { ...secao.config, corPreco } })}
+          />
+          <CampoCor
             label="Cor do botão"
             value={secao.config.corBotao}
             placeholder="#000000"
