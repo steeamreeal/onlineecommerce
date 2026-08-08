@@ -232,6 +232,9 @@ export function EditorTemaProduto() {
               Vale para todos os produtos da loja — não é possível personalizar produto por produto.
             </p>
           </div>
+          <Button variant="outline" size="sm" nativeButton={false} render={<a href="/painel/tema/editar" />}>
+            Editar página inicial
+          </Button>
         </div>
         <Button size="sm" onClick={() => salvarTema.mutate(tema)} disabled={salvarTema.isPending}>
           {salvarTema.isPending ? "Salvando..." : "Salvar"}
