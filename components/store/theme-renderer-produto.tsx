@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ChevronRight, Truck, ShieldCheck, CreditCard, RefreshCw, BadgeCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -255,12 +255,49 @@ function SecaoRelacionados({
   slug: string;
   config: Extract<SecaoProdutoTema, { tipo: "RELACIONADOS_PRODUTO" }>["config"];
 }) {
-  const { data: relacionadosBrutos } = trpc.lojaPublica.produtos.useQuery({
+  const modo = config.modo ?? "CATEGORIA";
+  // CATEGORIA filtra no servidor (categoriaId); MANUAL/ALEATORIO precisam do
+  // catálogo inteiro da loja pra escolher/sortear entre todos os produtos,
+  // não só os da mesma categoria do produto atual.
+  const { data: produtosBrutos } = trpc.lojaPublica.produtos.useQuery({
     slug,
-    categoriaId: produto.categoriaId ?? undefined,
+    categoriaId: modo === "CATEGORIA" ? (produto.categoriaId ?? undefined) : undefined,
   });
-  let relacionados = (relacionadosBrutos ?? []).filter((p) => p.id !== produto.id);
-  if (config.quantidade) relacionados = relacionados.slice(0, config.quantidade);
+  const disponiveis = (produtosBrutos ?? []).filter((p) => p.id !== produto.id);
+  const idsDisponiveis = disponiveis.map((p) => p.id).join(",");
+
+  // Math.random não pode rodar durante o render (regra de pureza do React) —
+  // o sorteio roda num efeito, guardando só a ORDEM (ids) em vez do array de
+  // produtos, e refaz o sorteio apenas quando a lista de disponíveis muda
+  // (não a cada re-render da página, senão os cards pulariam de posição
+  // toda vez que o cliente trocasse de variação, por exemplo).
+  const [ordemAleatoria, setOrdemAleatoria] = useState<string[] | null>(null);
+  useEffect(() => {
+    if (modo !== "ALEATORIO") return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Math.random é uma fonte externa/impura de propósito — sortear a ordem é exatamente o que esse efeito sincroniza
+    setOrdemAleatoria([...idsDisponiveis.split(",")].filter(Boolean).sort(() => Math.random() - 0.5));
+  }, [modo, idsDisponiveis]);
+
+  const relacionadosBase = useMemo(() => {
+    if (modo === "MANUAL") {
+      const porId = new Map(disponiveis.map((p) => [p.id, p]));
+      return (config.produtosSelecionados ?? [])
+        .map((id) => porId.get(id))
+        .filter((p): p is NonNullable<typeof p> => Boolean(p));
+    }
+    if (modo === "ALEATORIO") {
+      const porId = new Map(disponiveis.map((p) => [p.id, p]));
+      // Antes do efeito rodar (primeiro render), cai na ordem original —
+      // só um flash inicial, sem impacto real.
+      return (ordemAleatoria ?? disponiveis.map((p) => p.id))
+        .map((id) => porId.get(id))
+        .filter((p): p is NonNullable<typeof p> => Boolean(p));
+    }
+    return disponiveis;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- depende da lista de ids disponíveis (idsDisponiveis), não do array `disponiveis` em si, que é recriado a cada render
+  }, [modo, idsDisponiveis, config.produtosSelecionados, ordemAleatoria]);
+
+  const relacionados = config.quantidade ? relacionadosBase.slice(0, config.quantidade) : relacionadosBase;
 
   if (relacionados.length === 0) return null;
 
@@ -269,7 +306,13 @@ function SecaoRelacionados({
       <h2 className="text-lg font-semibold">{config.titulo || "Você também pode gostar"}</h2>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
         {relacionados.map((p) => (
-          <ProductCard key={p.id} produto={p} slug={slug} />
+          <ProductCard
+            key={p.id}
+            produto={p}
+            slug={slug}
+            corBotao={config.corBotao}
+            corTextoBotao={config.corTextoBotao}
+          />
         ))}
       </div>
     </section>

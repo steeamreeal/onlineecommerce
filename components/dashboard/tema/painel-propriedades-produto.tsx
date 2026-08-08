@@ -14,13 +14,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { trpc } from "@/lib/trpc/client";
 import {
   NOMES_TIPO_SECAO_PRODUTO,
   NOMES_ICONE_SELO,
+  NOMES_MODO_RELACIONADOS,
   iconeSeloSchema,
+  modoRelacionadosSchema,
   type SecaoProdutoTema,
   type AlinhamentoTexto,
   type SeloProduto,
+  type ModoRelacionados,
 } from "@/lib/tema-loja";
 
 function CampoTexto({
@@ -196,6 +200,65 @@ function EditorSelos({
   );
 }
 
+function SeletorProdutosLoja({
+  selecionados,
+  onChange,
+}: {
+  selecionados: string[] | undefined;
+  onChange: (selecionados: string[] | undefined) => void;
+}) {
+  const { data: produtos, isLoading } = trpc.produtos.listar.useQuery({});
+  const lista = selecionados ?? [];
+
+  function alternar(id: string) {
+    const proximos = lista.includes(id) ? lista.filter((p) => p !== id) : [...lista, id];
+    onChange(proximos.length > 0 ? proximos : undefined);
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <Label>Produtos escolhidos (na ordem marcada)</Label>
+      {isLoading ? (
+        <p className="text-muted-foreground text-xs">Carregando produtos...</p>
+      ) : !produtos || produtos.length === 0 ? (
+        <p className="text-muted-foreground text-xs">Nenhum produto cadastrado ainda.</p>
+      ) : (
+        <div className="flex max-h-56 flex-col gap-1 overflow-y-auto rounded-md border p-2">
+          {produtos.map((produto) => {
+            const foto = produto.fotos.find((f) => f.tipo === "IMAGEM");
+            return (
+              <label
+                key={produto.id}
+                className="hover:bg-accent flex items-center gap-2 rounded-sm px-1.5 py-1 text-sm"
+              >
+                <input
+                  type="checkbox"
+                  checked={lista.includes(produto.id)}
+                  onChange={() => alternar(produto.id)}
+                  className="accent-primary"
+                />
+                <span className="bg-muted size-8 shrink-0 overflow-hidden rounded-sm">
+                  {foto && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={foto.url} alt="" className="size-full object-cover" />
+                  )}
+                </span>
+                <span className="truncate">{produto.nome}</span>
+              </label>
+            );
+          })}
+        </div>
+      )}
+      {lista.length === 0 && (
+        <p className="text-muted-foreground text-xs">
+          Nenhum produto escolhido ainda — enquanto isso, a seção fica vazia (não cai no modo
+          automático).
+        </p>
+      )}
+    </div>
+  );
+}
+
 function FormularioSecao({
   secao,
   onChange,
@@ -330,6 +393,40 @@ function FormularioSecao({
             onChange={(titulo) => onChange({ ...secao, config: { ...secao.config, titulo } })}
           />
           <div className="flex flex-col gap-2">
+            <Label>Como escolher os produtos</Label>
+            <div className="grid grid-cols-1 gap-2">
+              {modoRelacionadosSchema.options.map((modo) => (
+                <button
+                  key={modo}
+                  type="button"
+                  onClick={() => onChange({ ...secao, config: { ...secao.config, modo } })}
+                  className={cn(
+                    "rounded-md border px-3 py-2 text-left text-xs font-medium transition-colors",
+                    (secao.config.modo ?? "CATEGORIA") === modo
+                      ? "border-primary ring-primary/30 ring-2"
+                      : "hover:border-primary/40",
+                  )}
+                >
+                  {NOMES_MODO_RELACIONADOS[modo as ModoRelacionados]}
+                </button>
+              ))}
+            </div>
+            <p className="text-muted-foreground text-xs">
+              &quot;Mesma categoria&quot; muda automaticamente conforme a categoria de cada
+              produto — as outras duas opções valem igual em toda página.
+            </p>
+          </div>
+
+          {(secao.config.modo ?? "CATEGORIA") === "MANUAL" && (
+            <SeletorProdutosLoja
+              selecionados={secao.config.produtosSelecionados}
+              onChange={(produtosSelecionados) =>
+                onChange({ ...secao, config: { ...secao.config, produtosSelecionados } })
+              }
+            />
+          )}
+
+          <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <Label>Quantidade de produtos</Label>
               <span className="text-muted-foreground text-xs">{secao.config.quantidade ?? "Todos"}</span>
@@ -346,6 +443,23 @@ function FormularioSecao({
               className="accent-primary"
             />
           </div>
+
+          <CampoCor
+            label="Cor do botão &quot;Adicionar ao carrinho&quot;"
+            value={secao.config.corBotao}
+            placeholder="#000000"
+            onChange={(corBotao) => onChange({ ...secao, config: { ...secao.config, corBotao } })}
+          />
+          <CampoCor
+            label="Cor do texto do botão"
+            value={secao.config.corTextoBotao}
+            placeholder="#ffffff"
+            onChange={(corTextoBotao) => onChange({ ...secao, config: { ...secao.config, corTextoBotao } })}
+          />
+          <p className="text-muted-foreground text-xs">
+            Vale só pros cards desta seção — independente da cor do botão principal, na seção
+            Informações do produto.
+          </p>
         </div>
       );
 

@@ -526,11 +526,40 @@ export const secaoTextoProdutoSchema = secaoProdutoBaseSchema.extend({
   }),
 });
 
+// CATEGORIA: mesma categoria do produto atual, mais recentes primeiro (como
+// sempre funcionou). MANUAL: lista fixa escolhida pelo lojista, igual em
+// toda página de produto (o produto atual é removido da lista automaticamente
+// se estiver nela). ALEATORIO: sorteia entre todos os produtos da loja a
+// cada visita à página.
+export const modoRelacionadosSchema = z.enum(["CATEGORIA", "MANUAL", "ALEATORIO"]);
+export type ModoRelacionados = z.infer<typeof modoRelacionadosSchema>;
+
+export const NOMES_MODO_RELACIONADOS: Record<ModoRelacionados, string> = {
+  CATEGORIA: "Mesma categoria",
+  MANUAL: "Escolher manualmente",
+  ALEATORIO: "Aleatório",
+};
+
 export const secaoRelacionadosProdutoSchema = secaoProdutoBaseSchema.extend({
   tipo: z.literal("RELACIONADOS_PRODUTO"),
   config: z.object({
     titulo: z.string().trim().max(80).default("Você também pode gostar"),
     quantidade: z.number().int().min(1).max(20).optional(),
+    modo: modoRelacionadosSchema.default("CATEGORIA"),
+    // Só usado quando modo é "MANUAL" — lista de Produto.id na ordem
+    // escolhida pelo lojista, igual em toda página de produto.
+    produtosSelecionados: z.array(z.string()).optional(),
+    // Cor do botão "Adicionar ao carrinho" só nos cards desta seção —
+    // independente da cor do botão de comprar da seção Informações do
+    // produto (config.corBotao ali), que é o botão principal da página.
+    corBotao: z
+      .string()
+      .regex(/^#[0-9A-Fa-f]{6}$/, "Informe uma cor no formato #RRGGBB")
+      .optional(),
+    corTextoBotao: z
+      .string()
+      .regex(/^#[0-9A-Fa-f]{6}$/, "Informe uma cor no formato #RRGGBB")
+      .optional(),
   }),
 });
 
@@ -591,7 +620,7 @@ export function criarTemaProdutoConfigPadrao(): TemaProdutoConfig {
         id: criarId(),
         tipo: "RELACIONADOS_PRODUTO",
         visivel: true,
-        config: { titulo: "Você também pode gostar" },
+        config: { titulo: "Você também pode gostar", modo: "CATEGORIA" },
       },
     ],
   };
