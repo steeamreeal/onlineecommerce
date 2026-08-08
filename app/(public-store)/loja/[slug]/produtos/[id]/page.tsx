@@ -3,8 +3,10 @@
 import { use } from "react";
 import { notFound } from "next/navigation";
 import { ProdutoDetalhe } from "@/components/store/produto-detalhe";
+import { ThemeRendererProduto } from "@/components/store/theme-renderer-produto";
 import { Skeleton } from "@/components/ui/skeleton";
 import { trpc } from "@/lib/trpc/client";
+import type { TemaProdutoConfig } from "@/lib/tema-loja";
 
 export default function ProdutoPage({
   params,
@@ -12,6 +14,7 @@ export default function ProdutoPage({
   params: Promise<{ slug: string; id: string }>;
 }) {
   const { slug, id } = use(params);
+  const { data: loja } = trpc.lojaPublica.porSlug.useQuery({ slug });
   const { data: produto, isLoading, isError } = trpc.lojaPublica.produtoPorId.useQuery({
     slug,
     id,
@@ -25,6 +28,18 @@ export default function ProdutoPage({
         <Skeleton className="h-6 w-64" />
         <Skeleton className="h-96 w-full" />
       </div>
+    );
+  }
+
+  const temaProdutoConfig = loja?.temaProdutoConfig as TemaProdutoConfig | null;
+
+  // Lojas que já abriram o editor de tema da página de produto têm a config
+  // salva e usam o ThemeRendererProduto (seções configuráveis, iguais pra
+  // todos os produtos). As demais continuam no layout fixo antigo —
+  // fallback que preserva o comportamento anterior ao editor.
+  if (temaProdutoConfig) {
+    return (
+      <ThemeRendererProduto key={produto.id} produto={produto} slug={slug} secoes={temaProdutoConfig.secoes} />
     );
   }
 

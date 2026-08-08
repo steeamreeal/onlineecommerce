@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, storeProcedure, roleProcedure } from "../trpc";
-import { temaConfigSchema } from "@/lib/tema-loja";
+import { temaConfigSchema, temaProdutoConfigSchema } from "@/lib/tema-loja";
 import {
   adicionarDominioNaVercel,
   removerDominioDaVercel,
@@ -32,6 +32,7 @@ export const lojaRouter = router({
         corPrimaria: true,
         banners: true,
         temaConfig: true,
+        temaProdutoConfig: true,
         whatsapp: true,
         instagram: true,
         facebook: true,
@@ -225,6 +226,19 @@ export const lojaRouter = router({
         where: { id: ctx.lojaId },
         data: { temaConfig: input },
         select: { temaConfig: true },
+      });
+    }),
+
+  // Editor de tema da página de produto: mesmo padrão de atualizarTema
+  // (Json puro, sobrescrito por inteiro), só que essa config vale para
+  // TODOS os produtos da loja — não há personalização por produto individual.
+  atualizarTemaProduto: lojaProcedure
+    .input(temaProdutoConfigSchema)
+    .mutation(async ({ ctx, input }) => {
+      return ctx.prisma.loja.update({
+        where: { id: ctx.lojaId },
+        data: { temaProdutoConfig: input },
+        select: { temaProdutoConfig: true },
       });
     }),
 });

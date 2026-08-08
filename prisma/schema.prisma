@@ -45,26 +45,27 @@ enum TemplateLoja {
 }
 
 model Loja {
-  id             String       @id @default(cuid())
-  nome           String
-  slug           String       @unique
-  responsavel    String?
-  emailContato   String?
-  logoUrl        String?
-  corPrimaria    String?
-  template       TemplateLoja @default(MINIMALISTA)
-  banners        Json?
-  temaConfig     Json?
-  whatsapp       String?
-  instagram      String?
-  facebook       String?
-  endereco       String?
-  horarioAtend   String?
-  politicas      String?
-  dominioProprio String?      @unique
-  planoId        String?
-  plano          Plano?       @relation(fields: [planoId], references: [id])
-  statusPlano    PlanoStatus  @default(TESTE)
+  id                String       @id @default(cuid())
+  nome              String
+  slug              String       @unique
+  responsavel       String?
+  emailContato      String?
+  logoUrl           String?
+  corPrimaria       String?
+  template          TemplateLoja @default(MINIMALISTA)
+  banners           Json?
+  temaConfig        Json?
+  temaProdutoConfig Json?
+  whatsapp          String?
+  instagram         String?
+  facebook          String?
+  endereco          String?
+  horarioAtend      String?
+  politicas         String?
+  dominioProprio    String?      @unique
+  planoId           String?
+  plano             Plano?       @relation(fields: [planoId], references: [id])
+  statusPlano       PlanoStatus  @default(TESTE)
 
   stripeCustomerId     String? @unique
   stripeSubscriptionId String? @unique
@@ -138,14 +139,14 @@ model UsuarioLoja {
 // papel até que alguém aceite pelo token, criando/vinculando o Usuario nesse
 // momento (ver usuariosLoja.aceitarConvite).
 model ConviteUsuarioLoja {
-  id        String       @id @default(cuid())
-  email     String
-  lojaId    String
-  loja      Loja         @relation(fields: [lojaId], references: [id], onDelete: Cascade)
-  papel     PapelUsuario
-  token     String       @unique
-  expiraEm  DateTime
-  aceitoEm  DateTime?
+  id       String       @id @default(cuid())
+  email    String
+  lojaId   String
+  loja     Loja         @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  papel    PapelUsuario
+  token    String       @unique
+  expiraEm DateTime
+  aceitoEm DateTime?
 
   createdAt DateTime @default(now())
 
@@ -204,13 +205,13 @@ enum TipoMidiaProduto {
 }
 
 model FotoProduto {
-  id         String            @id @default(cuid())
-  produtoId  String
-  produto    Produto           @relation(fields: [produtoId], references: [id], onDelete: Cascade)
-  url        String
-  ordem      Int               @default(0)
-  tipo       TipoMidiaProduto  @default(IMAGEM)
-  variacoes  VariacaoProduto[]
+  id        String            @id @default(cuid())
+  produtoId String
+  produto   Produto           @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+  url       String
+  ordem     Int               @default(0)
+  tipo      TipoMidiaProduto  @default(IMAGEM)
+  variacoes VariacaoProduto[]
 }
 
 model VariacaoProduto {
@@ -263,8 +264,8 @@ model Cliente {
   // Histórico de compras anteriores ao site (WhatsApp/Instagram), informado
   // manualmente pelo lojista — não tem Pedido real associado. O resumo de
   // compras exibido no painel soma isso aos pedidos feitos pelo site.
-  totalGastoAnterior     Decimal?  @db.Decimal(10, 2)
-  ultimaCompraAnterior   DateTime?
+  totalGastoAnterior   Decimal?  @db.Decimal(10, 2)
+  ultimaCompraAnterior DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

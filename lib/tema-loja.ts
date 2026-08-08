@@ -431,6 +431,158 @@ function criarId(): string {
   return crypto.randomUUID();
 }
 
+// ---------- Página de produto (Loja.temaProdutoConfig) ----------
+//
+// Mesmo princípio do temaConfig da home (Json puro, sobrescrito por inteiro a
+// cada save, seções com `visivel`/ordem) só que descrevendo o layout da
+// página de produto — aplicado a TODOS os produtos da loja, não um por
+// produto. Galeria e Informações do produto são fixas (a página não faz
+// sentido sem elas); as demais são o "Modelo" reordenável/removível, igual
+// à home.
+
+export const iconeSeloSchema = z.enum(["ENTREGA", "GARANTIA", "PAGAMENTO", "TROCA", "QUALIDADE"]);
+export type IconeSelo = z.infer<typeof iconeSeloSchema>;
+
+export const NOMES_ICONE_SELO: Record<IconeSelo, string> = {
+  ENTREGA: "Entrega",
+  GARANTIA: "Garantia",
+  PAGAMENTO: "Pagamento seguro",
+  TROCA: "Troca fácil",
+  QUALIDADE: "Qualidade",
+};
+
+export const seloProdutoSchema = z.object({
+  id: z.string(),
+  icone: iconeSeloSchema.default("QUALIDADE"),
+  texto: z.string().trim().max(60),
+});
+
+export type SeloProduto = z.infer<typeof seloProdutoSchema>;
+
+const secaoProdutoBaseSchema = z.object({
+  id: z.string(),
+  visivel: z.boolean().default(true),
+});
+
+export const secaoGaleriaProdutoSchema = secaoProdutoBaseSchema.extend({
+  tipo: z.literal("GALERIA_PRODUTO"),
+  config: z.object({
+    mostrarMiniaturas: z.boolean().default(true),
+  }),
+});
+
+export const secaoInfoProdutoSchema = secaoProdutoBaseSchema.extend({
+  tipo: z.literal("INFO_PRODUTO"),
+  config: z.object({
+    mostrarBreadcrumb: z.boolean().default(true),
+    mostrarDescricaoCurta: z.boolean().default(true),
+    textoBotao: z.string().trim().max(40).default("Adicionar ao carrinho"),
+    textoBotaoEsgotado: z.string().trim().max(40).default("Produto esgotado"),
+    corBotao: z
+      .string()
+      .regex(/^#[0-9A-Fa-f]{6}$/, "Informe uma cor no formato #RRGGBB")
+      .optional(),
+    corTextoBotao: z
+      .string()
+      .regex(/^#[0-9A-Fa-f]{6}$/, "Informe uma cor no formato #RRGGBB")
+      .optional(),
+  }),
+});
+
+export const secaoDescricaoProdutoSchema = secaoProdutoBaseSchema.extend({
+  tipo: z.literal("DESCRICAO_PRODUTO"),
+  config: z.object({
+    titulo: z.string().trim().max(80).default("Descrição"),
+  }),
+});
+
+export const secaoSelosProdutoSchema = secaoProdutoBaseSchema.extend({
+  tipo: z.literal("SELOS_PRODUTO"),
+  config: z.object({
+    itens: z.array(seloProdutoSchema).max(6, "No máximo 6 selos."),
+  }),
+});
+
+export const secaoTextoProdutoSchema = secaoProdutoBaseSchema.extend({
+  tipo: z.literal("TEXTO_PRODUTO"),
+  config: z.object({
+    titulo: z.string().trim().max(120).optional(),
+    corpo: z.string().trim().max(2000),
+    alinhamento: alinhamentoTextoSchema.default("ESQUERDA"),
+  }),
+});
+
+export const secaoRelacionadosProdutoSchema = secaoProdutoBaseSchema.extend({
+  tipo: z.literal("RELACIONADOS_PRODUTO"),
+  config: z.object({
+    titulo: z.string().trim().max(80).default("Você também pode gostar"),
+    quantidade: z.number().int().min(1).max(20).optional(),
+  }),
+});
+
+export const secaoProdutoTemaSchema = z.discriminatedUnion("tipo", [
+  secaoGaleriaProdutoSchema,
+  secaoInfoProdutoSchema,
+  secaoDescricaoProdutoSchema,
+  secaoSelosProdutoSchema,
+  secaoTextoProdutoSchema,
+  secaoRelacionadosProdutoSchema,
+]);
+
+export type SecaoProdutoTema = z.infer<typeof secaoProdutoTemaSchema>;
+export type TipoSecaoProdutoTema = SecaoProdutoTema["tipo"];
+
+export const temaProdutoConfigSchema = z.object({
+  secoes: z.array(secaoProdutoTemaSchema).max(20, "No máximo 20 seções na página de produto."),
+});
+
+export type TemaProdutoConfig = z.infer<typeof temaProdutoConfigSchema>;
+
+// Galeria e Informações do produto sempre presentes — sem elas a página não
+// tem como vender o produto (mesma trava de Cabeçalho/Rodapé na home).
+export const TIPOS_SECAO_PRODUTO_FIXA: TipoSecaoProdutoTema[] = ["GALERIA_PRODUTO", "INFO_PRODUTO"];
+
+export const NOMES_TIPO_SECAO_PRODUTO: Record<TipoSecaoProdutoTema, string> = {
+  GALERIA_PRODUTO: "Galeria de fotos",
+  INFO_PRODUTO: "Informações do produto",
+  DESCRICAO_PRODUTO: "Descrição",
+  SELOS_PRODUTO: "Selos de confiança",
+  TEXTO_PRODUTO: "Texto livre",
+  RELACIONADOS_PRODUTO: "Produtos relacionados",
+};
+
+/**
+ * Layout inicial da página de produto, usado quando a loja ainda não
+ * personalizou (temaProdutoConfig nulo) e o lojista abre o editor pela
+ * primeira vez — reproduz a mesma composição que o componente fixo antigo
+ * (ProdutoDetalhe) sempre teve, pra abrir o editor não mudar nada visualmente
+ * até o lojista salvar.
+ */
+export function criarTemaProdutoConfigPadrao(): TemaProdutoConfig {
+  return {
+    secoes: [
+      { id: criarId(), tipo: "GALERIA_PRODUTO", visivel: true, config: { mostrarMiniaturas: true } },
+      {
+        id: criarId(),
+        tipo: "INFO_PRODUTO",
+        visivel: true,
+        config: {
+          mostrarBreadcrumb: true,
+          mostrarDescricaoCurta: true,
+          textoBotao: "Adicionar ao carrinho",
+          textoBotaoEsgotado: "Produto esgotado",
+        },
+      },
+      {
+        id: criarId(),
+        tipo: "RELACIONADOS_PRODUTO",
+        visivel: true,
+        config: { titulo: "Você também pode gostar" },
+      },
+    ],
+  };
+}
+
 /**
  * Layout inicial usado quando a loja ainda não tem temaConfig salvo — inclui
  * as seções fixas mais Hero e Coleção em destaque, já populando o Hero com

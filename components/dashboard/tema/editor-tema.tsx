@@ -291,6 +291,9 @@ export function EditorTema() {
             <h1 className="text-sm font-semibold">Editor de tema</h1>
             <p className="text-muted-foreground text-xs">Personalize a página inicial da sua loja</p>
           </div>
+          <Button variant="outline" size="sm" nativeButton={false} render={<a href="/painel/tema/produto/editar" />}>
+            Editar página de produto
+          </Button>
         </div>
         <div className="bg-muted flex items-center gap-0.5 rounded-md p-0.5">
           <button
