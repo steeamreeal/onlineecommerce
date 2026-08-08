@@ -1,0 +1,340 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { ChevronRight, Truck, ShieldCheck, CreditCard, RefreshCw, BadgeCheck } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ProductCard } from "@/components/store/product-card";
+import { ProdutoGaleria } from "@/components/store/produto-galeria";
+import { useCart } from "@/components/store/cart-context";
+import { trpc } from "@/lib/trpc/client";
+import { cn } from "@/lib/utils";
+import type { RouterOutputs } from "@/lib/trpc/types";
+import type { SecaoProdutoTema, IconeSelo, AlinhamentoTexto } from "@/lib/tema-loja";
+
+type Produto = RouterOutputs["lojaPublica"]["produtoPorId"];
+
+const formatoMoeda = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL",
+});
+
+const ICONE_POR_SELO: Record<IconeSelo, React.ComponentType<{ className?: string }>> = {
+  ENTREGA: Truck,
+  GARANTIA: ShieldCheck,
+  PAGAMENTO: CreditCard,
+  TROCA: RefreshCw,
+  QUALIDADE: BadgeCheck,
+};
+
+const classeAlinhamento: Record<AlinhamentoTexto, string> = {
+  ESQUERDA: "text-left",
+  CENTRO: "text-center",
+  DIREITA: "text-right",
+};
+
+function variacaoLabel(v: { cor?: string | null; tamanho?: string | null; modelo?: string | null }) {
+  return [v.cor, v.tamanho, v.modelo].filter(Boolean).join(" / ") || "Padrão";
+}
+
+function SecaoGaleria({
+  produto,
+  config,
+  midiaSelecionadaId,
+  onSelecionar,
+}: {
+  produto: Produto;
+  config: Extract<SecaoProdutoTema, { tipo: "GALERIA_PRODUTO" }>["config"];
+  midiaSelecionadaId: string | undefined;
+  onSelecionar: (id: string) => void;
+}) {
+  const midias = [...produto.fotos].sort((a, b) => a.ordem - b.ordem);
+  const midiaSelecionada = midias.find((m) => m.id === midiaSelecionadaId) ?? midias[0];
+  const mostrarMiniaturas = config.mostrarMiniaturas ?? true;
+
+  return (
+    <div className="flex flex-col gap-3">
+      <ProdutoGaleria
+        midias={midias}
+        midiaSelecionadaId={midiaSelecionada?.id}
+        onSelecionar={onSelecionar}
+        nomeProduto={produto.nome}
+      />
+      {mostrarMiniaturas && midias.length > 1 && (
+        <div className="flex gap-2">
+          {midias.map((midia) => (
+            <button
+              key={midia.id}
+              type="button"
+              onClick={() => onSelecionar(midia.id)}
+              className={cn(
+                "bg-muted size-16 shrink-0 overflow-hidden rounded-md border-2",
+                midia.id === midiaSelecionada?.id ? "border-foreground" : "border-transparent",
+              )}
+            >
+              {midia.tipo === "VIDEO" ? (
+                <video src={midia.url} className="size-full object-cover" muted />
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element -- URL dinâmica do Supabase Storage, sem domínio fixo para next/image
+                <img src={midia.url} alt="" className="size-full object-cover" />
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SecaoInfo({
+  produto,
+  slug,
+  config,
+  variacaoId,
+  onSelecionarVariacao,
+}: {
+  produto: Produto;
+  slug: string;
+  config: Extract<SecaoProdutoTema, { tipo: "INFO_PRODUTO" }>["config"];
+  variacaoId: string | undefined;
+  onSelecionarVariacao: (variacaoId: string, fotoId?: string | null) => void;
+}) {
+  const { adicionarItem } = useCart();
+  const semVariacoes = produto.variacoes.length === 0;
+  const variacaoSelecionada = semVariacoes ? undefined : produto.variacoes.find((v) => v.id === variacaoId);
+  const podeComprar = semVariacoes || Boolean(variacaoSelecionada);
+  const preco = Number(produto.precoPromo ?? produto.precoNormal);
+
+  function handleAdicionar() {
+    if (!podeComprar) return;
+    adicionarItem({
+      produtoId: produto.id,
+      variacaoId: variacaoSelecionada?.id ?? produto.id,
+      quantidade: 1,
+      precoUnitario: preco,
+    });
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      {(config.mostrarBreadcrumb ?? true) && (
+        <nav className="text-muted-foreground flex items-center gap-1 text-sm">
+          <Link href={`/loja/${slug}`} className="hover:text-foreground">
+            Início
+          </Link>
+          <ChevronRight className="size-3.5" />
+          <Link
+            href={`/loja/${slug}/produtos?categoria=${produto.categoriaId ?? ""}`}
+            className="hover:text-foreground"
+          >
+            {produto.categoria?.nome ?? "Sem categoria"}
+          </Link>
+          <ChevronRight className="size-3.5" />
+          <span className="text-foreground">{produto.nome}</span>
+        </nav>
+      )}
+
+      <div>
+        <h1 className="text-2xl font-semibold">{produto.nome}</h1>
+        {(config.mostrarDescricaoCurta ?? true) && produto.descricao && (
+          <p className="text-muted-foreground mt-1 text-sm">{produto.descricao}</p>
+        )}
+      </div>
+
+      <div className="flex items-baseline gap-2">
+        {produto.precoPromo && (
+          <span className="text-muted-foreground text-sm line-through">
+            {formatoMoeda.format(Number(produto.precoNormal))}
+          </span>
+        )}
+        <span className="text-2xl font-semibold">{formatoMoeda.format(preco)}</span>
+      </div>
+
+      {produto.variacoes.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <span className="text-sm font-medium">Escolha uma opção</span>
+          <div className="flex flex-wrap gap-2">
+            {produto.variacoes.map((variacao) => {
+              const esgotada = variacao.estoque === 0;
+              const selecionada = variacao.id === variacaoId;
+              return (
+                <button
+                  key={variacao.id}
+                  type="button"
+                  disabled={esgotada}
+                  onClick={() => onSelecionarVariacao(variacao.id, variacao.fotoId)}
+                  className={cn(
+                    "rounded-md border px-3 py-2 text-sm transition-colors",
+                    selecionada ? "border-primary bg-primary/5" : "hover:border-primary/40",
+                    esgotada && "text-muted-foreground cursor-not-allowed line-through opacity-50",
+                  )}
+                >
+                  {variacaoLabel(variacao)}
+                  {esgotada ? " (esgotado)" : ""}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <Button
+        size="lg"
+        className="w-full"
+        disabled={!podeComprar}
+        onClick={handleAdicionar}
+        style={
+          podeComprar && config.corBotao
+            ? { backgroundColor: config.corBotao, color: config.corTextoBotao }
+            : undefined
+        }
+      >
+        {podeComprar ? config.textoBotao || "Adicionar ao carrinho" : config.textoBotaoEsgotado || "Produto esgotado"}
+      </Button>
+    </div>
+  );
+}
+
+function SecaoDescricao({
+  produto,
+  config,
+}: {
+  produto: Produto;
+  config: Extract<SecaoProdutoTema, { tipo: "DESCRICAO_PRODUTO" }>["config"];
+}) {
+  if (!produto.descricao) return null;
+  return (
+    <section className="flex flex-col gap-2">
+      <h2 className="text-lg font-semibold">{config.titulo || "Descrição"}</h2>
+      <p className="text-muted-foreground text-sm whitespace-pre-line">{produto.descricao}</p>
+    </section>
+  );
+}
+
+function SecaoSelos({ config }: { config: Extract<SecaoProdutoTema, { tipo: "SELOS_PRODUTO" }>["config"] }) {
+  const itens = config.itens ?? [];
+  if (itens.length === 0) return null;
+  return (
+    <section className="grid grid-cols-2 gap-4 rounded-md border p-4 sm:grid-cols-3">
+      {itens.map((selo) => {
+        const Icone = ICONE_POR_SELO[selo.icone ?? "QUALIDADE"];
+        return (
+          <div key={selo.id} className="flex items-center gap-2 text-sm">
+            <Icone className="text-muted-foreground size-5 shrink-0" />
+            <span>{selo.texto}</span>
+          </div>
+        );
+      })}
+    </section>
+  );
+}
+
+function SecaoTexto({ config }: { config: Extract<SecaoProdutoTema, { tipo: "TEXTO_PRODUTO" }>["config"] }) {
+  return (
+    <section className={cn("flex flex-col gap-2", classeAlinhamento[config.alinhamento ?? "ESQUERDA"])}>
+      {config.titulo && <h2 className="text-base font-medium">{config.titulo}</h2>}
+      <p className="text-muted-foreground text-sm whitespace-pre-line">{config.corpo}</p>
+    </section>
+  );
+}
+
+function SecaoRelacionados({
+  produto,
+  slug,
+  config,
+}: {
+  produto: Produto;
+  slug: string;
+  config: Extract<SecaoProdutoTema, { tipo: "RELACIONADOS_PRODUTO" }>["config"];
+}) {
+  const { data: relacionadosBrutos } = trpc.lojaPublica.produtos.useQuery({
+    slug,
+    categoriaId: produto.categoriaId ?? undefined,
+  });
+  let relacionados = (relacionadosBrutos ?? []).filter((p) => p.id !== produto.id);
+  if (config.quantidade) relacionados = relacionados.slice(0, config.quantidade);
+
+  if (relacionados.length === 0) return null;
+
+  return (
+    <section className="flex flex-col gap-4">
+      <h2 className="text-lg font-semibold">{config.titulo || "Você também pode gostar"}</h2>
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+        {relacionados.map((p) => (
+          <ProductCard key={p.id} produto={p} slug={slug} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/**
+ * Monta a página pública de um produto a partir de Loja.temaProdutoConfig —
+ * mesmo padrão do ThemeRenderer da home (lista ordenada de seções,
+ * despachadas por tipo), aplicado a TODOS os produtos da loja de uma vez, já
+ * que não existe personalização por produto individual.
+ */
+export function ThemeRendererProduto({
+  produto,
+  slug,
+  secoes,
+}: {
+  produto: Produto;
+  slug: string;
+  secoes: SecaoProdutoTema[];
+}) {
+  const midias = [...produto.fotos].sort((a, b) => a.ordem - b.ordem);
+  const [midiaSelecionadaId, setMidiaSelecionadaId] = useState<string | undefined>(midias[0]?.id);
+  const [variacaoId, setVariacaoId] = useState<string | undefined>(
+    produto.variacoes.find((v) => v.estoque > 0)?.id,
+  );
+
+  const secaoGaleria = secoes.find((s) => s.tipo === "GALERIA_PRODUTO" && s.visivel);
+  const secaoInfo = secoes.find((s) => s.tipo === "INFO_PRODUTO" && s.visivel);
+  const demaisSecoes = secoes.filter((s) => s.tipo !== "GALERIA_PRODUTO" && s.tipo !== "INFO_PRODUTO" && s.visivel);
+
+  return (
+    <div className="flex flex-1 flex-col gap-8 px-6 py-8">
+      <div className="grid gap-8 md:grid-cols-2">
+        {secaoGaleria && secaoGaleria.tipo === "GALERIA_PRODUTO" ? (
+          <SecaoGaleria
+            produto={produto}
+            config={secaoGaleria.config}
+            midiaSelecionadaId={midiaSelecionadaId}
+            onSelecionar={setMidiaSelecionadaId}
+          />
+        ) : (
+          <div />
+        )}
+
+        {secaoInfo && secaoInfo.tipo === "INFO_PRODUTO" && (
+          <SecaoInfo
+            produto={produto}
+            slug={slug}
+            config={secaoInfo.config}
+            variacaoId={variacaoId}
+            onSelecionarVariacao={(id, fotoId) => {
+              setVariacaoId(id);
+              if (fotoId) setMidiaSelecionadaId(fotoId);
+            }}
+          />
+        )}
+      </div>
+
+      {demaisSecoes.map((secao) => {
+        switch (secao.tipo) {
+          case "DESCRICAO_PRODUTO":
+            return <SecaoDescricao key={secao.id} produto={produto} config={secao.config} />;
+          case "SELOS_PRODUTO":
+            return <SecaoSelos key={secao.id} config={secao.config} />;
+          case "TEXTO_PRODUTO":
+            return <SecaoTexto key={secao.id} config={secao.config} />;
+          case "RELACIONADOS_PRODUTO":
+            return <SecaoRelacionados key={secao.id} produto={produto} slug={slug} config={secao.config} />;
+          default:
+            return null;
+        }
+      })}
+    </div>
+  );
+}
