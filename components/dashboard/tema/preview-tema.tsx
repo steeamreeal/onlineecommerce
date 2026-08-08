@@ -127,11 +127,21 @@ function PreviewRodape({
   nome,
   mostrarNewsletter,
   mostrarFormasPagamento,
+  mostrarPaginasInstitucionais,
+  mostrarSac,
+  whatsapp,
+  telefoneSac,
+  paginasInstitucionais,
   colunas,
 }: {
   nome: string;
   mostrarNewsletter: boolean;
   mostrarFormasPagamento: boolean;
+  mostrarPaginasInstitucionais: boolean;
+  mostrarSac: boolean;
+  whatsapp?: string | null;
+  telefoneSac?: string | null;
+  paginasInstitucionais: { slug: string; titulo: string }[];
   colunas: { id: string; titulo: string; links: { id: string; texto: string }[] }[];
 }) {
   return (
@@ -143,6 +153,23 @@ function PreviewRodape({
       )}
       <div className="grid gap-4 px-6 py-6 text-sm sm:grid-cols-3">
         <span className="font-medium">{nome}</span>
+        {mostrarPaginasInstitucionais && paginasInstitucionais.length > 0 && (
+          <div className="flex flex-col gap-1">
+            <span className="font-medium">Institucional</span>
+            {paginasInstitucionais.map((pagina) => (
+              <span key={pagina.slug} className="text-muted-foreground">
+                {pagina.titulo}
+              </span>
+            ))}
+          </div>
+        )}
+        {mostrarSac && (whatsapp || telefoneSac) && (
+          <div className="flex flex-col gap-1">
+            <span className="font-medium">SAC</span>
+            {whatsapp && <span className="text-muted-foreground">WhatsApp: {whatsapp}</span>}
+            {telefoneSac && <span className="text-muted-foreground">{telefoneSac}</span>}
+          </div>
+        )}
         {colunas.map((coluna) => (
           <div key={coluna.id} className="flex flex-col gap-1">
             <span className="font-medium">{coluna.titulo || "Coluna"}</span>
@@ -202,6 +229,8 @@ export function PreviewTema({
 }) {
   const { data: categorias } = trpc.lojaPublica.categorias.useQuery({ slug });
   const { data: produtos } = trpc.lojaPublica.produtos.useQuery({ slug });
+  const { data: config } = trpc.lojaPublica.porSlug.useQuery({ slug });
+  const { data: paginasInstitucionais } = trpc.lojaPublica.paginasInstitucionais.useQuery({ slug });
 
   const barraAnuncio = secoes.find((s) => s.tipo === "BARRA_ANUNCIO");
   const cabecalho = secoes.find((s) => s.tipo === "CABECALHO");
@@ -330,6 +359,11 @@ export function PreviewTema({
               nome={nomeLoja}
               mostrarNewsletter={rodape.config.mostrarNewsletter ?? false}
               mostrarFormasPagamento={rodape.config.mostrarFormasPagamento ?? false}
+              mostrarPaginasInstitucionais={rodape.config.mostrarPaginasInstitucionais ?? false}
+              mostrarSac={rodape.config.mostrarSac ?? false}
+              whatsapp={config?.whatsapp}
+              telefoneSac={config?.telefoneSac}
+              paginasInstitucionais={paginasInstitucionais ?? []}
               colunas={rodape.config.colunas ?? []}
             />
           </button>
