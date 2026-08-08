@@ -444,6 +444,31 @@ function FormularioSecao({
             />
           </div>
 
+          <div className="flex flex-col gap-2">
+            <Label>Layout</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {(["GRADE", "CARROSSEL"] as const).map((layout) => (
+                <button
+                  key={layout}
+                  type="button"
+                  onClick={() => onChange({ ...secao, config: { ...secao.config, layout } })}
+                  className={cn(
+                    "rounded-md border px-2 py-2 text-xs font-medium transition-colors",
+                    (secao.config.layout ?? "GRADE") === layout
+                      ? "border-primary ring-primary/30 ring-2"
+                      : "hover:border-primary/40",
+                  )}
+                >
+                  {layout === "GRADE" ? "Grade" : "Carrossel"}
+                </button>
+              ))}
+            </div>
+            <p className="text-muted-foreground text-xs">
+              Carrossel mostra alguns produtos por vez com setas pros lados, em qualquer tamanho
+              de tela.
+            </p>
+          </div>
+
           <CampoCor
             label="Cor do botão &quot;Adicionar ao carrinho&quot;"
             value={secao.config.corBotao}
