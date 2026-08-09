@@ -26,6 +26,7 @@ export function SiteHeader({
   tamanhoFonteCategorias = 30,
   corFundo,
   corTexto,
+  checkout = false,
 }: {
   slug: string;
   config: ConfiguracaoLoja;
@@ -38,6 +39,11 @@ export function SiteHeader({
   tamanhoFonteCategorias?: number;
   corFundo?: string;
   corTexto?: string;
+  // Página de checkout: cabeçalho enxuto de propósito — sem busca, sem menu
+  // de categorias (nem o "hambúrguer" no mobile) e com a logo sem link, pra
+  // não dar nenhum caminho de sair do fluxo de pagamento no meio da compra
+  // (mesmo princípio de checkout "distraction-free" usado por Shopify etc.).
+  checkout?: boolean;
 }) {
   const { quantidadeTotal, setAberto } = useCart();
   const { data: categorias } = trpc.lojaPublica.categorias.useQuery({ slug });
@@ -45,29 +51,34 @@ export function SiteHeader({
   // hambúrguer) — o carrinho tem seu próprio estado em useCart/setAberto.
   const [menuAberto, setMenuAberto] = useState(false);
 
+  const conteudoLogo =
+    exibicaoLogo === "LOGO" && config.logoUrl ? (
+      // eslint-disable-next-line @next/next/no-img-element -- URL dinâmica do Supabase Storage, sem domínio fixo para next/image
+      <img
+        src={config.logoUrl}
+        alt={config.nome}
+        className="w-auto object-contain"
+        style={{ height: alturaLogoEmPx(tamanhoLogo) }}
+      />
+    ) : (
+      <span className="text-lg font-semibold" style={corTexto ? { color: corTexto } : undefined}>
+        {config.nome}
+      </span>
+    );
+
   // "LOGO" sem Loja.logoUrl cadastrada cai para o nome — nunca deixa o
   // cabeçalho sem nenhuma identidade da loja.
-  const logo = (
+  const logo = checkout ? (
+    <div className="flex items-center">{conteudoLogo}</div>
+  ) : (
     <Link href={`/loja/${slug}`} className="flex items-center">
-      {exibicaoLogo === "LOGO" && config.logoUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element -- URL dinâmica do Supabase Storage, sem domínio fixo para next/image
-        <img
-          src={config.logoUrl}
-          alt={config.nome}
-          className="w-auto object-contain"
-          style={{ height: alturaLogoEmPx(tamanhoLogo) }}
-        />
-      ) : (
-        <span className="text-lg font-semibold" style={corTexto ? { color: corTexto } : undefined}>
-          {config.nome}
-        </span>
-      )}
+      {conteudoLogo}
     </Link>
   );
 
-  const busca = mostrarBusca ? <BuscaProdutos slug={slug} /> : null;
+  const busca = mostrarBusca && !checkout ? <BuscaProdutos slug={slug} /> : null;
 
-  const nav = (
+  const nav = checkout ? null : (
     <nav className="flex items-center gap-4 text-sm" style={{ fontSize: tamanhoFonteEmPx(tamanhoFonteCategorias) }}>
       {(categorias ?? []).map((categoria) => (
         <Link
@@ -115,7 +126,7 @@ export function SiteHeader({
           {logo}
           <div className="flex flex-1 items-center justify-end gap-4">{acoes}</div>
         </div>
-        {(categorias ?? []).length > 0 && (
+        {(categorias ?? []).length > 0 && !checkout && (
           <div
             className="flex items-center justify-center gap-4 px-6 pb-2"
             style={{ paddingTop: espacamentoCabecalhoEmPx(espacamentoLinhas) }}
@@ -131,7 +142,7 @@ export function SiteHeader({
           <div className="flex flex-1 items-center gap-4">{busca}</div>
           {acoes}
         </div>
-        {(categorias ?? []).length > 0 && (
+        {(categorias ?? []).length > 0 && !checkout && (
           <div
             className="flex items-center justify-center gap-4 px-6 pb-2"
             style={{ paddingTop: espacamentoCabecalhoEmPx(espacamentoLinhas) }}
@@ -146,28 +157,30 @@ export function SiteHeader({
     <div className="flex flex-col md:hidden">
       <div className="grid grid-cols-3 items-center gap-3 px-4 py-3">
         <div className="flex justify-start">
-          <Sheet open={menuAberto} onOpenChange={setMenuAberto}>
-            <SheetTrigger render={<Button variant="ghost" size="icon" aria-label="Abrir menu de categorias" />}>
-              <Menu />
-            </SheetTrigger>
-            <SheetContent side="left">
-              <SheetHeader>
-                <SheetTitle>Categorias</SheetTitle>
-              </SheetHeader>
-              <nav className="flex flex-col gap-1 px-4">
-                {(categorias ?? []).map((categoria) => (
-                  <Link
-                    key={categoria.id}
-                    href={`/loja/${slug}/produtos?categoria=${categoria.id}`}
-                    className="hover:bg-accent rounded-md px-2 py-2 text-sm"
-                    onClick={() => setMenuAberto(false)}
-                  >
-                    {categoria.nome}
-                  </Link>
-                ))}
-              </nav>
-            </SheetContent>
-          </Sheet>
+          {!checkout && (
+            <Sheet open={menuAberto} onOpenChange={setMenuAberto}>
+              <SheetTrigger render={<Button variant="ghost" size="icon" aria-label="Abrir menu de categorias" />}>
+                <Menu />
+              </SheetTrigger>
+              <SheetContent side="left">
+                <SheetHeader>
+                  <SheetTitle>Categorias</SheetTitle>
+                </SheetHeader>
+                <nav className="flex flex-col gap-1 px-4">
+                  {(categorias ?? []).map((categoria) => (
+                    <Link
+                      key={categoria.id}
+                      href={`/loja/${slug}/produtos?categoria=${categoria.id}`}
+                      className="hover:bg-accent rounded-md px-2 py-2 text-sm"
+                      onClick={() => setMenuAberto(false)}
+                    >
+                      {categoria.nome}
+                    </Link>
+                  ))}
+                </nav>
+              </SheetContent>
+            </Sheet>
+          )}
         </div>
         <div className="flex justify-center">{logo}</div>
         <div className="flex justify-end">{acoes}</div>

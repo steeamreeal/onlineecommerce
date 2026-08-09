@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { useCart } from "@/components/store/cart-context";
+import { CheckoutUpsell } from "@/components/store/checkout-upsell";
 import { trpc } from "@/lib/trpc/client";
 import type { RouterOutputs } from "@/lib/trpc/types";
 
@@ -470,6 +471,8 @@ export function CheckoutWizard({ slug }: { slug: string }) {
               </div>
             </>
           )}
+
+          <CheckoutUpsell slug={slug} />
         </div>
       )}
 
