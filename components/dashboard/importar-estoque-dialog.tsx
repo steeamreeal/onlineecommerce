@@ -115,7 +115,9 @@ export function ImportarEstoqueDialog({ onImportado }: { onImportado?: () => voi
     try {
       const resultado = await importar.mutateAsync({ linhas });
       onImportado?.();
-      if (resultado.naoEncontrados.length > 0) {
+      if ("pendente" in resultado) {
+        toast.success("Importação enviada para aprovação do Dono/Gerente.");
+      } else if (resultado.naoEncontrados.length > 0) {
         toast.warning(
           `${resultado.atualizados} variações atualizadas. ${resultado.naoEncontrados.length} linhas não encontraram um produto/variação correspondente.`,
         );

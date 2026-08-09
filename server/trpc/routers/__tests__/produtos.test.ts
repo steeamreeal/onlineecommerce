@@ -37,8 +37,8 @@ function criarPrismaMock(produtoExistente: {
   return { mock: mock as Record<string, Record<string, ReturnType<typeof vi.fn>>>, client: mock as unknown as PrismaClient };
 }
 
-function criarCaller(client: PrismaClient) {
-  const ctx = { prisma: client, usuario: { id: "u1" }, lojaId: LOJA_ID, supabaseUser: null } as never;
+function criarCaller(client: PrismaClient, papel: string = "DONO") {
+  const ctx = { prisma: client, usuario: { id: "u1" }, lojaId: LOJA_ID, papel, supabaseUser: null } as never;
   return produtosRouter.createCaller(ctx);
 }
 
@@ -120,5 +120,50 @@ describe("produtosRouter.atualizar — notificação de estoque baixo ao editar 
 
     expect(resendSendMock).not.toHaveBeenCalled();
     expect(mock.notificacao.create).not.toHaveBeenCalled();
+  });
+});
+
+describe("produtosRouter.criar — fluxo de aprovação por papel", () => {
+  it("VENDEDOR: não cria o produto — vira solicitação pendente", async () => {
+    const produtoExistente = { id: "produto-1", fotos: [], variacoes: [] };
+    const { mock, client } = criarPrismaMock(produtoExistente, {
+      solicitacao: { create: vi.fn().mockResolvedValue({ id: "solicitacao-1" }) },
+    });
+    const caller = criarCaller(client, "VENDEDOR");
+
+    const resultado = await caller.criar({
+      ...inputBase,
+      variacoes: [{ estoque: 5 }],
+    });
+
+    expect(mock.produto.update).not.toHaveBeenCalled();
+    expect(mock.solicitacao.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ tipo: "PRODUTO_CRIAR", status: "PENDENTE" }),
+      }),
+    );
+    expect(resultado).toEqual({ pendente: true, solicitacaoId: "solicitacao-1" });
+  });
+
+  it("GERENTE: cria direto, sem solicitação", async () => {
+    const produtoExistente = { id: "produto-1", fotos: [], variacoes: [] };
+    const { mock, client } = criarPrismaMock(produtoExistente, {
+      produto: {
+        findFirst: vi.fn().mockResolvedValue(produtoExistente),
+        update: vi.fn(),
+        create: vi.fn().mockResolvedValue({ id: "produto-novo", fotos: [] }),
+        count: vi.fn().mockResolvedValue(0),
+        findUniqueOrThrow: vi.fn().mockResolvedValue({ ...produtoExistente, fotos: [], variacoes: [] }),
+      },
+      variacaoProduto: { createMany: vi.fn(), deleteMany: vi.fn(), updateMany: vi.fn() },
+      solicitacao: { create: vi.fn() },
+    });
+    const caller = criarCaller(client, "GERENTE");
+
+    const resultado = await caller.criar({ ...inputBase, variacoes: [{ estoque: 5 }] });
+
+    expect(mock.produto.create).toHaveBeenCalledTimes(1);
+    expect(mock.solicitacao.create).not.toHaveBeenCalled();
+    expect("pendente" in resultado).toBe(false);
   });
 });

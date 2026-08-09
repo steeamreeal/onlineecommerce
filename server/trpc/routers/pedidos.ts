@@ -9,6 +9,7 @@ import {
   notificarPedidoConfirmado,
   notificarStatusAtualizado,
 } from "@/lib/email/notificacoes";
+import { executarComAprovacao } from "../aprovacao";
 
 const statusPedidoSchema = z.enum([
   "NOVO",
@@ -148,6 +149,181 @@ export async function calcularValorItens(
   });
 }
 
+export const pedidoCriarSchema = z.object({
+  clienteId: z.string(),
+  formaPagamento: formaPagamentoSchema,
+  itens: z.array(itemPedidoInputSchema).min(1),
+  valorFrete: z.number().min(0).default(0),
+  cupomCodigo: z.string().optional(),
+});
+type PedidoCriarInput = z.infer<typeof pedidoCriarSchema>;
+
+export const pedidoAtualizarStatusSchema = z.object({ id: z.string(), status: statusPedidoSchema });
+type PedidoAtualizarStatusInput = z.infer<typeof pedidoAtualizarStatusSchema>;
+
+export const pedidoAtualizarRastreioSchema = z.object({ id: z.string(), codigoRastreio: z.string().min(1) });
+type PedidoAtualizarRastreioInput = z.infer<typeof pedidoAtualizarRastreioSchema>;
+
+export async function executarPedidoCriar(
+  ctx: { prisma: PrismaClient; lojaId: string },
+  input: PedidoCriarInput,
+) {
+  const cliente = await ctx.prisma.cliente.findFirst({
+    where: { id: input.clienteId, lojaId: ctx.lojaId },
+  });
+  if (!cliente) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Cliente inválido." });
+  }
+  const loja = await ctx.prisma.loja.findUniqueOrThrow({ where: { id: ctx.lojaId } });
+
+  const itensComPreco = await calcularValorItens(ctx.prisma, ctx.lojaId, input.itens);
+  const valorProdutos = itensComPreco.reduce((s, i) => s + i.precoUnit * i.quantidade, 0);
+
+  let cupomId: string | undefined;
+  let valorDesconto = 0;
+  let valorFrete = input.valorFrete;
+
+  if (input.cupomCodigo) {
+    const cupom = await ctx.prisma.cupom.findFirst({
+      where: { lojaId: ctx.lojaId, codigo: input.cupomCodigo.toUpperCase() },
+    });
+    const agora = new Date();
+    if (
+      !cupom ||
+      agora < cupom.inicio ||
+      agora > cupom.fim ||
+      (cupom.limiteUso != null && cupom.usosAtuais >= cupom.limiteUso)
+    ) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "Cupom inválido ou expirado." });
+    }
+    cupomId = cupom.id;
+    if (cupom.tipo === "PERCENTUAL") {
+      valorDesconto = (valorProdutos * Number(cupom.valor ?? 0)) / 100;
+    } else if (cupom.tipo === "VALOR_FIXO") {
+      valorDesconto = Math.min(Number(cupom.valor ?? 0), valorProdutos);
+    } else if (cupom.tipo === "FRETE_GRATIS") {
+      valorDesconto = valorFrete;
+      valorFrete = 0;
+    }
+  }
+
+  const valorTotal = valorProdutos + valorFrete - valorDesconto;
+
+  return ctx.prisma.$transaction(async (tx) => {
+    await baixarEstoqueItens(tx, input.itens, loja);
+
+    if (cupomId) {
+      await tx.cupom.update({ where: { id: cupomId }, data: { usosAtuais: { increment: 1 } } });
+    }
+
+    const pedido = await tx.pedido.create({
+      data: {
+        lojaId: ctx.lojaId,
+        clienteId: input.clienteId,
+        formaPagamento: input.formaPagamento,
+        valorFrete,
+        valorDesconto,
+        valorTotal,
+        cupomId,
+        itens: {
+          create: itensComPreco.map((item) => ({
+            produtoId: item.produtoId,
+            variacaoId: item.variacaoId,
+            quantidade: item.quantidade,
+            precoUnit: item.precoUnit,
+          })),
+        },
+      },
+      include: { itens: true, cliente: true, cupom: true },
+    });
+
+    await notificarPedidoConfirmado(tx, {
+      lojaId: loja.id,
+      lojaNome: loja.nome,
+      clienteNome: cliente.nome,
+      clienteEmail: cliente.email,
+      pedidoId: pedido.id,
+      valorTotal,
+    });
+
+    return pedido;
+  });
+}
+
+export async function executarPedidoAtualizarStatus(
+  ctx: { prisma: PrismaClient; lojaId: string },
+  input: PedidoAtualizarStatusInput,
+) {
+  const pedido = await ctx.prisma.pedido.findFirst({
+    where: { id: input.id, lojaId: ctx.lojaId },
+    include: { itens: true, cliente: true },
+  });
+  if (!pedido) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Pedido não encontrado." });
+  }
+  if (pedido.status === "CANCELADO" || pedido.status === "ENTREGUE") {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Este pedido não pode mais mudar de status.",
+    });
+  }
+
+  const ehCancelamento = input.status === "CANCELADO";
+  if (!ehCancelamento && input.status !== proximoStatusValido(pedido.status)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Transição de status inválida — siga a ordem do fluxo do pedido.",
+    });
+  }
+
+  const loja = await ctx.prisma.loja.findUniqueOrThrow({ where: { id: ctx.lojaId } });
+
+  return ctx.prisma.$transaction(async (tx) => {
+    if (ehCancelamento) {
+      await devolverEstoqueItens(tx, pedido.itens);
+      if (pedido.cupomId) {
+        await tx.cupom.update({
+          where: { id: pedido.cupomId },
+          data: { usosAtuais: { decrement: 1 } },
+        });
+      }
+    }
+
+    const pedidoAtualizado = await tx.pedido.update({
+      where: { id: input.id },
+      data: { status: input.status },
+      include: { itens: true, cliente: true, cupom: true },
+    });
+
+    await notificarStatusAtualizado(tx, {
+      lojaId: loja.id,
+      lojaNome: loja.nome,
+      clienteNome: pedido.cliente.nome,
+      clienteEmail: pedido.cliente.email,
+      pedidoId: pedido.id,
+      status: input.status,
+    });
+
+    return pedidoAtualizado;
+  });
+}
+
+export async function executarPedidoAtualizarRastreio(
+  ctx: { prisma: PrismaClient; lojaId: string },
+  input: PedidoAtualizarRastreioInput,
+) {
+  const pedido = await ctx.prisma.pedido.findFirst({
+    where: { id: input.id, lojaId: ctx.lojaId },
+  });
+  if (!pedido) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Pedido não encontrado." });
+  }
+  return ctx.prisma.pedido.update({
+    where: { id: input.id },
+    data: { codigoRastreio: input.codigoRastreio },
+  });
+}
+
 export const pedidosRouter = router({
   listar: storeProcedure
     .input(z.object({ status: statusPedidoSchema.optional(), busca: z.string().optional() }).optional())
@@ -189,170 +365,37 @@ export const pedidosRouter = router({
     }),
 
   criar: storeProcedure
-    .input(
-      z.object({
-        clienteId: z.string(),
-        formaPagamento: formaPagamentoSchema,
-        itens: z.array(itemPedidoInputSchema).min(1),
-        valorFrete: z.number().min(0).default(0),
-        cupomCodigo: z.string().optional(),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      const cliente = await ctx.prisma.cliente.findFirst({
-        where: { id: input.clienteId, lojaId: ctx.lojaId },
-      });
-      if (!cliente) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Cliente inválido." });
-      }
-      const loja = await ctx.prisma.loja.findUniqueOrThrow({ where: { id: ctx.lojaId } });
-
-      const itensComPreco = await calcularValorItens(ctx.prisma, ctx.lojaId, input.itens);
-      const valorProdutos = itensComPreco.reduce((s, i) => s + i.precoUnit * i.quantidade, 0);
-
-      let cupomId: string | undefined;
-      let valorDesconto = 0;
-      let valorFrete = input.valorFrete;
-
-      if (input.cupomCodigo) {
-        const cupom = await ctx.prisma.cupom.findFirst({
-          where: { lojaId: ctx.lojaId, codigo: input.cupomCodigo.toUpperCase() },
-        });
-        const agora = new Date();
-        if (
-          !cupom ||
-          agora < cupom.inicio ||
-          agora > cupom.fim ||
-          (cupom.limiteUso != null && cupom.usosAtuais >= cupom.limiteUso)
-        ) {
-          throw new TRPCError({ code: "BAD_REQUEST", message: "Cupom inválido ou expirado." });
-        }
-        cupomId = cupom.id;
-        if (cupom.tipo === "PERCENTUAL") {
-          valorDesconto = (valorProdutos * Number(cupom.valor ?? 0)) / 100;
-        } else if (cupom.tipo === "VALOR_FIXO") {
-          valorDesconto = Math.min(Number(cupom.valor ?? 0), valorProdutos);
-        } else if (cupom.tipo === "FRETE_GRATIS") {
-          valorDesconto = valorFrete;
-          valorFrete = 0;
-        }
-      }
-
-      const valorTotal = valorProdutos + valorFrete - valorDesconto;
-
-      return ctx.prisma.$transaction(async (tx) => {
-        await baixarEstoqueItens(tx, input.itens, loja);
-
-        if (cupomId) {
-          await tx.cupom.update({ where: { id: cupomId }, data: { usosAtuais: { increment: 1 } } });
-        }
-
-        const pedido = await tx.pedido.create({
-          data: {
-            lojaId: ctx.lojaId,
-            clienteId: input.clienteId,
-            formaPagamento: input.formaPagamento,
-            valorFrete,
-            valorDesconto,
-            valorTotal,
-            cupomId,
-            itens: {
-              create: itensComPreco.map((item) => ({
-                produtoId: item.produtoId,
-                variacaoId: item.variacaoId,
-                quantidade: item.quantidade,
-                precoUnit: item.precoUnit,
-              })),
-            },
-          },
-          include: { itens: true, cliente: true, cupom: true },
-        });
-
-        await notificarPedidoConfirmado(tx, {
-          lojaId: loja.id,
-          lojaNome: loja.nome,
-          clienteNome: cliente.nome,
-          clienteEmail: cliente.email,
-          pedidoId: pedido.id,
-          valorTotal,
-        });
-
-        return pedido;
-      });
-    }),
+    .input(pedidoCriarSchema)
+    .mutation(({ ctx, input }) =>
+      executarComAprovacao(ctx, "PEDIDO_CRIAR", "Novo pedido (venda manual)", input, () =>
+        executarPedidoCriar(ctx, input),
+      ),
+    ),
 
   // Avança o pedido para o próximo status da esteira (kanban) ou para
   // CANCELADO — nunca aceita pular etapas nem voltar, replicando a regra de
   // proximoStatus() do mock. Cancelar devolve o estoque baixado na criação.
   atualizarStatus: storeProcedure
-    .input(z.object({ id: z.string(), status: statusPedidoSchema }))
-    .mutation(async ({ ctx, input }) => {
-      const pedido = await ctx.prisma.pedido.findFirst({
-        where: { id: input.id, lojaId: ctx.lojaId },
-        include: { itens: true, cliente: true },
-      });
-      if (!pedido) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Pedido não encontrado." });
-      }
-      if (pedido.status === "CANCELADO" || pedido.status === "ENTREGUE") {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Este pedido não pode mais mudar de status.",
-        });
-      }
-
-      const ehCancelamento = input.status === "CANCELADO";
-      if (!ehCancelamento && input.status !== proximoStatusValido(pedido.status)) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Transição de status inválida — siga a ordem do fluxo do pedido.",
-        });
-      }
-
-      const loja = await ctx.prisma.loja.findUniqueOrThrow({ where: { id: ctx.lojaId } });
-
-      return ctx.prisma.$transaction(async (tx) => {
-        if (ehCancelamento) {
-          await devolverEstoqueItens(tx, pedido.itens);
-          if (pedido.cupomId) {
-            await tx.cupom.update({
-              where: { id: pedido.cupomId },
-              data: { usosAtuais: { decrement: 1 } },
-            });
-          }
-        }
-
-        const pedidoAtualizado = await tx.pedido.update({
-          where: { id: input.id },
-          data: { status: input.status },
-          include: { itens: true, cliente: true, cupom: true },
-        });
-
-        await notificarStatusAtualizado(tx, {
-          lojaId: loja.id,
-          lojaNome: loja.nome,
-          clienteNome: pedido.cliente.nome,
-          clienteEmail: pedido.cliente.email,
-          pedidoId: pedido.id,
-          status: input.status,
-        });
-
-        return pedidoAtualizado;
-      });
-    }),
+    .input(pedidoAtualizarStatusSchema)
+    .mutation(({ ctx, input }) =>
+      executarComAprovacao(
+        ctx,
+        "PEDIDO_ATUALIZAR_STATUS",
+        `Atualizar status do pedido para ${input.status}`,
+        input,
+        () => executarPedidoAtualizarStatus(ctx, input),
+      ),
+    ),
 
   atualizarRastreio: storeProcedure
-    .input(z.object({ id: z.string(), codigoRastreio: z.string().min(1) }))
-    .mutation(async ({ ctx, input }) => {
-      const pedido = await ctx.prisma.pedido.findFirst({
-        where: { id: input.id, lojaId: ctx.lojaId },
-      });
-      if (!pedido) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Pedido não encontrado." });
-      }
-      return ctx.prisma.pedido.update({
-        where: { id: input.id },
-        data: { codigoRastreio: input.codigoRastreio },
-      });
-    }),
+    .input(pedidoAtualizarRastreioSchema)
+    .mutation(({ ctx, input }) =>
+      executarComAprovacao(
+        ctx,
+        "PEDIDO_ATUALIZAR_RASTREIO",
+        "Atualizar código de rastreio do pedido",
+        input,
+        () => executarPedidoAtualizarRastreio(ctx, input),
+      ),
+    ),
 });

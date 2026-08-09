@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  CheckCircle2,
   CreditCard,
   FileText,
   LayoutDashboard,
@@ -25,6 +26,7 @@ const itens = [
   { href: "/painel/clientes", label: "Clientes", icon: Users },
   { href: "/painel/cupons", label: "Cupons", icon: Tag },
   { href: "/painel/frete", label: "Frete", icon: Truck },
+  { href: "/painel/aprovacoes", label: "Aprovações", icon: CheckCircle2 },
   { href: "/painel/paginas-institucionais", label: "Páginas institucionais", icon: FileText },
   { href: "/painel/tema", label: "Tema", icon: Paintbrush },
   { href: "/painel/assinatura", label: "Assinatura", icon: CreditCard },

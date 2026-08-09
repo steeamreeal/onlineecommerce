@@ -42,8 +42,8 @@ function criarPrismaMock(variacao: {
   return { mock: mock as Record<string, Record<string, ReturnType<typeof vi.fn>>>, client: mock as unknown as PrismaClient };
 }
 
-function criarCaller(client: PrismaClient) {
-  const ctx = { prisma: client, usuario: { id: "u1" }, lojaId: LOJA_ID, supabaseUser: null } as never;
+function criarCaller(client: PrismaClient, papel: string = "DONO") {
+  const ctx = { prisma: client, usuario: { id: "u1" }, lojaId: LOJA_ID, papel, supabaseUser: null } as never;
   return estoqueRouter.createCaller(ctx);
 }
 
@@ -174,6 +174,7 @@ describe("estoqueRouter.importar", () => {
     const resultado = await caller.importar({
       linhas: [{ produto: "Camiseta", cor: "Azul", tamanho: "M", quantidade: 10 }],
     });
+    if ("pendente" in resultado) throw new Error("não deveria ficar pendente");
 
     expect(update).not.toHaveBeenCalled();
     expect(create).not.toHaveBeenCalled();
@@ -190,6 +191,7 @@ describe("estoqueRouter.importar", () => {
         { produto: "Produto Inexistente", quantidade: 5 },
       ],
     });
+    if ("pendente" in resultado) throw new Error("não deveria ficar pendente");
 
     expect(update).toHaveBeenCalledTimes(1);
     expect(resultado.atualizados).toBe(1);
@@ -207,5 +209,58 @@ describe("estoqueRouter.importar", () => {
     expect(findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: { produto: { lojaId: LOJA_ID } } }),
     );
+  });
+});
+
+describe("estoqueRouter — fluxo de aprovação por papel", () => {
+  it("ESTOQUISTA: registrarMovimento não mexe no estoque — vira solicitação pendente", async () => {
+    const variacao = { id: "v1", produtoId: PRODUTO.id, estoque: 8, cor: null, tamanho: null, modelo: null };
+    const { mock, client } = criarPrismaMock(variacao, {
+      solicitacao: {
+        create: vi.fn().mockResolvedValue({ id: "solicitacao-1" }),
+      },
+    });
+    const caller = criarCaller(client, "ESTOQUISTA");
+
+    const resultado = await caller.registrarMovimento({ variacaoId: "v1", tipo: "SAIDA", quantidade: 5 });
+
+    expect(mock.variacaoProduto.updateMany).not.toHaveBeenCalled();
+    expect(mock.solicitacao.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ tipo: "ESTOQUE_MOVIMENTO", status: "PENDENTE" }),
+      }),
+    );
+    expect(resultado).toEqual({ pendente: true, solicitacaoId: "solicitacao-1" });
+  });
+
+  it("VENDEDOR: importar não altera nada — vira solicitação pendente", async () => {
+    const variacaoCamiseta = {
+      id: "v1",
+      estoque: 10,
+      cor: "Azul",
+      tamanho: "M",
+      modelo: null,
+      produto: { nome: "Camiseta" },
+    };
+    const update = vi.fn();
+    const solicitacaoCreate = vi.fn().mockResolvedValue({ id: "solicitacao-2" });
+    const mock: Record<string, unknown> = {
+      loja: { findUnique: vi.fn().mockResolvedValue({ statusPlano: "ATIVO" }) },
+      variacaoProduto: { findMany: vi.fn().mockResolvedValue([variacaoCamiseta]), update },
+      movimentoEstoque: { create: vi.fn() },
+      solicitacao: { create: solicitacaoCreate },
+    };
+    mock.$transaction = vi.fn(async (fn: (tx: unknown) => unknown) => fn(mock));
+    const caller = criarCaller(mock as unknown as PrismaClient, "VENDEDOR");
+
+    const resultado = await caller.importar({
+      linhas: [{ produto: "Camiseta", cor: "Azul", tamanho: "M", quantidade: 999 }],
+    });
+
+    expect(update).not.toHaveBeenCalled();
+    expect(solicitacaoCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ tipo: "ESTOQUE_IMPORTAR" }) }),
+    );
+    expect(resultado).toEqual({ pendente: true, solicitacaoId: "solicitacao-2" });
   });
 });

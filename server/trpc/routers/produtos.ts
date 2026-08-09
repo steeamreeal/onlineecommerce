@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
+import type { PrismaClient } from "@prisma/client";
 import { router, storeProcedure, roleProcedure } from "../trpc";
+import { executarComAprovacao } from "../aprovacao";
 
 // Inativar um produto some com ele da vitrine pública — só Administrador e
 // Gerente, não Estoquista (que cadastra/edita) nem Vendedor/Separador.
@@ -58,11 +60,7 @@ const produtoInputRefinement = (
   }
 };
 
-async function validarCategoria(
-  prisma: import("@prisma/client").PrismaClient,
-  lojaId: string,
-  categoriaId?: string,
-) {
+async function validarCategoria(prisma: PrismaClient, lojaId: string, categoriaId?: string) {
   if (!categoriaId) return;
   const categoria = await prisma.categoria.findFirst({
     where: { id: categoriaId, lojaId },
@@ -70,6 +68,216 @@ async function validarCategoria(
   if (!categoria) {
     throw new TRPCError({ code: "BAD_REQUEST", message: "Categoria inválida." });
   }
+}
+
+export const produtoCriarSchema = z.object(produtoInputBase).superRefine(produtoInputRefinement);
+export const produtoAtualizarSchema = z
+  .object({ id: z.string(), ...produtoInputBase })
+  .superRefine(produtoInputRefinement);
+
+type ProdutoCriarInput = z.infer<typeof produtoCriarSchema>;
+type ProdutoAtualizarInput = z.infer<typeof produtoAtualizarSchema>;
+
+export async function executarProdutoCriar(
+  ctx: { prisma: PrismaClient; lojaId: string },
+  input: ProdutoCriarInput,
+) {
+  await validarCategoria(ctx.prisma, ctx.lojaId, input.categoriaId);
+
+  const loja = await ctx.prisma.loja.findUniqueOrThrow({
+    where: { id: ctx.lojaId },
+    select: { plano: { select: { limiteProdutos: true } } },
+  });
+  if (loja.plano?.limiteProdutos != null) {
+    const totalProdutos = await ctx.prisma.produto.count({ where: { lojaId: ctx.lojaId } });
+    if (totalProdutos >= loja.plano.limiteProdutos) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: `Seu plano permite até ${loja.plano.limiteProdutos} produtos. Fale com o suporte para aumentar o limite.`,
+      });
+    }
+  }
+
+  return ctx.prisma.$transaction(async (tx) => {
+    const produto = await tx.produto.create({
+      data: {
+        lojaId: ctx.lojaId,
+        nome: input.nome,
+        descricao: input.descricao,
+        codigo: input.codigo,
+        precoNormal: input.precoNormal,
+        precoPromo: input.precoPromo,
+        pesoGramas: input.pesoGramas,
+        alturaCm: input.alturaCm,
+        larguraCm: input.larguraCm,
+        profundidadeCm: input.profundidadeCm,
+        status: input.status,
+        categoriaId: input.categoriaId,
+        fotos: { create: input.fotos.map(({ url, ordem, tipo }) => ({ url, ordem, tipo })) },
+      },
+      include: { fotos: true },
+    });
+
+    const fotoIdPorUrl = new Map(produto.fotos.map((f) => [f.url, f.id]));
+
+    await tx.variacaoProduto.createMany({
+      data: input.variacoes.map(({ cor, tamanho, modelo, estoque, fotoUrl }) => ({
+        produtoId: produto.id,
+        cor,
+        tamanho,
+        modelo,
+        estoque,
+        fotoId: fotoUrl ? fotoIdPorUrl.get(fotoUrl) : undefined,
+      })),
+    });
+
+    return tx.produto.findUniqueOrThrow({
+      where: { id: produto.id },
+      include: { fotos: true, variacoes: true },
+    });
+  });
+}
+
+export async function executarProdutoAtualizar(
+  ctx: { prisma: PrismaClient; lojaId: string },
+  input: ProdutoAtualizarInput,
+) {
+  const produtoExistente = await ctx.prisma.produto.findFirst({
+    where: { id: input.id, lojaId: ctx.lojaId },
+    include: { fotos: true, variacoes: true },
+  });
+  if (!produtoExistente) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Produto não encontrado." });
+  }
+  const loja = await ctx.prisma.loja.findUniqueOrThrow({ where: { id: ctx.lojaId } });
+
+  await validarCategoria(ctx.prisma, ctx.lojaId, input.categoriaId);
+
+  // IDs de fotos/variações existentes DESTE produto (já escopado por lojaId
+  // via produtoExistente). Qualquer id enviado pelo client que não esteja
+  // nesses conjuntos é tratado como "criar novo" em vez de "atualizar",
+  // evitando que um id de outra loja/produto seja usado para sobrescrever
+  // dados que não pertencem a este tenant (IDOR entre tenants).
+  const idsFotosExistentes = new Set(produtoExistente.fotos.map((f) => f.id));
+  const idsVariacoesExistentes = new Set(produtoExistente.variacoes.map((v) => v.id));
+
+  const fotosParaManter = input.fotos.filter((f) => f.id && idsFotosExistentes.has(f.id));
+  const idsFotosParaManter = new Set(fotosParaManter.map((f) => f.id));
+  const fotosParaRemover = produtoExistente.fotos.filter((f) => !idsFotosParaManter.has(f.id));
+  const fotosParaCriar = input.fotos.filter((f) => !f.id || !idsFotosExistentes.has(f.id));
+
+  const variacoesParaManter = input.variacoes.filter((v) => v.id && idsVariacoesExistentes.has(v.id));
+  const idsVariacoesParaManter = new Set(variacoesParaManter.map((v) => v.id));
+  const variacoesParaRemover = produtoExistente.variacoes.filter(
+    (v) => !idsVariacoesParaManter.has(v.id),
+  );
+  const variacoesParaCriar = input.variacoes.filter((v) => !v.id || !idsVariacoesExistentes.has(v.id));
+
+  return ctx.prisma.$transaction(async (tx) => {
+    await tx.produto.update({
+      where: { id: input.id },
+      data: {
+        nome: input.nome,
+        descricao: input.descricao,
+        codigo: input.codigo,
+        precoNormal: input.precoNormal,
+        precoPromo: input.precoPromo,
+        pesoGramas: input.pesoGramas,
+        alturaCm: input.alturaCm,
+        larguraCm: input.larguraCm,
+        profundidadeCm: input.profundidadeCm,
+        status: input.status,
+        categoriaId: input.categoriaId,
+      },
+    });
+
+    if (fotosParaRemover.length > 0) {
+      await tx.fotoProduto.deleteMany({
+        where: { id: { in: fotosParaRemover.map((f) => f.id) }, produtoId: input.id },
+      });
+    }
+    for (const foto of fotosParaManter) {
+      await tx.fotoProduto.updateMany({
+        where: { id: foto.id, produtoId: input.id },
+        data: { url: foto.url, ordem: foto.ordem, tipo: foto.tipo },
+      });
+    }
+    if (fotosParaCriar.length > 0) {
+      await tx.fotoProduto.createMany({
+        data: fotosParaCriar.map(({ url, ordem, tipo }) => ({
+          produtoId: input.id,
+          url,
+          ordem,
+          tipo,
+        })),
+      });
+    }
+
+    const fotosAtuais = await tx.fotoProduto.findMany({ where: { produtoId: input.id } });
+    const fotoIdPorUrl = new Map(fotosAtuais.map((f) => [f.url, f.id]));
+
+    if (variacoesParaRemover.length > 0) {
+      await tx.variacaoProduto.deleteMany({
+        where: { id: { in: variacoesParaRemover.map((v) => v.id) }, produtoId: input.id },
+      });
+    }
+    const estoqueAnteriorPorId = new Map(produtoExistente.variacoes.map((v) => [v.id, v.estoque]));
+
+    for (const variacao of variacoesParaManter) {
+      await tx.variacaoProduto.updateMany({
+        where: { id: variacao.id, produtoId: input.id },
+        data: {
+          cor: variacao.cor,
+          tamanho: variacao.tamanho,
+          modelo: variacao.modelo,
+          estoque: variacao.estoque,
+          fotoId: variacao.fotoUrl ? fotoIdPorUrl.get(variacao.fotoUrl) : null,
+        },
+      });
+
+      // Mesma regra de cruzamento de limite da baixa por venda/movimento
+      // manual (pedidos.ts, estoque.ts): só notifica quando o lojista
+      // edita o estoque para um valor que cruza de acima do limite para
+      // em/abaixo dele, não a cada edição enquanto já está baixo.
+      const estoqueAntes = estoqueAnteriorPorId.get(variacao.id!);
+      if (
+        estoqueAntes != null &&
+        estoqueAntes > ESTOQUE_BAIXO_LIMITE &&
+        variacao.estoque <= ESTOQUE_BAIXO_LIMITE
+      ) {
+        const emailAdmin = await buscarEmailAdministradorLoja(tx, ctx.lojaId);
+        await notificarEstoqueBaixo(tx, {
+          lojaId: ctx.lojaId,
+          lojaNome: loja.nome,
+          lojistaEmail: emailAdmin,
+          produtoNome: input.nome,
+          variacaoLabel: variacaoLabel({
+            cor: variacao.cor ?? null,
+            tamanho: variacao.tamanho ?? null,
+            modelo: variacao.modelo ?? null,
+          }),
+          estoqueAtual: variacao.estoque,
+        });
+      }
+    }
+    if (variacoesParaCriar.length > 0) {
+      await tx.variacaoProduto.createMany({
+        data: variacoesParaCriar.map(({ cor, tamanho, modelo, estoque, fotoUrl }) => ({
+          produtoId: input.id,
+          cor,
+          tamanho,
+          modelo,
+          estoque,
+          fotoId: fotoUrl ? fotoIdPorUrl.get(fotoUrl) : undefined,
+        })),
+      });
+    }
+
+    return tx.produto.findUniqueOrThrow({
+      where: { id: input.id },
+      include: { fotos: true, variacoes: true },
+    });
+  });
 }
 
 export const produtosRouter = router({
@@ -112,220 +320,20 @@ export const produtosRouter = router({
     }),
 
   criar: storeProcedure
-    .input(z.object(produtoInputBase).superRefine(produtoInputRefinement))
-    .mutation(async ({ ctx, input }) => {
-      await validarCategoria(ctx.prisma, ctx.lojaId, input.categoriaId);
-
-      const loja = await ctx.prisma.loja.findUniqueOrThrow({
-        where: { id: ctx.lojaId },
-        select: { plano: { select: { limiteProdutos: true } } },
-      });
-      if (loja.plano?.limiteProdutos != null) {
-        const totalProdutos = await ctx.prisma.produto.count({ where: { lojaId: ctx.lojaId } });
-        if (totalProdutos >= loja.plano.limiteProdutos) {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: `Seu plano permite até ${loja.plano.limiteProdutos} produtos. Fale com o suporte para aumentar o limite.`,
-          });
-        }
-      }
-
-      return ctx.prisma.$transaction(async (tx) => {
-        const produto = await tx.produto.create({
-          data: {
-            lojaId: ctx.lojaId,
-            nome: input.nome,
-            descricao: input.descricao,
-            codigo: input.codigo,
-            precoNormal: input.precoNormal,
-            precoPromo: input.precoPromo,
-            pesoGramas: input.pesoGramas,
-            alturaCm: input.alturaCm,
-            larguraCm: input.larguraCm,
-            profundidadeCm: input.profundidadeCm,
-            status: input.status,
-            categoriaId: input.categoriaId,
-            fotos: { create: input.fotos.map(({ url, ordem, tipo }) => ({ url, ordem, tipo })) },
-          },
-          include: { fotos: true },
-        });
-
-        const fotoIdPorUrl = new Map(produto.fotos.map((f) => [f.url, f.id]));
-
-        await tx.variacaoProduto.createMany({
-          data: input.variacoes.map(({ cor, tamanho, modelo, estoque, fotoUrl }) => ({
-            produtoId: produto.id,
-            cor,
-            tamanho,
-            modelo,
-            estoque,
-            fotoId: fotoUrl ? fotoIdPorUrl.get(fotoUrl) : undefined,
-          })),
-        });
-
-        return tx.produto.findUniqueOrThrow({
-          where: { id: produto.id },
-          include: { fotos: true, variacoes: true },
-        });
-      });
-    }),
+    .input(produtoCriarSchema)
+    .mutation(({ ctx, input }) =>
+      executarComAprovacao(ctx, "PRODUTO_CRIAR", `Novo produto: ${input.nome}`, input, () =>
+        executarProdutoCriar(ctx, input),
+      ),
+    ),
 
   atualizar: storeProcedure
-    .input(
-      z
-        .object({
-          id: z.string(),
-          ...produtoInputBase,
-        })
-        .superRefine(produtoInputRefinement),
-    )
-    .mutation(async ({ ctx, input }) => {
-      const produtoExistente = await ctx.prisma.produto.findFirst({
-        where: { id: input.id, lojaId: ctx.lojaId },
-        include: { fotos: true, variacoes: true },
-      });
-      if (!produtoExistente) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Produto não encontrado." });
-      }
-      const loja = await ctx.prisma.loja.findUniqueOrThrow({ where: { id: ctx.lojaId } });
-
-      await validarCategoria(ctx.prisma, ctx.lojaId, input.categoriaId);
-
-      // IDs de fotos/variações existentes DESTE produto (já escopado por lojaId
-      // via produtoExistente). Qualquer id enviado pelo client que não esteja
-      // nesses conjuntos é tratado como "criar novo" em vez de "atualizar",
-      // evitando que um id de outra loja/produto seja usado para sobrescrever
-      // dados que não pertencem a este tenant (IDOR entre tenants).
-      const idsFotosExistentes = new Set(produtoExistente.fotos.map((f) => f.id));
-      const idsVariacoesExistentes = new Set(produtoExistente.variacoes.map((v) => v.id));
-
-      const fotosParaManter = input.fotos.filter((f) => f.id && idsFotosExistentes.has(f.id));
-      const idsFotosParaManter = new Set(fotosParaManter.map((f) => f.id));
-      const fotosParaRemover = produtoExistente.fotos.filter(
-        (f) => !idsFotosParaManter.has(f.id),
-      );
-      const fotosParaCriar = input.fotos.filter(
-        (f) => !f.id || !idsFotosExistentes.has(f.id),
-      );
-
-      const variacoesParaManter = input.variacoes.filter(
-        (v) => v.id && idsVariacoesExistentes.has(v.id),
-      );
-      const idsVariacoesParaManter = new Set(variacoesParaManter.map((v) => v.id));
-      const variacoesParaRemover = produtoExistente.variacoes.filter(
-        (v) => !idsVariacoesParaManter.has(v.id),
-      );
-      const variacoesParaCriar = input.variacoes.filter(
-        (v) => !v.id || !idsVariacoesExistentes.has(v.id),
-      );
-
-      return ctx.prisma.$transaction(async (tx) => {
-        await tx.produto.update({
-          where: { id: input.id },
-          data: {
-            nome: input.nome,
-            descricao: input.descricao,
-            codigo: input.codigo,
-            precoNormal: input.precoNormal,
-            precoPromo: input.precoPromo,
-            pesoGramas: input.pesoGramas,
-            alturaCm: input.alturaCm,
-            larguraCm: input.larguraCm,
-            profundidadeCm: input.profundidadeCm,
-            status: input.status,
-            categoriaId: input.categoriaId,
-          },
-        });
-
-        if (fotosParaRemover.length > 0) {
-          await tx.fotoProduto.deleteMany({
-            where: { id: { in: fotosParaRemover.map((f) => f.id) }, produtoId: input.id },
-          });
-        }
-        for (const foto of fotosParaManter) {
-          await tx.fotoProduto.updateMany({
-            where: { id: foto.id, produtoId: input.id },
-            data: { url: foto.url, ordem: foto.ordem, tipo: foto.tipo },
-          });
-        }
-        if (fotosParaCriar.length > 0) {
-          await tx.fotoProduto.createMany({
-            data: fotosParaCriar.map(({ url, ordem, tipo }) => ({
-              produtoId: input.id,
-              url,
-              ordem,
-              tipo,
-            })),
-          });
-        }
-
-        const fotosAtuais = await tx.fotoProduto.findMany({ where: { produtoId: input.id } });
-        const fotoIdPorUrl = new Map(fotosAtuais.map((f) => [f.url, f.id]));
-
-        if (variacoesParaRemover.length > 0) {
-          await tx.variacaoProduto.deleteMany({
-            where: { id: { in: variacoesParaRemover.map((v) => v.id) }, produtoId: input.id },
-          });
-        }
-        const estoqueAnteriorPorId = new Map(produtoExistente.variacoes.map((v) => [v.id, v.estoque]));
-
-        for (const variacao of variacoesParaManter) {
-          await tx.variacaoProduto.updateMany({
-            where: { id: variacao.id, produtoId: input.id },
-            data: {
-              cor: variacao.cor,
-              tamanho: variacao.tamanho,
-              modelo: variacao.modelo,
-              estoque: variacao.estoque,
-              fotoId: variacao.fotoUrl ? fotoIdPorUrl.get(variacao.fotoUrl) : null,
-            },
-          });
-
-          // Mesma regra de cruzamento de limite da baixa por venda/movimento
-          // manual (pedidos.ts, estoque.ts): só notifica quando o lojista
-          // edita o estoque para um valor que cruza de acima do limite para
-          // em/abaixo dele, não a cada edição enquanto já está baixo.
-          const estoqueAntes = estoqueAnteriorPorId.get(variacao.id!);
-          if (
-            estoqueAntes != null &&
-            estoqueAntes > ESTOQUE_BAIXO_LIMITE &&
-            variacao.estoque <= ESTOQUE_BAIXO_LIMITE
-          ) {
-            const emailAdmin = await buscarEmailAdministradorLoja(tx, ctx.lojaId);
-            await notificarEstoqueBaixo(tx, {
-              lojaId: ctx.lojaId,
-              lojaNome: loja.nome,
-              lojistaEmail: emailAdmin,
-              produtoNome: input.nome,
-              variacaoLabel: variacaoLabel({
-                cor: variacao.cor ?? null,
-                tamanho: variacao.tamanho ?? null,
-                modelo: variacao.modelo ?? null,
-              }),
-              estoqueAtual: variacao.estoque,
-            });
-          }
-        }
-        if (variacoesParaCriar.length > 0) {
-          await tx.variacaoProduto.createMany({
-            data: variacoesParaCriar.map(({ cor, tamanho, modelo, estoque, fotoUrl }) => ({
-              produtoId: input.id,
-              cor,
-              tamanho,
-              modelo,
-              estoque,
-              fotoId: fotoUrl ? fotoIdPorUrl.get(fotoUrl) : undefined,
-            })),
-          });
-        }
-
-        return tx.produto.findUniqueOrThrow({
-          where: { id: input.id },
-          include: { fotos: true, variacoes: true },
-        });
-      });
-    }),
-
+    .input(produtoAtualizarSchema)
+    .mutation(({ ctx, input }) =>
+      executarComAprovacao(ctx, "PRODUTO_ATUALIZAR", `Editar produto: ${input.nome}`, input, () =>
+        executarProdutoAtualizar(ctx, input),
+      ),
+    ),
   remover: gestorProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {

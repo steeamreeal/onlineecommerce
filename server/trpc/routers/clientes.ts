@@ -1,6 +1,14 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, storeProcedure } from "../trpc";
+import type { Prisma } from "@prisma/client";
+import { router, storeProcedure, roleProcedure } from "../trpc";
+import { executarComAprovacao } from "../aprovacao";
+
+// Lista/detalhe de clientes (com total gasto) é dado sensível — só Dono e
+// Gerente. Exportar/importar em massa é ainda mais sensível (leva dado da
+// base inteira pra fora / altera em massa) — restrito só ao Dono.
+const clientesProcedure = roleProcedure(["DONO", "GERENTE"]);
+const donoProcedure = roleProcedure(["DONO"]);
 
 const enderecoSchema = z.object({
   id: z.string().optional(),
@@ -23,8 +31,174 @@ const clienteInputBase = {
   ultimaCompraAnterior: z.coerce.date().optional(),
 };
 
+export const clienteCriarSchema = z.object(clienteInputBase);
+export const clienteAtualizarSchema = z.object({ id: z.string(), ...clienteInputBase });
+export const clienteRemoverSchema = z.object({ id: z.string() });
+
+export async function executarClienteCriar(
+  ctx: { prisma: Prisma.TransactionClient | import("@prisma/client").PrismaClient; lojaId: string },
+  input: {
+    nome: string;
+    telefone?: string;
+    email?: string;
+    documento?: string;
+    enderecos: {
+      id?: string;
+      rua: string;
+      numero?: string;
+      bairro?: string;
+      cidade: string;
+      estado: string;
+      cep: string;
+      principal: boolean;
+    }[];
+    totalGastoAnterior?: number;
+    ultimaCompraAnterior?: Date;
+  },
+) {
+  return ctx.prisma.cliente.create({
+    data: {
+      lojaId: ctx.lojaId,
+      nome: input.nome,
+      telefone: input.telefone,
+      email: input.email,
+      documento: input.documento,
+      totalGastoAnterior: input.totalGastoAnterior,
+      ultimaCompraAnterior: input.ultimaCompraAnterior,
+      enderecos: {
+        create: input.enderecos.map(({ rua, numero, bairro, cidade, estado, cep, principal }) => ({
+          rua,
+          numero,
+          bairro,
+          cidade,
+          estado,
+          cep,
+          principal,
+        })),
+      },
+    },
+    include: { enderecos: true },
+  });
+}
+
+export async function executarClienteAtualizar(
+  ctx: { prisma: import("@prisma/client").PrismaClient; lojaId: string },
+  input: {
+    id: string;
+    nome: string;
+    telefone?: string;
+    email?: string;
+    documento?: string;
+    enderecos: {
+      id?: string;
+      rua: string;
+      numero?: string;
+      bairro?: string;
+      cidade: string;
+      estado: string;
+      cep: string;
+      principal: boolean;
+    }[];
+    totalGastoAnterior?: number;
+    ultimaCompraAnterior?: Date;
+  },
+) {
+  const clienteExistente = await ctx.prisma.cliente.findFirst({
+    where: { id: input.id, lojaId: ctx.lojaId },
+    include: { enderecos: true },
+  });
+  if (!clienteExistente) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Cliente não encontrado." });
+  }
+
+  const idsEnderecosExistentes = new Set(clienteExistente.enderecos.map((e) => e.id));
+  const enderecosParaManter = input.enderecos.filter(
+    (e) => e.id && idsEnderecosExistentes.has(e.id),
+  );
+  const idsEnderecosParaManter = new Set(enderecosParaManter.map((e) => e.id));
+  const enderecosParaRemover = clienteExistente.enderecos.filter(
+    (e) => !idsEnderecosParaManter.has(e.id),
+  );
+  const enderecosParaCriar = input.enderecos.filter(
+    (e) => !e.id || !idsEnderecosExistentes.has(e.id),
+  );
+
+  return ctx.prisma.$transaction(async (tx) => {
+    await tx.cliente.update({
+      where: { id: input.id },
+      data: {
+        nome: input.nome,
+        telefone: input.telefone,
+        email: input.email,
+        documento: input.documento,
+        totalGastoAnterior: input.totalGastoAnterior,
+        ultimaCompraAnterior: input.ultimaCompraAnterior,
+      },
+    });
+
+    if (enderecosParaRemover.length > 0) {
+      await tx.enderecoCliente.deleteMany({
+        where: { id: { in: enderecosParaRemover.map((e) => e.id) }, clienteId: input.id },
+      });
+    }
+    for (const endereco of enderecosParaManter) {
+      await tx.enderecoCliente.updateMany({
+        where: { id: endereco.id, clienteId: input.id },
+        data: {
+          rua: endereco.rua,
+          numero: endereco.numero,
+          bairro: endereco.bairro,
+          cidade: endereco.cidade,
+          estado: endereco.estado,
+          cep: endereco.cep,
+          principal: endereco.principal,
+        },
+      });
+    }
+    if (enderecosParaCriar.length > 0) {
+      await tx.enderecoCliente.createMany({
+        data: enderecosParaCriar.map(({ rua, numero, bairro, cidade, estado, cep, principal }) => ({
+          clienteId: input.id,
+          rua,
+          numero,
+          bairro,
+          cidade,
+          estado,
+          cep,
+          principal,
+        })),
+      });
+    }
+
+    return tx.cliente.findUniqueOrThrow({
+      where: { id: input.id },
+      include: { enderecos: true },
+    });
+  });
+}
+
+export async function executarClienteRemover(
+  ctx: { prisma: import("@prisma/client").PrismaClient; lojaId: string },
+  input: { id: string },
+) {
+  const cliente = await ctx.prisma.cliente.findFirst({
+    where: { id: input.id, lojaId: ctx.lojaId },
+  });
+  if (!cliente) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Cliente não encontrado." });
+  }
+  const pedidosDoCliente = await ctx.prisma.pedido.count({ where: { clienteId: input.id } });
+  if (pedidosDoCliente > 0) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Não é possível remover um cliente com pedidos no histórico.",
+    });
+  }
+  return ctx.prisma.cliente.delete({ where: { id: input.id } });
+}
+
 export const clientesRouter = router({
-  listar: storeProcedure
+  listar: clientesProcedure
     .input(z.object({ busca: z.string().optional() }).optional())
     .query(({ ctx, input }) => {
       const termo = input?.busca?.trim();
@@ -49,7 +223,7 @@ export const clientesRouter = router({
   // Traz todos os clientes com totalGasto/ultimaCompra já calculados, para
   // exportação em CSV — evita repetir a query N+1 que resumoCompras faz
   // por cliente (chamada uma vez por linha na tabela do painel).
-  exportar: storeProcedure.query(async ({ ctx }) => {
+  exportar: donoProcedure.query(async ({ ctx }) => {
     const clientes = await ctx.prisma.cliente.findMany({
       where: { lojaId: ctx.lojaId },
       include: {
@@ -83,7 +257,7 @@ export const clientesRouter = router({
     });
   }),
 
-  buscarPorId: storeProcedure
+  buscarPorId: clientesProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
       const cliente = await ctx.prisma.cliente.findFirst({
@@ -104,7 +278,7 @@ export const clientesRouter = router({
   // ultimaCompra somam/comparam com o histórico anterior ao site (informado
   // manualmente pelo lojista), mas ticketMedio considera só pedidos reais —
   // não temos a contagem de compras anteriores, só o valor agregado.
-  resumoCompras: storeProcedure
+  resumoCompras: clientesProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
       const cliente = await ctx.prisma.cliente.findFirst({
@@ -132,118 +306,26 @@ export const clientesRouter = router({
     }),
 
   criar: storeProcedure
-    .input(z.object(clienteInputBase))
-    .mutation(({ ctx, input }) => {
-      return ctx.prisma.cliente.create({
-        data: {
-          lojaId: ctx.lojaId,
-          nome: input.nome,
-          telefone: input.telefone,
-          email: input.email,
-          documento: input.documento,
-          totalGastoAnterior: input.totalGastoAnterior,
-          ultimaCompraAnterior: input.ultimaCompraAnterior,
-          enderecos: {
-            create: input.enderecos.map(({ rua, numero, bairro, cidade, estado, cep, principal }) => ({
-              rua,
-              numero,
-              bairro,
-              cidade,
-              estado,
-              cep,
-              principal,
-            })),
-          },
-        },
-        include: { enderecos: true },
-      });
-    }),
+    .input(clienteCriarSchema)
+    .mutation(({ ctx, input }) =>
+      executarComAprovacao(ctx, "CLIENTE_CRIAR", `Novo cliente: ${input.nome}`, input, () =>
+        executarClienteCriar(ctx, input),
+      ),
+    ),
 
   atualizar: storeProcedure
-    .input(z.object({ id: z.string(), ...clienteInputBase }))
-    .mutation(async ({ ctx, input }) => {
-      const clienteExistente = await ctx.prisma.cliente.findFirst({
-        where: { id: input.id, lojaId: ctx.lojaId },
-        include: { enderecos: true },
-      });
-      if (!clienteExistente) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Cliente não encontrado." });
-      }
-
-      // Mesmo cuidado de produtos.ts: só ids que já pertencem a este cliente
-      // (logo, a esta loja) podem ser atualizados; qualquer outro id vira
-      // criação, evitando IDOR entre tenants.
-      const idsEnderecosExistentes = new Set(clienteExistente.enderecos.map((e) => e.id));
-      const enderecosParaManter = input.enderecos.filter(
-        (e) => e.id && idsEnderecosExistentes.has(e.id),
-      );
-      const idsEnderecosParaManter = new Set(enderecosParaManter.map((e) => e.id));
-      const enderecosParaRemover = clienteExistente.enderecos.filter(
-        (e) => !idsEnderecosParaManter.has(e.id),
-      );
-      const enderecosParaCriar = input.enderecos.filter(
-        (e) => !e.id || !idsEnderecosExistentes.has(e.id),
-      );
-
-      return ctx.prisma.$transaction(async (tx) => {
-        await tx.cliente.update({
-          where: { id: input.id },
-          data: {
-            nome: input.nome,
-            telefone: input.telefone,
-            email: input.email,
-            documento: input.documento,
-            totalGastoAnterior: input.totalGastoAnterior,
-            ultimaCompraAnterior: input.ultimaCompraAnterior,
-          },
-        });
-
-        if (enderecosParaRemover.length > 0) {
-          await tx.enderecoCliente.deleteMany({
-            where: { id: { in: enderecosParaRemover.map((e) => e.id) }, clienteId: input.id },
-          });
-        }
-        for (const endereco of enderecosParaManter) {
-          await tx.enderecoCliente.updateMany({
-            where: { id: endereco.id, clienteId: input.id },
-            data: {
-              rua: endereco.rua,
-              numero: endereco.numero,
-              bairro: endereco.bairro,
-              cidade: endereco.cidade,
-              estado: endereco.estado,
-              cep: endereco.cep,
-              principal: endereco.principal,
-            },
-          });
-        }
-        if (enderecosParaCriar.length > 0) {
-          await tx.enderecoCliente.createMany({
-            data: enderecosParaCriar.map(({ rua, numero, bairro, cidade, estado, cep, principal }) => ({
-              clienteId: input.id,
-              rua,
-              numero,
-              bairro,
-              cidade,
-              estado,
-              cep,
-              principal,
-            })),
-          });
-        }
-
-        return tx.cliente.findUniqueOrThrow({
-          where: { id: input.id },
-          include: { enderecos: true },
-        });
-      });
-    }),
+    .input(clienteAtualizarSchema)
+    .mutation(({ ctx, input }) =>
+      executarComAprovacao(ctx, "CLIENTE_ATUALIZAR", `Editar cliente: ${input.nome}`, input, () =>
+        executarClienteAtualizar(ctx, input),
+      ),
+    ),
 
   // Importação em massa (CSV) — pula clientes cujo telefone ou email já
   // existir na loja, para não duplicar cadastro em reimportações. Não
   // aceita endereços (fora de escopo do CSV); quem precisar de endereço
   // completa depois manualmente.
-  importarVarios: storeProcedure
+  importarVarios: donoProcedure
     .input(
       z.object({
         clientes: z
@@ -302,16 +384,9 @@ export const clientesRouter = router({
       const cliente = await ctx.prisma.cliente.findFirst({
         where: { id: input.id, lojaId: ctx.lojaId },
       });
-      if (!cliente) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Cliente não encontrado." });
-      }
-      const pedidosDoCliente = await ctx.prisma.pedido.count({ where: { clienteId: input.id } });
-      if (pedidosDoCliente > 0) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Não é possível remover um cliente com pedidos no histórico.",
-        });
-      }
-      return ctx.prisma.cliente.delete({ where: { id: input.id } });
+      const resumo = `Remover cliente: ${cliente?.nome ?? input.id}`;
+      return executarComAprovacao(ctx, "CLIENTE_REMOVER", resumo, input, () =>
+        executarClienteRemover(ctx, input),
+      );
     }),
 });
