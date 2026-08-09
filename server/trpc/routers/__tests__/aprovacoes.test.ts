@@ -169,6 +169,130 @@ describe("aprovacoesRouter.rejeitar", () => {
   });
 });
 
+describe("aprovacoesRouter.aprovar — ACESSO_EDITAR_TEMA", () => {
+  it("DONO aprova: concede podeEditarTema pro solicitante em vez de reexecutar mutation", async () => {
+    const updateMany = vi.fn().mockResolvedValue({ count: 1 });
+    const client = criarPrismaMock({
+      solicitacao: {
+        findFirst: vi.fn().mockResolvedValue(
+          criarSolicitacaoPendente({
+            tipo: "ACESSO_EDITAR_TEMA",
+            resumo: "Pedido de acesso para editar o tema/aparência do site",
+            payload: {},
+            solicitanteId: "administrador-1",
+          }),
+        ),
+        update: vi.fn().mockResolvedValue({ status: "APROVADA" }),
+      },
+      usuarioLoja: { updateMany },
+    });
+    const caller = criarCaller(client, "DONO");
+
+    const resultado = await caller.aprovar({ id: "solicitacao-1" });
+
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { usuarioId: "administrador-1", lojaId: LOJA_ID },
+      data: { podeEditarTema: true },
+    });
+    expect((resultado as { status: string }).status).toBe("APROVADA");
+  });
+});
+
+describe("aprovacoesRouter.solicitarAcessoTema", () => {
+  it("ADMINISTRADOR sem acesso e sem pedido pendente consegue solicitar", async () => {
+    const solicitacaoCreate = vi.fn().mockResolvedValue({ id: "solicitacao-nova" });
+    const client = criarPrismaMock({
+      usuarioLoja: { findFirst: vi.fn().mockResolvedValue(null) },
+      solicitacao: {
+        findFirst: vi.fn().mockResolvedValue(null),
+        create: solicitacaoCreate,
+      },
+    });
+    const caller = criarCaller(client, "ADMINISTRADOR");
+
+    await caller.solicitarAcessoTema();
+
+    expect(solicitacaoCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ tipo: "ACESSO_EDITAR_TEMA", status: "PENDENTE" }),
+      }),
+    );
+  });
+
+  it("GERENTE também pode solicitar", async () => {
+    const client = criarPrismaMock({
+      usuarioLoja: { findFirst: vi.fn().mockResolvedValue(null) },
+      solicitacao: { findFirst: vi.fn().mockResolvedValue(null), create: vi.fn().mockResolvedValue({}) },
+    });
+    const caller = criarCaller(client, "GERENTE");
+    await expect(caller.solicitarAcessoTema()).resolves.toBeDefined();
+  });
+
+  it("VENDEDOR não pode solicitar (FORBIDDEN)", async () => {
+    const client = criarPrismaMock();
+    const caller = criarCaller(client, "VENDEDOR");
+    await expect(caller.solicitarAcessoTema()).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("já tem acesso: BAD_REQUEST, não cria solicitação de novo", async () => {
+    const solicitacaoCreate = vi.fn();
+    const client = criarPrismaMock({
+      usuarioLoja: { findFirst: vi.fn().mockResolvedValue({ podeEditarTema: true }) },
+      solicitacao: { create: solicitacaoCreate },
+    });
+    const caller = criarCaller(client, "ADMINISTRADOR");
+
+    await expect(caller.solicitarAcessoTema()).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(solicitacaoCreate).not.toHaveBeenCalled();
+  });
+
+  it("já tem pedido pendente: BAD_REQUEST, não duplica", async () => {
+    const solicitacaoCreate = vi.fn();
+    const client = criarPrismaMock({
+      usuarioLoja: { findFirst: vi.fn().mockResolvedValue(null) },
+      solicitacao: {
+        findFirst: vi.fn().mockResolvedValue(criarSolicitacaoPendente({ tipo: "ACESSO_EDITAR_TEMA" })),
+        create: solicitacaoCreate,
+      },
+    });
+    const caller = criarCaller(client, "ADMINISTRADOR");
+
+    await expect(caller.solicitarAcessoTema()).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(solicitacaoCreate).not.toHaveBeenCalled();
+  });
+});
+
+describe("aprovacoesRouter.revogarAcessoTema", () => {
+  it("DONO revoga o acesso de um usuário", async () => {
+    const updateMany = vi.fn().mockResolvedValue({ count: 1 });
+    const client = criarPrismaMock({ usuarioLoja: { updateMany } });
+    const caller = criarCaller(client, "DONO");
+
+    await caller.revogarAcessoTema({ usuarioId: "administrador-1" });
+
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { usuarioId: "administrador-1", lojaId: LOJA_ID },
+      data: { podeEditarTema: false },
+    });
+  });
+
+  it("GERENTE não pode revogar (só o Dono)", async () => {
+    const client = criarPrismaMock();
+    const caller = criarCaller(client, "GERENTE");
+    await expect(caller.revogarAcessoTema({ usuarioId: "administrador-1" })).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+  });
+
+  it("usuário não encontrado na loja: NOT_FOUND", async () => {
+    const client = criarPrismaMock({ usuarioLoja: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) } });
+    const caller = criarCaller(client, "DONO");
+    await expect(caller.revogarAcessoTema({ usuarioId: "id-que-nao-existe" })).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
+  });
+});
+
 describe("aprovacoesRouter.minhasSolicitacoes", () => {
   it("qualquer papel autenticado consegue ver as próprias solicitações", async () => {
     const client = criarPrismaMock({

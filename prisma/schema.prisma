@@ -161,6 +161,14 @@ model UsuarioLoja {
   loja      Loja         @relation(fields: [lojaId], references: [id], onDelete: Cascade)
   papel     PapelUsuario
 
+  // Só tem efeito pra ADMINISTRADOR/GERENTE (Dono sempre pode editar,
+  // independente disso) — concedido pelo Dono ao aprovar uma Solicitacao do
+  // tipo ACESSO_EDITAR_TEMA (server/trpc/routers/aprovacoes.ts). Controla o
+  // editor de tema/aparência do site (cores, banners, seções), não outras
+  // configurações da loja (identidade, domínio próprio continuam abertas a
+  // ADMINISTRADOR sem pedir nada, via roleProcedure normal).
+  podeEditarTema Boolean @default(false)
+
   createdAt DateTime @default(now())
 
   @@unique([usuarioId, lojaId])
@@ -466,6 +474,10 @@ enum TipoSolicitacao {
   PEDIDO_CRIAR
   PEDIDO_ATUALIZAR_STATUS
   PEDIDO_ATUALIZAR_RASTREIO
+  // Diferente dos demais: não é uma mutation replayable com payload — ao
+  // aprovar, concede UsuarioLoja.podeEditarTema para o solicitante (ver
+  // aprovacoes.ts), não repete nenhuma ação.
+  ACESSO_EDITAR_TEMA
 }
 
 // Toda mutation sensível feita por Vendedor/Estoquista/Separador vira um

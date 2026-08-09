@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import type { TipoSolicitacao } from "@prisma/client";
+import type { PrismaClient, TipoSolicitacao } from "@prisma/client";
 import { router, storeProcedure, roleProcedure } from "../trpc";
 import {
   clienteCriarSchema,
@@ -50,11 +50,14 @@ const aprovadorProcedure = roleProcedure(["DONO", "GERENTE"]);
 // da mutation original antes de reexecutar, e a execução real checa de novo
 // as regras de negócio (estoque, status do pedido etc.), já que o estado
 // pode ter mudado entre pedir e aprovar.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- tabela heterogênea: cada entrada tem seu próprio tipo de input (garantido em runtime pelo `schema` correspondente), não dá pra tipar em comum sem apagar a variância dos handlers reais.
+type ExecutorGenerico = (ctx: { prisma: PrismaClient; lojaId: string }, input: any) => Promise<unknown>;
+
 const EXECUTORES: Record<
   TipoSolicitacao,
   {
     schema: z.ZodTypeAny;
-    executar: (ctx: { prisma: any; lojaId: string }, input: any) => Promise<unknown>;
+    executar: ExecutorGenerico;
   }
 > = {
   CLIENTE_CRIAR: { schema: clienteCriarSchema, executar: executarClienteCriar },
@@ -73,6 +76,17 @@ const EXECUTORES: Record<
   PEDIDO_ATUALIZAR_RASTREIO: {
     schema: pedidoAtualizarRastreioSchema,
     executar: executarPedidoAtualizarRastreio,
+  },
+  // Nunca passa por aqui de fato — `aprovar` trata ACESSO_EDITAR_TEMA num
+  // branch especial antes de consultar EXECUTORES, porque aprovar essa
+  // solicitação não repete uma mutation, concede uma permissão
+  // (UsuarioLoja.podeEditarTema). Entrada só existe pra satisfazer o
+  // Record<TipoSolicitacao, ...> (TS exige todas as chaves do enum).
+  ACESSO_EDITAR_TEMA: {
+    schema: z.object({}),
+    executar: async () => {
+      throw new Error("ACESSO_EDITAR_TEMA não deveria chegar ao dispatch genérico.");
+    },
   },
 };
 
@@ -111,6 +125,19 @@ export const aprovacoesRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "Esta solicitação já foi revisada." });
       }
 
+      // Concede acesso em vez de reexecutar uma mutation — não passa pelo
+      // dispatch genérico (payload não é "input de mutation", é só um pedido).
+      if (solicitacao.tipo === "ACESSO_EDITAR_TEMA") {
+        await ctx.prisma.usuarioLoja.updateMany({
+          where: { usuarioId: solicitacao.solicitanteId, lojaId: ctx.lojaId },
+          data: { podeEditarTema: true },
+        });
+        return ctx.prisma.solicitacao.update({
+          where: { id: solicitacao.id },
+          data: { status: "APROVADA", revisorId: ctx.usuario.id, revisadoEm: new Date() },
+        });
+      }
+
       const executor = EXECUTORES[solicitacao.tipo];
       const payload = executor.schema.parse(solicitacao.payload);
 
@@ -137,6 +164,55 @@ export const aprovacoesRouter = router({
         where: { id: solicitacao.id },
         data: { status: "APROVADA", revisorId: ctx.usuario.id, revisadoEm: new Date() },
       });
+    }),
+
+  // Administrador/Gerente pedem acesso pra editar o tema/aparência do site
+  // (Dono já pode direto, sem pedir nada — ver temaProcedure em trpc.ts).
+  solicitarAcessoTema: roleProcedure(["ADMINISTRADOR", "GERENTE"])
+    .mutation(async ({ ctx }) => {
+      const jaTemAcesso = await ctx.prisma.usuarioLoja.findFirst({
+        where: { usuarioId: ctx.usuario.id, lojaId: ctx.lojaId, podeEditarTema: true },
+      });
+      if (jaTemAcesso) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Você já tem acesso para editar o site." });
+      }
+      const jaPendente = await ctx.prisma.solicitacao.findFirst({
+        where: {
+          lojaId: ctx.lojaId,
+          solicitanteId: ctx.usuario.id,
+          tipo: "ACESSO_EDITAR_TEMA",
+          status: "PENDENTE",
+        },
+      });
+      if (jaPendente) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Você já tem um pedido de acesso pendente." });
+      }
+      return ctx.prisma.solicitacao.create({
+        data: {
+          lojaId: ctx.lojaId,
+          solicitanteId: ctx.usuario.id,
+          tipo: "ACESSO_EDITAR_TEMA",
+          resumo: "Pedido de acesso para editar o tema/aparência do site",
+          payload: {},
+          status: "PENDENTE",
+        },
+      });
+    }),
+
+  // Só o Dono revoga — tirar o acesso de alguém não é uma decisão de quem
+  // já tem esse mesmo acesso (Administrador/Gerente com podeEditarTema
+  // continuam sem poder revogar uns dos outros).
+  revogarAcessoTema: roleProcedure(["DONO"])
+    .input(z.object({ usuarioId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const resultado = await ctx.prisma.usuarioLoja.updateMany({
+        where: { usuarioId: input.usuarioId, lojaId: ctx.lojaId },
+        data: { podeEditarTema: false },
+      });
+      if (resultado.count === 0) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Usuário não encontrado nesta loja." });
+      }
+      return { ok: true };
     }),
 
   rejeitar: aprovadorProcedure

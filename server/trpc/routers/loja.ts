@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, storeProcedure, roleProcedure } from "../trpc";
+import { router, storeProcedure, roleProcedure, temaProcedure } from "../trpc";
 import { temaConfigSchema, temaProdutoConfigSchema, configSelosSchema, extrairSelosSemente } from "@/lib/tema-loja";
 import {
   adicionarDominioNaVercel,
@@ -181,7 +181,7 @@ export const lojaRouter = router({
     }
   }),
 
-  atualizarPersonalizacao: lojaProcedure
+  atualizarPersonalizacao: temaProcedure
     .input(
       z.object({
         template: z.enum(["MINIMALISTA", "EDITORIAL", "VITRINE"]),
@@ -199,7 +199,7 @@ export const lojaRouter = router({
   // Sobrescreve o array inteiro a cada chamada (banners não é uma relação
   // Prisma separada, é Json) — sem diff por id, mais simples que o padrão
   // usado em produtos.fotos.
-  atualizarBanners: lojaProcedure
+  atualizarBanners: temaProcedure
     .input(
       z.object({
         banners: z
@@ -228,7 +228,7 @@ export const lojaRouter = router({
   // de atualizarBanners (Json puro, sem diff por id). O template continua
   // sendo trocado por atualizarPersonalizacao — temaConfig só guarda a
   // composição de seções e o estilo (cor/fonte), não qual template está ativo.
-  atualizarTema: lojaProcedure
+  atualizarTema: temaProcedure
     .input(temaConfigSchema)
     .mutation(async ({ ctx, input }) => {
       return ctx.prisma.loja.update({
@@ -241,7 +241,7 @@ export const lojaRouter = router({
   // Editor de tema da página de produto: mesmo padrão de atualizarTema
   // (Json puro, sobrescrito por inteiro), só que essa config vale para
   // TODOS os produtos da loja — não há personalização por produto individual.
-  atualizarTemaProduto: lojaProcedure
+  atualizarTemaProduto: temaProcedure
     .input(temaProdutoConfigSchema)
     .mutation(async ({ ctx, input }) => {
       return ctx.prisma.loja.update({
@@ -254,7 +254,7 @@ export const lojaRouter = router({
   // Conteúdo dos selos de confiança, compartilhado entre a seção SELOS
   // (home) e SELOS_PRODUTO (produto) — salvo por qualquer um dos dois
   // editores, ver docs/superpowers/specs/2026-08-08-selos-confianca-unificados-design.md.
-  atualizarSelos: lojaProcedure
+  atualizarSelos: temaProcedure
     .input(configSelosSchema)
     .mutation(async ({ ctx, input }) => {
       return ctx.prisma.loja.update({

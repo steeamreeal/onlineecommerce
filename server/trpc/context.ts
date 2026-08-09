@@ -46,6 +46,11 @@ export async function createContext({ req, resHeaders }: FetchCreateContextFnOpt
   let usuario: UsuarioContexto = null;
   let lojaId: string | null = null;
   let papel: PapelUsuario | null = null;
+  // Concedido pelo Dono (ver aprovacoes.ts, tipo ACESSO_EDITAR_TEMA) —
+  // Administrador/Gerente só editam o tema/aparência do site depois de
+  // pedir e o Dono aprovar; sem isso, mesmo esses papéis ficam de fora
+  // (server/trpc/trpc.ts:temaProcedure).
+  let podeEditarTema = false;
 
   if (supabaseUser) {
     const usuarioDb = await prisma.usuario.findUnique({
@@ -57,6 +62,7 @@ export async function createContext({ req, resHeaders }: FetchCreateContextFnOpt
       usuario = { id: usuarioDb.id, email: usuarioDb.email, papelAdmin: usuarioDb.papelAdmin };
       lojaId = usuarioDb.lojas[0]?.lojaId ?? null;
       papel = usuarioDb.lojas[0]?.papel ?? null;
+      podeEditarTema = usuarioDb.lojas[0]?.podeEditarTema ?? false;
     }
   }
 
@@ -65,6 +71,7 @@ export async function createContext({ req, resHeaders }: FetchCreateContextFnOpt
     usuario,
     lojaId,
     papel,
+    podeEditarTema,
     // Sessão crua do Supabase, disponível mesmo antes do Usuario existir no
     // Prisma (ex.: logo após o signUp, antes de sincronizarUsuario rodar).
     supabaseUser: supabaseUser

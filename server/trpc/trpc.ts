@@ -67,6 +67,24 @@ export function roleProcedure(papeisPermitidos: PapelUsuario[]) {
   });
 }
 
+// Editor de tema/aparência do site (cores, banners, seções da home/produto,
+// selos) — só o Dono edita por padrão. Administrador/Gerente só entram
+// depois de pedir e o Dono aprovar (ver server/trpc/routers/aprovacoes.ts,
+// tipo ACESSO_EDITAR_TEMA, e UsuarioLoja.podeEditarTema). Outras
+// configurações da loja (identidade, domínio próprio) continuam em
+// roleProcedure(["ADMINISTRADOR", "DONO"]) normal, sem pedir nada — essa
+// trava é só pra aparência pública do site.
+export const temaProcedure = storeProcedure.use(({ ctx, next }) => {
+  const podeEditar = ctx.papel === "DONO" || (ctx.papel != null && ["ADMINISTRADOR", "GERENTE"].includes(ctx.papel) && ctx.podeEditarTema);
+  if (!podeEditar) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Só o Dono pode editar o site. Peça acesso na tela de Aprovações.",
+    });
+  }
+  return next({ ctx });
+});
+
 // Qualquer usuário da plataforma (papelAdmin preenchido), para o painel
 // administrativo do SaaS (app/(admin)) — camada separada dos tenants.
 export const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
