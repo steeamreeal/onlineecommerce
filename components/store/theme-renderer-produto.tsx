@@ -10,6 +10,7 @@ import { useCartOpcional } from "@/components/store/cart-context";
 import { trpc } from "@/lib/trpc/client";
 import { cn } from "@/lib/utils";
 import { tamanhoIconeSeloEmPx, tamanhoFonteEmPx } from "@/lib/tema-loja";
+import { AnimatedNumberText } from "@/components/store/animated-number-text";
 import type { RouterOutputs } from "@/lib/trpc/types";
 import type { SecaoProdutoTema, IconeSelo, AlinhamentoTexto, ConfigSelos } from "@/lib/tema-loja";
 
@@ -200,6 +201,20 @@ function SecaoInfo({
       >
         {podeComprar ? config.textoBotao || "Adicionar ao carrinho" : config.textoBotaoEsgotado || "Produto esgotado"}
       </Button>
+
+      {/* Reforço de confiança fixo, perto do botão — diferente da seção SELOS
+          (configurável, geralmente mais abaixo na página), isso é sempre
+          mostrado, sem depender do lojista ter configurado selos. */}
+      <div className="text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
+        <span className="flex items-center gap-1.5">
+          <ShieldCheck className="size-3.5 shrink-0" />
+          Compra 100% segura
+        </span>
+        <span className="flex items-center gap-1.5">
+          <CreditCard className="size-3.5 shrink-0" />
+          Pix, cartão ou boleto
+        </span>
+      </div>
     </div>
   );
 }
@@ -242,11 +257,11 @@ function SecaoSelos({ config }: { config: ConfigSelos }) {
               className="text-sm font-semibold tracking-wide uppercase"
               style={{ color: config.corTitulo, fontSize: tamanhoTitulo }}
             >
-              {selo.titulo}
+              <AnimatedNumberText text={selo.titulo} />
             </span>
             {selo.descricao && (
               <span className="text-muted-foreground text-xs" style={{ color: config.corTexto }}>
-                {selo.descricao}
+                <AnimatedNumberText text={selo.descricao} />
               </span>
             )}
           </div>

@@ -4,6 +4,7 @@ import { ProductCard } from "@/components/store/product-card";
 import { ProductCarousel } from "@/components/store/product-carousel";
 import { BannerCarousel } from "@/components/store/banner-carousel";
 import { RevealOnScroll } from "@/components/store/reveal-on-scroll";
+import { AnimatedNumberText } from "@/components/store/animated-number-text";
 import { cn } from "@/lib/utils";
 import {
   FONTE_CSS_VAR,
@@ -339,26 +340,115 @@ function SecaoHero({
   );
 }
 
+// Mais baixo que o Hero (aspect-[3/1] no desktop) em todas as alturas — é
+// pra ser uma faixa promocional pontual entre seções, não outro banner
+// principal disputando atenção com o Hero.
+const alturaBannerSecundarioClasse: Record<"PEQUENA" | "MEDIA" | "GRANDE", string> = {
+  PEQUENA: "aspect-[16/9] md:aspect-[6/1]",
+  MEDIA: "aspect-[16/9] md:aspect-[4/1]",
+  GRANDE: "aspect-[4/5] md:aspect-[3/1]",
+};
+
+function SecaoBannerSecundario({
+  variante,
+  config,
+  slug,
+  viewport,
+}: {
+  variante: Variante;
+  config: Extract<SecaoTema, { tipo: "BANNER_SECUNDARIO" }>["config"];
+  slug: string;
+  viewport?: "DESKTOP" | "MOBILE";
+}) {
+  if (!config.banner) return null;
+
+  const banner = { ...config.banner, id: config.banner.id ?? "0" };
+  const classeAltura = alturaBannerSecundarioClasse[config.altura ?? "PEQUENA"];
+  const mostrarDesktop = viewport ? viewport === "DESKTOP" : true;
+  const mostrarMobile = viewport ? viewport === "MOBILE" : true;
+
+  return (
+    <section className={variante === "MINIMALISTA" ? "px-6" : undefined}>
+      <BannerCarousel
+        banners={[banner]}
+        className={cn(
+          "bg-muted relative flex items-end overflow-hidden",
+          variante === "MINIMALISTA" ? "rounded-md" : undefined,
+          classeAltura,
+        )}
+        viewport={viewport}
+        renderOverlay={(b) => (
+          <>
+            {b.link && (
+              <Link
+                href={b.link}
+                aria-label={b.titulo || "Ir para o link do banner"}
+                className="absolute inset-0"
+              />
+            )}
+            {mostrarDesktop && (
+              <ConteudoHero
+                {...propsConteudoHero(variante, slug, b)}
+                classeVisibilidade={viewport ? undefined : "hidden md:flex"}
+              />
+            )}
+            {mostrarMobile && (
+              <ConteudoHero
+                {...propsConteudoHero(variante, slug, resolverConteudoBannerMobile(b, b.mobile))}
+                classeVisibilidade={viewport ? undefined : "flex md:hidden"}
+              />
+            )}
+          </>
+        )}
+      />
+    </section>
+  );
+}
+
 const tamanhoMenuCategoriasClasse: Record<"PEQUENO" | "MEDIO" | "GRANDE", string> = {
   PEQUENO: "text-xs",
   MEDIO: "text-sm",
   GRANDE: "text-base",
 };
 
+const formatoMoeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+
+// Menor preço efetivo (promo, se houver) entre os produtos de cada
+// categoria — usado pelo "a partir de R$X" do menu de categorias. Calculado
+// no client a partir da mesma lista de produtos que já veio pra montar a
+// Coleção em destaque, sem precisar de uma query própria.
+function calcularPrecoMinimoPorCategoria(produtos: Produto[]): Map<string, number> {
+  const minimoPorCategoria = new Map<string, number>();
+  for (const produto of produtos) {
+    const categoriaId = produto.categoria?.id;
+    if (!categoriaId) continue;
+    const preco = Number(produto.precoPromo ?? produto.precoNormal);
+    const atual = minimoPorCategoria.get(categoriaId);
+    if (atual == null || preco < atual) minimoPorCategoria.set(categoriaId, preco);
+  }
+  return minimoPorCategoria;
+}
+
 function SecaoMenuCategorias({
   variante,
   config,
   slug,
   categorias,
+  destaques,
   viewport,
 }: {
   variante: Variante;
   config: Extract<SecaoTema, { tipo: "MENU_CATEGORIAS" }>["config"];
   slug: string;
   categorias: Categoria[];
+  destaques: Produto[];
   viewport?: "DESKTOP" | "MOBILE";
 }) {
   if (categorias.length === 0) return null;
+
+  const precoMinimoPorCategoria = config.mostrarPrecoApartirDe
+    ? calcularPrecoMinimoPorCategoria(destaques)
+    : null;
 
   const exibirEm = config.exibirEm ?? "AMBOS";
   // No preview do editor (viewport definido) a simulação de mobile é um
@@ -391,16 +481,27 @@ function SecaoMenuCategorias({
               : undefined,
         )}
       >
-        {categorias.map((categoria) => (
-          <Link
-            key={categoria.id}
-            href={`/loja/${slug}/produtos?categoria=${categoria.id}`}
-            className={categoriaLinkClassePorVariante[variante]}
-            style={config.cor ? { color: config.cor } : undefined}
-          >
-            {categoria.nome}
-          </Link>
-        ))}
+        {categorias.map((categoria) => {
+          const precoMinimo = precoMinimoPorCategoria?.get(categoria.id);
+          return (
+            <Link
+              key={categoria.id}
+              href={`/loja/${slug}/produtos?categoria=${categoria.id}`}
+              className={cn(
+                categoriaLinkClassePorVariante[variante],
+                precoMinimo != null && "flex flex-col items-center gap-0.5",
+              )}
+              style={config.cor ? { color: config.cor } : undefined}
+            >
+              {categoria.nome}
+              {precoMinimo != null && (
+                <span className="text-[0.7em] font-normal opacity-70">
+                  A partir de {formatoMoeda.format(precoMinimo)}
+                </span>
+              )}
+            </Link>
+          );
+        })}
       </div>
     </section>
   );
@@ -412,29 +513,52 @@ function SecaoColecaoDestaque({
   slug,
   destaques,
   viewport,
+  rankingMaisVendidos,
 }: {
   variante: Variante;
   config: Extract<SecaoTema, { tipo: "COLECAO_DESTAQUE" }>["config"];
   slug: string;
   destaques: Produto[];
   viewport?: "DESKTOP" | "MOBILE";
+  rankingMaisVendidos?: string[];
 }) {
+  const modo = config.modo ?? "MANUAL";
+
   let produtos = config.categoriaId
     ? destaques.filter((p) => p.categoria?.id === config.categoriaId)
     : destaques;
 
-  // Com categoria + seleção manual, usa exatamente os produtos escolhidos
-  // pelo lojista, na ordem escolhida — em vez do filtro automático acima.
-  // Produtos removidos/inativados desde a seleção somem sozinhos aqui
-  // (não estão mais em `destaques`), sem precisar de limpeza manual.
-  if (config.categoriaId && config.produtosSelecionados && config.produtosSelecionados.length > 0) {
+  if (modo === "MANUAL") {
+    // Com categoria + seleção manual, usa exatamente os produtos escolhidos
+    // pelo lojista, na ordem escolhida — em vez do filtro automático acima.
+    // Produtos removidos/inativados desde a seleção somem sozinhos aqui
+    // (não estão mais em `destaques`), sem precisar de limpeza manual.
+    if (config.categoriaId && config.produtosSelecionados && config.produtosSelecionados.length > 0) {
+      const porId = new Map(produtos.map((p) => [p.id, p]));
+      produtos = config.produtosSelecionados.map((id) => porId.get(id)).filter((p): p is Produto => Boolean(p));
+    }
+  } else if (modo === "LANCAMENTOS") {
+    produtos = [...produtos].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+  } else if (modo === "MAIS_VENDIDOS") {
+    const ranking = rankingMaisVendidos ?? [];
     const porId = new Map(produtos.map((p) => [p.id, p]));
-    produtos = config.produtosSelecionados.map((id) => porId.get(id)).filter((p): p is Produto => Boolean(p));
+    const ordenados = ranking.map((id) => porId.get(id)).filter((p): p is Produto => Boolean(p));
+    // Produtos sem nenhuma venda ainda (fora do ranking) completam a lista no
+    // final, na ordem normal — evita a seção ficar vazia numa loja nova.
+    const idsRankeados = new Set(ordenados.map((p) => p.id));
+    produtos = [...ordenados, ...produtos.filter((p) => !idsRankeados.has(p.id))];
   }
 
   if (config.quantidade) {
     produtos = produtos.slice(0, config.quantidade);
   }
+
+  // Selo "Mais vendido" no card — top 10 da loja inteira, não só desta
+  // seção, então mesmo uma seção MANUAL/LANCAMENTOS pode mostrar o selo em
+  // quem também está entre os mais vendidos.
+  const topVendidosIds = new Set((rankingMaisVendidos ?? []).slice(0, 10));
 
   const mostrarPreco = config.mostrarPreco ?? true;
   const variantLower = variante.toLowerCase() as "minimalista" | "editorial" | "vitrine";
@@ -474,16 +598,21 @@ function SecaoColecaoDestaque({
                   : undefined
               }
             >
-              {produtos.map((produto) => (
-                <ProductCard
-                  key={produto.id}
-                  produto={produto}
-                  slug={slug}
-                  variante={variantLower}
-                  mostrarPreco={mostrarPreco}
-                  corBotao={config.corBotao}
-                  corTextoBotao={config.corTextoBotao}
-                />
+              {produtos.map((produto, indice) => (
+                // Stagger: cada card entra um pouco depois do anterior, em vez
+                // de todos juntos — ciclo de 8 pra não acumular atraso enorme
+                // em grades grandes (o 9º card volta a ter o mesmo atraso do 1º).
+                <RevealOnScroll key={produto.id} delayMs={(indice % 8) * 60}>
+                  <ProductCard
+                    produto={produto}
+                    slug={slug}
+                    variante={variantLower}
+                    mostrarPreco={mostrarPreco}
+                    corBotao={config.corBotao}
+                    corTextoBotao={config.corTextoBotao}
+                    maisVendido={topVendidosIds.has(produto.id)}
+                  />
+                </RevealOnScroll>
               ))}
             </div>
           )}
@@ -497,6 +626,7 @@ function SecaoColecaoDestaque({
                 mostrarComprar={config.mostrarComprarCarrossel ?? true}
                 corBotao={config.corBotao}
                 corTextoBotao={config.corTextoBotao}
+                idsMaisVendidos={topVendidosIds}
               />
             </div>
           )}
@@ -576,11 +706,11 @@ function SecaoSelos({ config }: { config: ConfigSelos }) {
               className="text-sm font-semibold tracking-wide uppercase"
               style={{ color: config.corTitulo, fontSize: tamanhoTitulo }}
             >
-              {selo.titulo}
+              <AnimatedNumberText text={selo.titulo} />
             </span>
             {selo.descricao && (
               <span className="text-muted-foreground text-xs" style={{ color: config.corTexto }}>
-                {selo.descricao}
+                <AnimatedNumberText text={selo.descricao} />
               </span>
             )}
           </div>
@@ -605,6 +735,7 @@ export function ThemeRenderer({
   destaques,
   viewport,
   selosConfig,
+  rankingMaisVendidos,
 }: {
   secoes: SecaoTema[];
   template: Variante;
@@ -618,6 +749,11 @@ export function ThemeRenderer({
   // Conteúdo dos selos, compartilhado com a página de produto — a seção
   // SELOS só controla visibilidade/posição (ver Loja.selosConfig).
   selosConfig: ConfigSelos;
+  // IDs de Produto ordenados por quantidade vendida (ver
+  // lojaPublica.produtosMaisVendidos) — usado pelo modo MAIS_VENDIDOS da
+  // Coleção em destaque. Sem seção nesse modo na página, fica undefined e
+  // nenhuma query extra é feita (ver app/(public-store)/loja/[slug]/page.tsx).
+  rankingMaisVendidos?: string[];
 }) {
   return (
     <div className="flex flex-1 flex-col gap-12 pb-12">
@@ -643,6 +779,7 @@ export function ThemeRenderer({
                   config={secao.config}
                   slug={slug}
                   categorias={categorias}
+                  destaques={destaques}
                   viewport={viewport}
                 />
               </RevealOnScroll>
@@ -656,6 +793,7 @@ export function ThemeRenderer({
                   slug={slug}
                   destaques={destaques}
                   viewport={viewport}
+                  rankingMaisVendidos={rankingMaisVendidos}
                 />
               </RevealOnScroll>
             );
@@ -669,6 +807,17 @@ export function ThemeRenderer({
             return (
               <RevealOnScroll key={secao.id}>
                 <SecaoSelos config={selosConfig} />
+              </RevealOnScroll>
+            );
+          case "BANNER_SECUNDARIO":
+            return (
+              <RevealOnScroll key={secao.id}>
+                <SecaoBannerSecundario
+                  variante={template}
+                  config={secao.config}
+                  slug={slug}
+                  viewport={viewport}
+                />
               </RevealOnScroll>
             );
           default:

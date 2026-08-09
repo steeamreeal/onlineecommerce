@@ -36,6 +36,16 @@ function variacaoLabel(v: { cor?: string | null; tamanho?: string | null; modelo
   return [v.cor, v.tamanho, v.modelo].filter(Boolean).join(" / ") || "Padrão";
 }
 
+// Produto criado há até 30 dias — mesmo critério usado em qualquer lugar
+// que precise saber se um produto é "novidade" (badge do card, filtro de
+// lançamentos etc.), pra não divergir o significado de "novo" pela loja.
+const DIAS_PRODUTO_NOVO = 30;
+
+export function ehProdutoNovo(createdAt: Date | string): boolean {
+  const dias = (Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24);
+  return dias <= DIAS_PRODUTO_NOVO;
+}
+
 export function ProductCard({
   produto,
   slug,
@@ -44,6 +54,7 @@ export function ProductCard({
   expandido = false,
   corBotao,
   corTextoBotao,
+  maisVendido = false,
 }: {
   produto: Produto;
   slug: string;
@@ -56,6 +67,9 @@ export function ProductCard({
   // destaque) — sem valor, cai no padrão bg-foreground/text-background.
   corBotao?: string;
   corTextoBotao?: string;
+  // Calculado por quem renderiza a lista (tem o ranking de vendas) — o card
+  // em si não sabe se é mais vendido, só exibe o selo quando mandado.
+  maisVendido?: boolean;
 }) {
   // Opcional (não obrigatório) porque esse card também é renderizado no
   // preview do editor de tema, que roda sem CartProvider de propósito — lá
@@ -154,10 +168,22 @@ export function ProductCard({
               className="absolute inset-0 size-full object-cover opacity-0 transition-opacity duration-200 group-hover:opacity-100"
             />
           )}
-          {semEstoque && (
+          {semEstoque ? (
             <span className="bg-background/90 absolute top-2 left-2 rounded-full border px-2 py-0.5 text-xs font-medium">
               Esgotado
             </span>
+          ) : (
+            // Esgotado tem prioridade (é a informação mais importante pro
+            // cliente); entre os dois selos de destaque, "mais vendido" vem
+            // antes de "novidade" — prova social pesa mais na decisão de compra.
+            (maisVendido || ehProdutoNovo(produto.createdAt)) && (
+              <span
+                className="absolute top-2 left-2 rounded-full px-2 py-0.5 text-xs font-medium text-white"
+                style={{ backgroundColor: maisVendido ? "#b45309" : "var(--loja-primary)" }}
+              >
+                {maisVendido ? "Mais vendido" : "Novidade"}
+              </span>
+            )
           )}
         </div>
         <div className="flex flex-col gap-0.5">
