@@ -43,6 +43,9 @@ export function AprovacoesLista() {
       utils.aprovacoes.minhasSolicitacoes.invalidate();
     },
   });
+  const solicitarAcessoTema = trpc.aprovacoes.solicitarAcessoTema.useMutation({
+    onSuccess: () => utils.aprovacoes.minhasSolicitacoes.invalidate(),
+  });
 
   async function handleAprovar(id: string) {
     try {
@@ -67,6 +70,17 @@ export function AprovacoesLista() {
     }
   }
 
+  async function handleSolicitarAcessoTema() {
+    try {
+      await solicitarAcessoTema.mutateAsync();
+      toast.success("Pedido enviado ao Dono.");
+    } catch (error) {
+      const mensagem =
+        error instanceof Error && error.message ? error.message : "Não foi possível enviar o pedido.";
+      toast.error(mensagem);
+    }
+  }
+
   const mostrarFilaAprovacao = !pendentes.isError;
 
   return (
@@ -77,6 +91,26 @@ export function AprovacoesLista() {
           Mudanças feitas por Vendedor, Estoquista e Separador ficam pendentes aqui até um Dono ou
           Gerente aprovar.
         </p>
+      </div>
+
+      <div className="flex items-center justify-between gap-4 rounded-lg border p-4">
+        <div>
+          <div className="font-medium">Editor de tema (aparência do site)</div>
+          <p className="text-muted-foreground text-sm">
+            Só o Dono edita o tema por padrão. Administrador e Gerente podem pedir acesso — o Dono
+            aprova uma vez e a partir daí a edição fica liberada, sem precisar pedir de novo a cada
+            alteração.
+          </p>
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          className="shrink-0"
+          onClick={handleSolicitarAcessoTema}
+          disabled={solicitarAcessoTema.isPending}
+        >
+          Pedir acesso
+        </Button>
       </div>
 
       {mostrarFilaAprovacao && (

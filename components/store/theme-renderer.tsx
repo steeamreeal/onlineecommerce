@@ -28,7 +28,7 @@ const ICONE_POR_SELO: Record<IconeSelo, React.ComponentType<{ className?: string
 
 type Variante = "MINIMALISTA" | "EDITORIAL" | "VITRINE";
 type Categoria = RouterOutputs["lojaPublica"]["categorias"][number];
-type Produto = RouterOutputs["lojaPublica"]["produtos"][number];
+export type Produto = RouterOutputs["lojaPublica"]["produtos"][number];
 
 // Dados salvos antes do campo `alinhamento` existir não passam pelo default
 // do Zod (só a mutation de save valida) — sempre ler com fallback aqui.
@@ -417,7 +417,7 @@ const formatoMoeda = new Intl.NumberFormat("pt-BR", { style: "currency", currenc
 // categoria — usado pelo "a partir de R$X" do menu de categorias. Calculado
 // no client a partir da mesma lista de produtos que já veio pra montar a
 // Coleção em destaque, sem precisar de uma query própria.
-function calcularPrecoMinimoPorCategoria(produtos: Produto[]): Map<string, number> {
+export function calcularPrecoMinimoPorCategoria(produtos: Produto[]): Map<string, number> {
   const minimoPorCategoria = new Map<string, number>();
   for (const produto of produtos) {
     const categoriaId = produto.categoria?.id;
@@ -507,21 +507,19 @@ function SecaoMenuCategorias({
   );
 }
 
-function SecaoColecaoDestaque({
-  variante,
-  config,
-  slug,
-  destaques,
-  viewport,
-  rankingMaisVendidos,
-}: {
-  variante: Variante;
-  config: Extract<SecaoTema, { tipo: "COLECAO_DESTAQUE" }>["config"];
-  slug: string;
-  destaques: Produto[];
-  viewport?: "DESKTOP" | "MOBILE";
-  rankingMaisVendidos?: string[];
-}) {
+// Decide quais produtos aparecem numa seção Coleção em destaque e em que
+// ordem, a partir do modo escolhido pelo lojista — extraída do componente
+// pra ser testável sem precisar montar a árvore de componentes React.
+export function selecionarProdutosColecao(
+  destaques: Produto[],
+  config: Partial<
+    Pick<
+      Extract<SecaoTema, { tipo: "COLECAO_DESTAQUE" }>["config"],
+      "categoriaId" | "modo" | "produtosSelecionados" | "quantidade"
+    >
+  >,
+  rankingMaisVendidos?: string[],
+): Produto[] {
   const modo = config.modo ?? "MANUAL";
 
   let produtos = config.categoriaId
@@ -554,6 +552,26 @@ function SecaoColecaoDestaque({
   if (config.quantidade) {
     produtos = produtos.slice(0, config.quantidade);
   }
+
+  return produtos;
+}
+
+function SecaoColecaoDestaque({
+  variante,
+  config,
+  slug,
+  destaques,
+  viewport,
+  rankingMaisVendidos,
+}: {
+  variante: Variante;
+  config: Extract<SecaoTema, { tipo: "COLECAO_DESTAQUE" }>["config"];
+  slug: string;
+  destaques: Produto[];
+  viewport?: "DESKTOP" | "MOBILE";
+  rankingMaisVendidos?: string[];
+}) {
+  const produtos = selecionarProdutosColecao(destaques, config, rankingMaisVendidos);
 
   // Selo "Mais vendido" no card — top 10 da loja inteira, não só desta
   // seção, então mesmo uma seção MANUAL/LANCAMENTOS pode mostrar o selo em

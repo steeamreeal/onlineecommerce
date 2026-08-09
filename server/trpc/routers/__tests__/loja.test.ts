@@ -18,8 +18,19 @@ function criarPrismaMock(overrides: Record<string, unknown> = {}) {
   return mock as unknown as PrismaClient;
 }
 
-function criarCaller(client: PrismaClient, papel: "ADMINISTRADOR" | "VENDEDOR" | null = "ADMINISTRADOR") {
-  const ctx = { prisma: client, usuario: { id: "u1" }, lojaId: LOJA_ID, papel, supabaseUser: null } as never;
+function criarCaller(
+  client: PrismaClient,
+  papel: "DONO" | "ADMINISTRADOR" | "GERENTE" | "VENDEDOR" | null = "DONO",
+  podeEditarTema = false,
+) {
+  const ctx = {
+    prisma: client,
+    usuario: { id: "u1" },
+    lojaId: LOJA_ID,
+    papel,
+    podeEditarTema,
+    supabaseUser: null,
+  } as never;
   return lojaRouter.createCaller(ctx);
 }
 
@@ -87,6 +98,48 @@ describe("lojaRouter.atualizarPersonalizacao", () => {
     await expect(
       caller.atualizarPersonalizacao({ template: "MINIMALISTA", corPrimaria: "#c2703d" }),
     ).rejects.toThrow(TRPCError);
+  });
+
+  it("rejeita ADMINISTRADOR sem podeEditarTema (só Dono edita o tema por padrão)", async () => {
+    const client = criarPrismaMock();
+    const caller = criarCaller(client, "ADMINISTRADOR", false);
+
+    await expect(
+      caller.atualizarPersonalizacao({ template: "MINIMALISTA", corPrimaria: "#c2703d" }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("aceita ADMINISTRADOR com podeEditarTema concedido pelo Dono", async () => {
+    const update = vi.fn().mockResolvedValue({ template: "MINIMALISTA", corPrimaria: "#c2703d" });
+    const client = criarPrismaMock({
+      loja: { findUnique: vi.fn().mockResolvedValue({ statusPlano: "ATIVO" }), findFirst: vi.fn(), update },
+    });
+    const caller = criarCaller(client, "ADMINISTRADOR", true);
+
+    await expect(
+      caller.atualizarPersonalizacao({ template: "MINIMALISTA", corPrimaria: "#c2703d" }),
+    ).resolves.not.toThrow();
+  });
+
+  it("aceita GERENTE com podeEditarTema concedido pelo Dono", async () => {
+    const update = vi.fn().mockResolvedValue({ template: "MINIMALISTA", corPrimaria: "#c2703d" });
+    const client = criarPrismaMock({
+      loja: { findUnique: vi.fn().mockResolvedValue({ statusPlano: "ATIVO" }), findFirst: vi.fn(), update },
+    });
+    const caller = criarCaller(client, "GERENTE", true);
+
+    await expect(
+      caller.atualizarPersonalizacao({ template: "MINIMALISTA", corPrimaria: "#c2703d" }),
+    ).resolves.not.toThrow();
+  });
+
+  it("rejeita GERENTE sem podeEditarTema", async () => {
+    const client = criarPrismaMock();
+    const caller = criarCaller(client, "GERENTE", false);
+
+    await expect(
+      caller.atualizarPersonalizacao({ template: "MINIMALISTA", corPrimaria: "#c2703d" }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 });
 
@@ -177,6 +230,16 @@ describe("lojaRouter.atualizarIdentidade", () => {
 
     await expect(caller.atualizarIdentidade(identidade)).rejects.toThrow(TRPCError);
   });
+
+  it("ADMINISTRADOR sem podeEditarTema ainda pode editar identidade/contato — só a aparência do site (temaProcedure) exige acesso concedido", async () => {
+    const update = vi.fn().mockResolvedValue({});
+    const client = criarPrismaMock({
+      loja: { findUnique: vi.fn().mockResolvedValue({ statusPlano: "ATIVO" }), findFirst: vi.fn(), update },
+    });
+    const caller = criarCaller(client, "ADMINISTRADOR", false);
+
+    await expect(caller.atualizarIdentidade(identidade)).resolves.not.toThrow();
+  });
 });
 
 describe("lojaRouter.atualizarBanners", () => {
@@ -247,5 +310,12 @@ describe("lojaRouter.atualizarBanners", () => {
     const caller = criarCaller(client, "VENDEDOR");
 
     await expect(caller.atualizarBanners({ banners: [banner] })).rejects.toThrow(TRPCError);
+  });
+
+  it("rejeita ADMINISTRADOR sem podeEditarTema", async () => {
+    const client = criarPrismaMock();
+    const caller = criarCaller(client, "ADMINISTRADOR", false);
+
+    await expect(caller.atualizarBanners({ banners: [banner] })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 });
