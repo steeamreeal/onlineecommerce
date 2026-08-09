@@ -1,7 +1,7 @@
 "use client";
 
 import { use, useEffect } from "react";
-import { notFound } from "next/navigation";
+import { notFound, usePathname } from "next/navigation";
 import { CartProvider } from "@/components/store/cart-context";
 import { SiteHeader } from "@/components/store/site-header";
 import { SiteFooter } from "@/components/store/site-footer";
@@ -28,6 +28,8 @@ export default function LojaLayoutClient({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = use(params);
+  const pathname = usePathname();
+  const emCheckout = pathname === `/loja/${slug}/checkout`;
 
   // Escopo por tenant: cada loja é resolvida pelo slug da rota via tRPC
   // público, nunca por um valor fixo.
@@ -91,6 +93,7 @@ export default function LojaLayoutClient({
           tamanhoFonteCategorias={secaoCabecalho?.config.tamanhoFonteCategorias}
           corFundo={secaoCabecalho?.config.corFundo}
           corTexto={secaoCabecalho?.config.corTexto}
+          checkout={emCheckout}
         />
         <main className="flex flex-1 flex-col">{children}</main>
         <SiteFooter
