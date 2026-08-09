@@ -52,10 +52,18 @@ const ICONE_POR_TIPO: Record<TipoSecaoTema, React.ComponentType<{ className?: st
   COLECAO_DESTAQUE: LayoutGrid,
   TEXTO: Type,
   SELOS: BadgeCheck,
+  BANNER_SECUNDARIO: ImageIcon,
   RODAPE: PanelBottom,
 };
 
-const TIPOS_ADICIONAVEIS: TipoSecaoTema[] = ["HERO", "MENU_CATEGORIAS", "COLECAO_DESTAQUE", "TEXTO", "SELOS"];
+const TIPOS_ADICIONAVEIS: TipoSecaoTema[] = [
+  "HERO",
+  "MENU_CATEGORIAS",
+  "COLECAO_DESTAQUE",
+  "TEXTO",
+  "SELOS",
+  "BANNER_SECUNDARIO",
+];
 
 function novaSecao(tipo: TipoSecaoTema): SecaoTema {
   const id = crypto.randomUUID();
@@ -68,7 +76,12 @@ function novaSecao(tipo: TipoSecaoTema): SecaoTema {
         config: { banners: [], coladoNoCabecalho: false },
       };
     case "MENU_CATEGORIAS":
-      return { id, tipo, visivel: true, config: { tamanho: "MEDIO", alinhamento: "ESQUERDA", exibirEm: "AMBOS" } };
+      return {
+        id,
+        tipo,
+        visivel: true,
+        config: { tamanho: "MEDIO", alinhamento: "ESQUERDA", exibirEm: "AMBOS", mostrarPrecoApartirDe: false },
+      };
     case "COLECAO_DESTAQUE":
       return {
         id,
@@ -76,6 +89,7 @@ function novaSecao(tipo: TipoSecaoTema): SecaoTema {
         visivel: true,
         config: {
           titulo: "Produtos",
+          modo: "MANUAL",
           linkVerTudo: true,
           alinhamento: "ESQUERDA",
           mostrarPreco: true,
@@ -87,6 +101,8 @@ function novaSecao(tipo: TipoSecaoTema): SecaoTema {
       return { id, tipo, visivel: true, config: { corpo: "", alinhamento: "ESQUERDA" } };
     case "SELOS":
       return { id, tipo, visivel: true, config: {} };
+    case "BANNER_SECUNDARIO":
+      return { id, tipo, visivel: true, config: { altura: "PEQUENA" } };
     default:
       throw new Error(`Tipo de seção não pode ser adicionado manualmente: ${tipo}`);
   }

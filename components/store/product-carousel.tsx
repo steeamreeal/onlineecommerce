@@ -23,6 +23,7 @@ export function ProductCarousel({
   mostrarComprar = true,
   corBotao,
   corTextoBotao,
+  idsMaisVendidos,
 }: {
   produtos: Produto[];
   slug: string;
@@ -34,6 +35,9 @@ export function ProductCarousel({
   mostrarComprar?: boolean;
   corBotao?: string;
   corTextoBotao?: string;
+  // IDs dos produtos mais vendidos da loja — liga o selo "Mais vendido" no
+  // slide (ver ProductCard).
+  idsMaisVendidos?: Set<string>;
 }) {
   const trilhaRef = useRef<HTMLDivElement>(null);
   const navegandoProgramaticamente = useRef(false);
@@ -90,6 +94,7 @@ export function ProductCarousel({
               expandido={mostrarComprar}
               corBotao={corBotao}
               corTextoBotao={corTextoBotao}
+              maisVendido={idsMaisVendidos?.has(produto.id)}
             />
           </div>
         ))}
@@ -103,6 +108,7 @@ export function ProductCarousel({
               expandido={mostrarComprar}
               corBotao={corBotao}
               corTextoBotao={corTextoBotao}
+              maisVendido={idsMaisVendidos?.has(produtos[0].id)}
             />
           </div>
         )}

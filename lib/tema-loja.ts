@@ -255,6 +255,13 @@ export const secaoColecaoDestaqueSchema = secaoBaseSchema.extend({
   config: z.object({
     titulo: z.string().trim().max(80),
     categoriaId: z.string().optional(),
+    // MANUAL (padrão) respeita produtosSelecionados/ordem escolhida pelo
+    // lojista. MAIS_VENDIDOS ordena pela quantidade vendida (ver
+    // lojaPublica.produtosMaisVendidos); LANCAMENTOS ordena por data de
+    // criação (mais recente primeiro) — nenhum dos dois usa
+    // produtosSelecionados. categoriaId continua funcionando como filtro em
+    // qualquer modo (ex.: "mais vendidos" só de uma categoria).
+    modo: z.enum(["MANUAL", "MAIS_VENDIDOS", "LANCAMENTOS"]).default("MANUAL"),
     // Quantos produtos mostrar — vazio/undefined mostra todos que passarem
     // no filtro (categoria, se houver). Aplica independente de categoriaId
     // estar definido ou não.
@@ -262,8 +269,7 @@ export const secaoColecaoDestaqueSchema = secaoBaseSchema.extend({
     // Com categoriaId definido, o lojista pode escolher manualmente quais
     // produtos daquela categoria aparecem (e em que ordem) em vez do filtro
     // automático por categoria — lista de Produto.id. Ignorado se
-    // categoriaId não estiver definido (nesse caso não há categoria fixa
-    // para os produtos pertencerem).
+    // categoriaId não estiver definido, ou se modo não for MANUAL.
     produtosSelecionados: z.array(z.string()).optional(),
     linkVerTudo: z.boolean().default(true),
     alinhamento: alinhamentoTextoSchema.default("ESQUERDA"),
@@ -296,6 +302,19 @@ export const secaoColecaoDestaqueSchema = secaoBaseSchema.extend({
   }),
 });
 
+// Banner menor que o Hero, pra promoção pontual entre outras seções da home
+// (ex.: "Frete grátis acima de R$200", "Dia das Mães — 20% OFF") — reaproveita
+// o mesmo formato de conteúdo do banner do Hero (imagem/vídeo, texto, botão,
+// posicionamento), só com no máximo 1 banner (sem carrossel) e uma altura
+// menor por padrão.
+export const secaoBannerSecundarioSchema = secaoBaseSchema.extend({
+  tipo: z.literal("BANNER_SECUNDARIO"),
+  config: z.object({
+    banner: bannerTemaSchema.optional(),
+    altura: z.enum(["PEQUENA", "MEDIA", "GRANDE"]).default("PEQUENA"),
+  }),
+});
+
 export const tamanhoTextoSchema = z.enum(["PEQUENO", "MEDIO", "GRANDE"]);
 export type TamanhoTexto = z.infer<typeof tamanhoTextoSchema>;
 
@@ -313,6 +332,10 @@ export const secaoMenuCategoriasSchema = secaoBaseSchema.extend({
     // categorias visível a partir de md, então em muitos temas esse menu
     // fica redundante em desktop e só faz sentido em mobile (ou vice-versa).
     exibirEm: exibirEmSchema.default("AMBOS"),
+    // Mostra "a partir de R$X" (menor preço entre os produtos da categoria)
+    // abaixo do nome — referência de mercado (Pandora), ajuda o cliente a
+    // já ter noção de faixa de preço antes de entrar na categoria.
+    mostrarPrecoApartirDe: z.boolean().default(false),
   }),
 });
 
@@ -464,6 +487,7 @@ export const secaoTemaSchema = z.discriminatedUnion("tipo", [
   secaoColecaoDestaqueSchema,
   secaoTextoSchema,
   secaoSelosSchema,
+  secaoBannerSecundarioSchema,
   secaoRodapeSchema,
 ]);
 
@@ -515,6 +539,7 @@ export const NOMES_TIPO_SECAO: Record<TipoSecaoTema, string> = {
   COLECAO_DESTAQUE: "Coleção em destaque",
   TEXTO: "Texto",
   SELOS: "Selos de confiança",
+  BANNER_SECUNDARIO: "Banner secundário",
   RODAPE: "Rodapé",
 };
 
@@ -753,7 +778,7 @@ export function criarTemaConfigPadrao(opcoes: {
         id: criarId(),
         tipo: "MENU_CATEGORIAS",
         visivel: true,
-        config: { tamanho: "MEDIO", alinhamento: "ESQUERDA", exibirEm: "AMBOS" },
+        config: { tamanho: "MEDIO", alinhamento: "ESQUERDA", exibirEm: "AMBOS", mostrarPrecoApartirDe: false },
       },
       {
         id: criarId(),
@@ -761,6 +786,7 @@ export function criarTemaConfigPadrao(opcoes: {
         visivel: true,
         config: {
           titulo: "Produtos",
+          modo: "MANUAL",
           linkVerTudo: true,
           alinhamento: "ESQUERDA",
           mostrarPreco: true,

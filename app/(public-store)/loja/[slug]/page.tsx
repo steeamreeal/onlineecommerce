@@ -39,6 +39,16 @@ export default function LojaPage({ params }: { params: Promise<{ slug: string }>
   const banners = (config?.banners as Banner[] | null) ?? [];
   const temaConfig = config?.temaConfig as TemaConfig | null;
 
+  // Só busca o ranking de mais vendidos se alguma seção realmente usa esse
+  // modo — evita uma query extra em toda loja que não usa a funcionalidade.
+  const usaMaisVendidos = temaConfig?.secoes.some(
+    (s) => s.tipo === "COLECAO_DESTAQUE" && s.config.modo === "MAIS_VENDIDOS",
+  );
+  const { data: rankingMaisVendidos } = trpc.lojaPublica.produtosMaisVendidos.useQuery(
+    { slug },
+    { enabled: Boolean(usaMaisVendidos) },
+  );
+
   // Lojas que já abriram o editor de tema têm temaConfig salvo e usam o
   // ThemeRenderer (seções configuráveis). As demais continuam no template
   // fixo antigo — fallback que preserva o comportamento anterior ao editor.
@@ -51,6 +61,7 @@ export default function LojaPage({ params }: { params: Promise<{ slug: string }>
         categorias={categorias ?? []}
         destaques={destaques}
         selosConfig={(config?.selosConfig as ConfigSelos | undefined) ?? CONFIG_SELOS_VAZIA}
+        rankingMaisVendidos={rankingMaisVendidos}
       />
     );
   }

@@ -9,7 +9,15 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
  * desconectado, então rolar pra cima e pra baixo de novo não repete a
  * animação.
  */
-export function RevealOnScroll({ children }: { children: ReactNode }) {
+export function RevealOnScroll({
+  children,
+  delayMs = 0,
+}: {
+  children: ReactNode;
+  // Atraso antes de disparar a animação — usado pelas grades de produto pra
+  // um card entrar depois do outro (stagger) em vez de todos juntos.
+  delayMs?: number;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const [visivel, setVisivel] = useState(false);
 
@@ -30,7 +38,11 @@ export function RevealOnScroll({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <div ref={ref} className={visivel ? "animate-reveal-up" : "opacity-0"}>
+    <div
+      ref={ref}
+      className={visivel ? "animate-reveal-up" : "opacity-0"}
+      style={delayMs > 0 ? { animationDelay: `${delayMs}ms` } : undefined}
+    >
       {children}
     </div>
   );

@@ -80,6 +80,25 @@ export const lojaPublicaRouter = router({
       });
     }),
 
+  // Ranking de produtos por quantidade vendida (itens de pedido não
+  // cancelados), pra alimentar o modo MAIS_VENDIDOS da seção Coleção em
+  // destaque no site público — mesma lógica de dashboard.produtosMaisVendidos,
+  // mas escopada por slug (sem exigir papel Dono/Gerente, é conteúdo público
+  // da vitrine, não faturamento).
+  produtosMaisVendidos: publicProcedure
+    .input(z.object({ slug: z.string(), limite: z.number().int().positive().max(50).default(50) }))
+    .query(async ({ ctx, input }) => {
+      const loja = await resolverLojaPorSlug(ctx.prisma, input.slug);
+      const itens = await ctx.prisma.itemPedido.groupBy({
+        by: ["produtoId"],
+        where: { pedido: { lojaId: loja.id, status: { not: "CANCELADO" } } },
+        _sum: { quantidade: true },
+        orderBy: { _sum: { quantidade: "desc" } },
+        take: input.limite,
+      });
+      return itens.map((item) => item.produtoId);
+    }),
+
   produtoPorId: publicProcedure
     .input(z.object({ slug: z.string(), id: z.string() }))
     .query(async ({ ctx, input }) => {

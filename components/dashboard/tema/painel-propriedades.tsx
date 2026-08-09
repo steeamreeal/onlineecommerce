@@ -540,10 +540,12 @@ function EditorBannersHero({
   lojaId,
   banners,
   onChange,
+  maxBanners = 3,
 }: {
   lojaId: string | undefined;
   banners: BannerTema[];
   onChange: (banners: BannerTema[]) => void;
+  maxBanners?: number;
 }) {
   const [enviando, setEnviando] = useState(false);
   const [enviandoMobileIndex, setEnviandoMobileIndex] = useState<number | null>(null);
@@ -599,7 +601,7 @@ function EditorBannersHero({
 
   return (
     <div className="flex flex-col gap-3">
-      <Label>Imagens/vídeos ({banners.length}/3)</Label>
+      <Label>Imagens/vídeos ({banners.length}/{maxBanners})</Label>
       <div className="flex flex-col gap-4">
         {banners.map((banner, i) => (
           <div key={banner.id ?? banner.url} className="flex flex-col gap-3 rounded-md border p-3">
@@ -806,7 +808,7 @@ function EditorBannersHero({
               })()}
           </div>
         ))}
-        {banners.length < 3 && (
+        {banners.length < maxBanners && (
           <label className="border-input hover:bg-accent flex aspect-[3/1] w-32 cursor-pointer flex-col items-center justify-center gap-1 rounded-md border border-dashed text-[10px] has-disabled:pointer-events-none has-disabled:opacity-50">
             <Upload className="size-3" />
             {enviando ? "Enviando..." : "Adicionar"}
@@ -1141,6 +1143,13 @@ function FormularioSecao({
             value={secao.config.alinhamento ?? "ESQUERDA"}
             onChange={(alinhamento) => onChange({ ...secao, config: { ...secao.config, alinhamento } })}
           />
+          <CampoSwitch
+            label='Mostrar "a partir de R$X" (menor preço da categoria)'
+            checked={secao.config.mostrarPrecoApartirDe ?? false}
+            onChange={(mostrarPrecoApartirDe) =>
+              onChange({ ...secao, config: { ...secao.config, mostrarPrecoApartirDe } })
+            }
+          />
           <div className="flex flex-col gap-2">
             <Label>Exibir em</Label>
             <div className="grid grid-cols-3 gap-2">
@@ -1172,6 +1181,27 @@ function FormularioSecao({
             value={secao.config.titulo}
             onChange={(titulo) => onChange({ ...secao, config: { ...secao.config, titulo } })}
           />
+          <div className="flex flex-col gap-2">
+            <Label>Quais produtos mostrar</Label>
+            <Select
+              value={secao.config.modo ?? "MANUAL"}
+              onValueChange={(v) =>
+                onChange({
+                  ...secao,
+                  config: { ...secao.config, modo: v as "MANUAL" | "MAIS_VENDIDOS" | "LANCAMENTOS" },
+                })
+              }
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="MANUAL">Seleção manual</SelectItem>
+                <SelectItem value="MAIS_VENDIDOS">Mais vendidos</SelectItem>
+                <SelectItem value="LANCAMENTOS">Lançamentos</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <div className="flex flex-col gap-2">
             <Label>Categoria (opcional — vazio mostra os destaques automáticos)</Label>
             <Select
@@ -1232,7 +1262,7 @@ function FormularioSecao({
               Arraste até o fim para mostrar todos os produtos, sem limite.
             </p>
           </div>
-          {secao.config.categoriaId && (
+          {(secao.config.modo ?? "MANUAL") === "MANUAL" && secao.config.categoriaId && (
             <SeletorProdutosCategoria
               categoriaId={secao.config.categoriaId}
               produtosSelecionados={secao.config.produtosSelecionados}
@@ -1382,6 +1412,41 @@ function FormularioSecao({
 
     case "SELOS":
       return <FormularioSelos config={selosConfig} onChange={onChangeSelos} />;
+
+    case "BANNER_SECUNDARIO":
+      return (
+        <div className="flex flex-col gap-4">
+          <EditorBannersHero
+            lojaId={lojaId}
+            banners={secao.config.banner ? [secao.config.banner] : []}
+            maxBanners={1}
+            onChange={(banners) =>
+              onChange({ ...secao, config: { ...secao.config, banner: banners[0] } })
+            }
+          />
+          <div className="flex flex-col gap-2">
+            <Label>Altura da faixa</Label>
+            <Select
+              value={secao.config.altura ?? "PEQUENA"}
+              onValueChange={(v) =>
+                onChange({
+                  ...secao,
+                  config: { ...secao.config, altura: v as "PEQUENA" | "MEDIA" | "GRANDE" },
+                })
+              }
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="PEQUENA">Pequena</SelectItem>
+                <SelectItem value="MEDIA">Média</SelectItem>
+                <SelectItem value="GRANDE">Grande (igual ao banner principal)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      );
 
     case "RODAPE":
       return (
