@@ -32,9 +32,11 @@ import {
   NOMES_TIPO_SECAO_PRODUTO,
   TIPOS_SECAO_PRODUTO_FIXA,
   criarTemaProdutoConfigPadrao,
+  CONFIG_SELOS_VAZIA,
   type SecaoProdutoTema,
   type TemaProdutoConfig,
   type TipoSecaoProdutoTema,
+  type ConfigSelos,
 } from "@/lib/tema-loja";
 
 const ICONE_POR_TIPO: Record<TipoSecaoProdutoTema, React.ComponentType<{ className?: string }>> = {
@@ -59,7 +61,7 @@ function novaSecao(tipo: TipoSecaoProdutoTema): SecaoProdutoTema {
     case "DESCRICAO_PRODUTO":
       return { id, tipo, visivel: true, config: { titulo: "Descrição" } };
     case "SELOS_PRODUTO":
-      return { id, tipo, visivel: true, config: { itens: [] } };
+      return { id, tipo, visivel: true, config: {} };
     case "TEXTO_PRODUTO":
       return { id, tipo, visivel: true, config: { corpo: "", alinhamento: "ESQUERDA" } };
     case "RELACIONADOS_PRODUTO":
@@ -155,12 +157,14 @@ export function EditorTemaProduto() {
   );
 
   const [tema, setTema] = useState<TemaProdutoConfig | null>(null);
+  const [selosConfig, setSelosConfig] = useState<ConfigSelos | null>(null);
   const [selecaoId, setSelecaoId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loja || tema) return;
     const salvo = loja.temaProdutoConfig as TemaProdutoConfig | null;
     setTema(salvo ?? criarTemaProdutoConfigPadrao());
+    setSelosConfig(loja.selosConfig as ConfigSelos);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- só deve rodar quando `loja` chega pela primeira vez, não a cada re-render
   }, [loja]);
 
@@ -170,6 +174,10 @@ export function EditorTemaProduto() {
       toast.success("Página de produto salva com sucesso.");
     },
     onError: (erro) => toast.error(erro.message || "Não foi possível salvar."),
+  });
+
+  const salvarSelos = trpc.loja.atualizarSelos.useMutation({
+    onError: (erro) => toast.error(erro.message || "Não foi possível salvar os selos de confiança."),
   });
 
   if (isLoading || !loja || !tema) {
@@ -241,8 +249,15 @@ export function EditorTemaProduto() {
             Editar página inicial
           </Button>
         </div>
-        <Button size="sm" onClick={() => salvarTema.mutate(tema)} disabled={salvarTema.isPending}>
-          {salvarTema.isPending ? "Salvando..." : "Salvar"}
+        <Button
+          size="sm"
+          onClick={() => {
+            salvarTema.mutate(tema);
+            if (selosConfig) salvarSelos.mutate(selosConfig);
+          }}
+          disabled={salvarTema.isPending || salvarSelos.isPending}
+        >
+          {salvarTema.isPending || salvarSelos.isPending ? "Salvando..." : "Salvar"}
         </Button>
       </div>
 
@@ -294,11 +309,18 @@ export function EditorTemaProduto() {
           </DropdownMenu>
         </aside>
 
-        <PreviewTemaProduto produto={produtoExemplo} slug={loja.slug} secoes={tema.secoes} />
+        <PreviewTemaProduto
+          produto={produtoExemplo}
+          slug={loja.slug}
+          secoes={tema.secoes}
+          selosConfig={selosConfig ?? CONFIG_SELOS_VAZIA}
+        />
 
         <PainelPropriedadesProduto
           secaoSelecionada={secaoSelecionada}
           onChangeSecao={atualizarSecao}
+          selosConfig={selosConfig ?? CONFIG_SELOS_VAZIA}
+          onChangeSelos={setSelosConfig}
           onFechar={() => setSelecaoId(null)}
         />
       </div>

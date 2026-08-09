@@ -11,21 +11,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { NOMES_ICONE_SELO, iconeSeloSchema, type SeloProduto } from "@/lib/tema-loja";
+import { NOMES_ICONE_SELO, iconeSeloSchema, type ConfigSelos, type SeloProduto } from "@/lib/tema-loja";
 
-// Config completa da seção Selos (itens + estilo) — mesmo shape usado tanto
-// na home (secaoSelosSchema, tipo "SELOS") quanto na página de produto
-// (secaoSelosProdutoSchema, tipo "SELOS_PRODUTO"), então este formulário é
-// reaproveitado inteiro nos dois editores em vez de duplicado.
-type ConfigSelos = {
-  itens: SeloProduto[];
-  corFundo?: string;
-  corTexto?: string;
-  corTitulo?: string;
-  corIcone?: string;
-  tamanhoIcone?: number;
-  tamanhoTitulo?: number;
-};
+// Conteúdo compartilhado (Loja.selosConfig) entre a seção SELOS (home) e
+// SELOS_PRODUTO (produto) — este formulário é reaproveitado inteiro nos
+// dois editores, ver docs/superpowers/specs/2026-08-08-selos-confianca-unificados-design.md.
 
 function CampoCor({
   label,

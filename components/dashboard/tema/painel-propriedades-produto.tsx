@@ -16,6 +16,7 @@ import {
   type SecaoProdutoTema,
   type AlinhamentoTexto,
   type ModoRelacionados,
+  type ConfigSelos,
 } from "@/lib/tema-loja";
 
 function CampoTexto({
@@ -189,9 +190,13 @@ function SeletorProdutosLoja({
 function FormularioSecao({
   secao,
   onChange,
+  selosConfig,
+  onChangeSelos,
 }: {
   secao: SecaoProdutoTema;
   onChange: (secao: SecaoProdutoTema) => void;
+  selosConfig: ConfigSelos;
+  onChangeSelos: (config: ConfigSelos) => void;
 }) {
   switch (secao.tipo) {
     case "GALERIA_PRODUTO":
@@ -282,7 +287,7 @@ function FormularioSecao({
       );
 
     case "SELOS_PRODUTO":
-      return <FormularioSelos config={secao.config} onChange={(config) => onChange({ ...secao, config })} />;
+      return <FormularioSelos config={selosConfig} onChange={onChangeSelos} />;
 
     case "TEXTO_PRODUTO":
       return (
@@ -419,10 +424,14 @@ export function PainelPropriedadesProduto({
   secaoSelecionada,
   onChangeSecao,
   onFechar,
+  selosConfig,
+  onChangeSelos,
 }: {
   secaoSelecionada: SecaoProdutoTema | null;
   onChangeSecao: (secao: SecaoProdutoTema) => void;
   onFechar: () => void;
+  selosConfig: ConfigSelos;
+  onChangeSelos: (config: ConfigSelos) => void;
 }) {
   if (!secaoSelecionada) {
     return (
@@ -441,7 +450,12 @@ export function PainelPropriedadesProduto({
         </Button>
       </div>
 
-      <FormularioSecao secao={secaoSelecionada} onChange={onChangeSecao} />
+      <FormularioSecao
+        secao={secaoSelecionada}
+        onChange={onChangeSecao}
+        selosConfig={selosConfig}
+        onChangeSelos={onChangeSelos}
+      />
     </aside>
   );
 }

@@ -11,7 +11,7 @@ import { trpc } from "@/lib/trpc/client";
 import { cn } from "@/lib/utils";
 import { tamanhoIconeSeloEmPx, tamanhoFonteEmPx } from "@/lib/tema-loja";
 import type { RouterOutputs } from "@/lib/trpc/types";
-import type { SecaoProdutoTema, IconeSelo, AlinhamentoTexto } from "@/lib/tema-loja";
+import type { SecaoProdutoTema, IconeSelo, AlinhamentoTexto, ConfigSelos } from "@/lib/tema-loja";
 
 type Produto = RouterOutputs["lojaPublica"]["produtoPorId"];
 
@@ -220,7 +220,7 @@ function SecaoDescricao({
   );
 }
 
-function SecaoSelos({ config }: { config: Extract<SecaoProdutoTema, { tipo: "SELOS_PRODUTO" }>["config"] }) {
+function SecaoSelos({ config }: { config: ConfigSelos }) {
   const itens = config.itens ?? [];
   if (itens.length === 0) return null;
   const tamanhoIcone = tamanhoIconeSeloEmPx(config.tamanhoIcone);
@@ -413,10 +413,12 @@ export function ThemeRendererProduto({
   produto,
   slug,
   secoes,
+  selosConfig,
 }: {
   produto: Produto;
   slug: string;
   secoes: SecaoProdutoTema[];
+  selosConfig: ConfigSelos;
 }) {
   const midias = [...produto.fotos].sort((a, b) => a.ordem - b.ordem);
   const [midiaSelecionadaId, setMidiaSelecionadaId] = useState<string | undefined>(midias[0]?.id);
@@ -461,7 +463,7 @@ export function ThemeRendererProduto({
           case "DESCRICAO_PRODUTO":
             return <SecaoDescricao key={secao.id} produto={produto} config={secao.config} />;
           case "SELOS_PRODUTO":
-            return <SecaoSelos key={secao.id} config={secao.config} />;
+            return <SecaoSelos key={secao.id} config={selosConfig} />;
           case "TEXTO_PRODUTO":
             return <SecaoTexto key={secao.id} config={secao.config} />;
           case "RELACIONADOS_PRODUTO":

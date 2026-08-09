@@ -2,6 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import type { PrismaClient } from "@prisma/client";
 import { router, publicProcedure } from "../trpc";
+import { extrairSelosSemente } from "@/lib/tema-loja";
 
 // Toda procedure deste router é pública (site de vendas, sem sessão) e
 // recebe o slug da loja como input, resolvendo o lojaId no servidor — nunca
@@ -28,6 +29,7 @@ export const lojaPublicaRouter = router({
         banners: loja.banners,
         temaConfig: loja.temaConfig,
         temaProdutoConfig: loja.temaProdutoConfig,
+        selosConfig: loja.selosConfig ?? extrairSelosSemente(loja.temaConfig),
         whatsapp: loja.whatsapp,
         instagram: loja.instagram,
         facebook: loja.facebook,

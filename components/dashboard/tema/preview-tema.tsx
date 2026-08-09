@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc/client";
 import { ThemeRenderer } from "@/components/store/theme-renderer";
 import { alturaLogoEmPx, espacamentoCabecalhoEmPx, tamanhoFonteEmPx } from "@/lib/tema-loja";
-import type { SecaoTema, TipoSecaoTema } from "@/lib/tema-loja";
+import type { SecaoTema, TipoSecaoTema, ConfigSelos } from "@/lib/tema-loja";
 
 // Prévia visual do cabeçalho/rodapé dentro do editor — não reaproveita
 // SiteHeader/SiteFooter diretamente porque eles dependem de CartProvider e
@@ -254,6 +254,7 @@ export function PreviewTema({
   secaoSelecionadaId,
   onSelecionarSecao,
   viewport = "DESKTOP",
+  selosConfig,
 }: {
   slug: string;
   nomeLoja: string;
@@ -266,6 +267,9 @@ export function PreviewTema({
   secaoSelecionadaId: string | null;
   onSelecionarSecao: (id: string, tipo: TipoSecaoTema) => void;
   viewport?: "DESKTOP" | "MOBILE";
+  // Estado local (não salvo) do editor, sobrepõe o que está salvo no banco
+  // pra refletir edições ao vivo no preview.
+  selosConfig: ConfigSelos;
 }) {
   const { data: categorias } = trpc.lojaPublica.categorias.useQuery({ slug });
   const { data: produtos } = trpc.lojaPublica.produtos.useQuery({ slug });
@@ -379,6 +383,7 @@ export function PreviewTema({
                 categorias={categorias ?? []}
                 destaques={produtos ?? []}
                 viewport={viewport}
+                selosConfig={selosConfig}
               />
             </button>
           ))}

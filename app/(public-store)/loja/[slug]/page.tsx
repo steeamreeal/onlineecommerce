@@ -6,7 +6,7 @@ import { TemplateEditorial } from "@/components/store/template-editorial";
 import { TemplateVitrine } from "@/components/store/template-vitrine";
 import { ThemeRenderer } from "@/components/store/theme-renderer";
 import { trpc } from "@/lib/trpc/client";
-import type { TemaConfig } from "@/lib/tema-loja";
+import { CONFIG_SELOS_VAZIA, type TemaConfig, type ConfigSelos } from "@/lib/tema-loja";
 
 type Banner = {
   id: string;
@@ -50,6 +50,7 @@ export default function LojaPage({ params }: { params: Promise<{ slug: string }>
         slug={slug}
         categorias={categorias ?? []}
         destaques={destaques}
+        selosConfig={(config?.selosConfig as ConfigSelos | undefined) ?? CONFIG_SELOS_VAZIA}
       />
     );
   }

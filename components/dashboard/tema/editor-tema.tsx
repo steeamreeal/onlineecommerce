@@ -36,10 +36,12 @@ import {
   NOMES_TIPO_SECAO,
   TIPOS_SECAO_FIXA,
   criarTemaConfigPadrao,
+  CONFIG_SELOS_VAZIA,
   type SecaoTema,
   type TemaConfig,
   type TipoSecaoTema,
   type BannerTema,
+  type ConfigSelos,
 } from "@/lib/tema-loja";
 
 const ICONE_POR_TIPO: Record<TipoSecaoTema, React.ComponentType<{ className?: string }>> = {
@@ -84,7 +86,7 @@ function novaSecao(tipo: TipoSecaoTema): SecaoTema {
     case "TEXTO":
       return { id, tipo, visivel: true, config: { corpo: "", alinhamento: "ESQUERDA" } };
     case "SELOS":
-      return { id, tipo, visivel: true, config: { itens: [] } };
+      return { id, tipo, visivel: true, config: {} };
     default:
       throw new Error(`Tipo de seção não pode ser adicionado manualmente: ${tipo}`);
   }
@@ -171,6 +173,7 @@ export function EditorTema() {
   );
 
   const [tema, setTema] = useState<TemaConfig | null>(null);
+  const [selosConfig, setSelosConfig] = useState<ConfigSelos | null>(null);
   const [template, setTemplate] = useState<"MINIMALISTA" | "EDITORIAL" | "VITRINE">("MINIMALISTA");
   const [selecaoId, setSelecaoId] = useState<string | null>(null);
   const [mostrandoEstilo, setMostrandoEstilo] = useState(false);
@@ -190,6 +193,7 @@ export function EditorTema() {
         }),
     );
     setTemplate(loja.template);
+    setSelosConfig(loja.selosConfig as ConfigSelos);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- só deve rodar quando `loja` chega pela primeira vez, não a cada re-render
   }, [loja]);
 
@@ -203,6 +207,10 @@ export function EditorTema() {
 
   const salvarTemplate = trpc.loja.atualizarPersonalizacao.useMutation({
     onError: (erro) => toast.error(erro.message || "Não foi possível salvar o template."),
+  });
+
+  const salvarSelos = trpc.loja.atualizarSelos.useMutation({
+    onError: (erro) => toast.error(erro.message || "Não foi possível salvar os selos de confiança."),
   });
 
   if (isLoading || !loja || !tema) {
@@ -274,6 +282,9 @@ export function EditorTema() {
     salvarTema.mutate(tema);
     if (template !== loja.template) {
       salvarTemplate.mutate({ template, corPrimaria: tema.estilo.corPrimaria });
+    }
+    if (selosConfig) {
+      salvarSelos.mutate(selosConfig);
     }
   }
 
@@ -431,6 +442,7 @@ export function EditorTema() {
           secaoSelecionadaId={selecaoId}
           onSelecionarSecao={(id) => selecionarSecao(id)}
           viewport={viewport}
+          selosConfig={selosConfig ?? CONFIG_SELOS_VAZIA}
         />
 
         <PainelPropriedades
@@ -440,6 +452,8 @@ export function EditorTema() {
           template={template}
           categorias={listaCategorias}
           onChangeSecao={atualizarSecao}
+          selosConfig={selosConfig ?? CONFIG_SELOS_VAZIA}
+          onChangeSelos={setSelosConfig}
           onChangeEstilo={(estilo) =>
             setTema((atual) => {
               if (!atual) return atual;

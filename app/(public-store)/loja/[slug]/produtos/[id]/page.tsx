@@ -6,7 +6,7 @@ import { ProdutoDetalhe } from "@/components/store/produto-detalhe";
 import { ThemeRendererProduto } from "@/components/store/theme-renderer-produto";
 import { Skeleton } from "@/components/ui/skeleton";
 import { trpc } from "@/lib/trpc/client";
-import type { TemaProdutoConfig } from "@/lib/tema-loja";
+import { CONFIG_SELOS_VAZIA, type TemaProdutoConfig, type ConfigSelos } from "@/lib/tema-loja";
 
 export default function ProdutoPage({
   params,
@@ -39,7 +39,13 @@ export default function ProdutoPage({
   // fallback que preserva o comportamento anterior ao editor.
   if (temaProdutoConfig) {
     return (
-      <ThemeRendererProduto key={produto.id} produto={produto} slug={slug} secoes={temaProdutoConfig.secoes} />
+      <ThemeRendererProduto
+        key={produto.id}
+        produto={produto}
+        slug={slug}
+        secoes={temaProdutoConfig.secoes}
+        selosConfig={(loja?.selosConfig as ConfigSelos | undefined) ?? CONFIG_SELOS_VAZIA}
+      />
     );
   }
 

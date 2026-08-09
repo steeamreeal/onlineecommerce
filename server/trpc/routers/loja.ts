@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, storeProcedure, roleProcedure } from "../trpc";
-import { temaConfigSchema, temaProdutoConfigSchema } from "@/lib/tema-loja";
+import { temaConfigSchema, temaProdutoConfigSchema, configSelosSchema, extrairSelosSemente } from "@/lib/tema-loja";
 import {
   adicionarDominioNaVercel,
   removerDominioDaVercel,
@@ -15,8 +15,8 @@ import {
 const lojaProcedure = roleProcedure(["ADMINISTRADOR", "DONO"]);
 
 export const lojaRouter = router({
-  atual: storeProcedure.query(({ ctx }) => {
-    return ctx.prisma.loja.findUniqueOrThrow({
+  atual: storeProcedure.query(async ({ ctx }) => {
+    const loja = await ctx.prisma.loja.findUniqueOrThrow({
       where: { id: ctx.lojaId },
       select: {
         id: true,
@@ -33,6 +33,7 @@ export const lojaRouter = router({
         banners: true,
         temaConfig: true,
         temaProdutoConfig: true,
+        selosConfig: true,
         whatsapp: true,
         instagram: true,
         facebook: true,
@@ -43,6 +44,10 @@ export const lojaRouter = router({
         plano: { select: { id: true, nome: true, precoMensal: true } },
       },
     });
+    return {
+      ...loja,
+      selosConfig: loja.selosConfig ?? extrairSelosSemente(loja.temaConfig),
+    };
   }),
 
   // Nome e slug (URL da loja) não entram aqui: são geridos pelo admin da
@@ -243,6 +248,19 @@ export const lojaRouter = router({
         where: { id: ctx.lojaId },
         data: { temaProdutoConfig: input },
         select: { temaProdutoConfig: true },
+      });
+    }),
+
+  // Conteúdo dos selos de confiança, compartilhado entre a seção SELOS
+  // (home) e SELOS_PRODUTO (produto) — salvo por qualquer um dos dois
+  // editores, ver docs/superpowers/specs/2026-08-08-selos-confianca-unificados-design.md.
+  atualizarSelos: lojaProcedure
+    .input(configSelosSchema)
+    .mutation(async ({ ctx, input }) => {
+      return ctx.prisma.loja.update({
+        where: { id: ctx.lojaId },
+        data: { selosConfig: input },
+        select: { selosConfig: true },
       });
     }),
 });

@@ -398,7 +398,9 @@ export function tamanhoIconeSeloEmPx(tamanho: number | undefined): number {
   return TAMANHO_ICONE_SELO_MIN_PX + (t / 100) * (TAMANHO_ICONE_SELO_MAX_PX - TAMANHO_ICONE_SELO_MIN_PX);
 }
 
-const configSelosSchema = z.object({
+// Conteúdo compartilhado entre home e produto — mora em Loja.selosConfig,
+// não mais dentro da seção. Ver docs/superpowers/specs/2026-08-08-selos-confianca-unificados-design.md.
+export const configSelosSchema = z.object({
   itens: z.array(seloProdutoSchema).max(6, "No máximo 6 selos."),
   corFundo: z
     .string()
@@ -422,9 +424,36 @@ const configSelosSchema = z.object({
   tamanhoTitulo: z.number().min(0).max(100).optional(),
 });
 
+export type ConfigSelos = z.infer<typeof configSelosSchema>;
+
+export const CONFIG_SELOS_VAZIA: ConfigSelos = { itens: [] };
+
+// Antes de Loja.selosConfig existir, o conteúdo dos selos vivia dentro do
+// config da seção SELOS da home — usado como semente enquanto a loja não
+// tiver salvo selosConfig pelo menos uma vez (ver rotas loja.atual e
+// lojaPublica.porSlug). Lê o JSON bruto sem validar contra o schema atual
+// (a seção antiga tinha itens/cores no próprio config), então tolera
+// qualquer formato antigo ou ausente.
+export function extrairSelosSemente(temaConfig: unknown): ConfigSelos {
+  if (!temaConfig || typeof temaConfig !== "object") return CONFIG_SELOS_VAZIA;
+  const secoes = (temaConfig as { secoes?: unknown }).secoes;
+  if (!Array.isArray(secoes)) return CONFIG_SELOS_VAZIA;
+  const secaoSelos = secoes.find(
+    (s): s is { tipo: string; config?: unknown } =>
+      Boolean(s) && typeof s === "object" && (s as { tipo?: unknown }).tipo === "SELOS",
+  );
+  const config = secaoSelos?.config;
+  if (!config || typeof config !== "object" || !Array.isArray((config as { itens?: unknown }).itens)) {
+    return CONFIG_SELOS_VAZIA;
+  }
+  return config as ConfigSelos;
+}
+
+// A seção em si só controla visibilidade/posição — o conteúdo vem de
+// Loja.selosConfig (compartilhado com SELOS_PRODUTO).
 export const secaoSelosSchema = secaoBaseSchema.extend({
   tipo: z.literal("SELOS"),
-  config: configSelosSchema,
+  config: z.object({}),
 });
 
 export const secaoTemaSchema = z.discriminatedUnion("tipo", [
@@ -567,7 +596,7 @@ export const secaoDescricaoProdutoSchema = secaoProdutoBaseSchema.extend({
 
 export const secaoSelosProdutoSchema = secaoProdutoBaseSchema.extend({
   tipo: z.literal("SELOS_PRODUTO"),
-  config: configSelosSchema,
+  config: z.object({}),
 });
 
 export const secaoTextoProdutoSchema = secaoProdutoBaseSchema.extend({

@@ -56,6 +56,10 @@ model Loja {
   banners           Json?
   temaConfig        Json?
   temaProdutoConfig Json?
+  // Conteúdo dos "Selos de confiança" (ícones, textos, cores) — compartilhado
+  // entre a seção SELOS (home) e SELOS_PRODUTO (produto), que só controlam
+  // visibilidade/posição. Ver docs/superpowers/specs/2026-08-08-selos-confianca-unificados-design.md.
+  selosConfig       Json?
   whatsapp          String?
   instagram         String?
   facebook          String?

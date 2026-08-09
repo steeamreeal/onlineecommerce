@@ -44,6 +44,7 @@ import {
   type TamanhoTexto,
   type ExibirEm,
   type FonteTema,
+  type ConfigSelos,
 } from "@/lib/tema-loja";
 
 function CampoTexto({
@@ -829,12 +830,16 @@ function FormularioSecao({
   logoUrl,
   categorias,
   onChange,
+  selosConfig,
+  onChangeSelos,
 }: {
   secao: SecaoTema;
   lojaId: string | undefined;
   logoUrl: string | null | undefined;
   categorias: { id: string; nome: string }[];
   onChange: (secao: SecaoTema) => void;
+  selosConfig: ConfigSelos;
+  onChangeSelos: (config: ConfigSelos) => void;
 }) {
   switch (secao.tipo) {
     case "BARRA_ANUNCIO":
@@ -1376,7 +1381,7 @@ function FormularioSecao({
       );
 
     case "SELOS":
-      return <FormularioSelos config={secao.config} onChange={(config) => onChange({ ...secao, config })} />;
+      return <FormularioSelos config={selosConfig} onChange={onChangeSelos} />;
 
     case "RODAPE":
       return (
@@ -1609,6 +1614,8 @@ export function PainelPropriedades({
   onChangeEstilo,
   onChangeTemplate,
   onFechar,
+  selosConfig,
+  onChangeSelos,
 }: {
   secaoSelecionada: SecaoTema | null;
   mostrandoEstilo: boolean;
@@ -1619,6 +1626,8 @@ export function PainelPropriedades({
   onChangeEstilo: (estilo: EstiloTema) => void;
   onChangeTemplate: (template: "MINIMALISTA" | "EDITORIAL" | "VITRINE") => void;
   onFechar: () => void;
+  selosConfig: ConfigSelos;
+  onChangeSelos: (config: ConfigSelos) => void;
 }) {
   const { data: loja } = trpc.loja.atual.useQuery();
 
@@ -1655,6 +1664,8 @@ export function PainelPropriedades({
           logoUrl={loja?.logoUrl}
           categorias={categorias}
           onChange={onChangeSecao}
+          selosConfig={selosConfig}
+          onChangeSelos={onChangeSelos}
         />
       )}
     </aside>

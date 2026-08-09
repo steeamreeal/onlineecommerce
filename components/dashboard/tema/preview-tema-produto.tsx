@@ -2,7 +2,7 @@
 
 import { ThemeRendererProduto } from "@/components/store/theme-renderer-produto";
 import type { RouterOutputs } from "@/lib/trpc/types";
-import type { SecaoProdutoTema } from "@/lib/tema-loja";
+import type { SecaoProdutoTema, ConfigSelos } from "@/lib/tema-loja";
 
 type Produto = RouterOutputs["lojaPublica"]["produtos"][number];
 
@@ -19,10 +19,12 @@ export function PreviewTemaProduto({
   produto,
   slug,
   secoes,
+  selosConfig,
 }: {
   produto: Produto | undefined;
   slug: string;
   secoes: SecaoProdutoTema[];
+  selosConfig: ConfigSelos;
 }) {
   if (!produto) {
     return (
@@ -35,7 +37,7 @@ export function PreviewTemaProduto({
   return (
     <div className="bg-muted/30 flex min-h-0 flex-1 justify-center overflow-y-auto p-6">
       <div className="min-h-full w-full max-w-3xl overflow-hidden rounded-md border bg-background shadow-sm">
-        <ThemeRendererProduto produto={produto} slug={slug} secoes={secoes} />
+        <ThemeRendererProduto produto={produto} slug={slug} secoes={secoes} selosConfig={selosConfig} />
       </div>
     </div>
   );

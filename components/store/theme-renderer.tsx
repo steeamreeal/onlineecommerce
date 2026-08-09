@@ -15,7 +15,7 @@ import {
   resolverConteudoBannerMobile,
 } from "@/lib/tema-loja";
 import type { RouterOutputs } from "@/lib/trpc/types";
-import type { AlinhamentoTexto, PosicaoVertical, SecaoTema, FonteTema, IconeSelo } from "@/lib/tema-loja";
+import type { AlinhamentoTexto, PosicaoVertical, SecaoTema, FonteTema, IconeSelo, ConfigSelos } from "@/lib/tema-loja";
 
 const ICONE_POR_SELO: Record<IconeSelo, React.ComponentType<{ className?: string; style?: React.CSSProperties }>> = {
   ENTREGA: Truck,
@@ -554,7 +554,7 @@ function SecaoBarraAnuncio({ config }: { config: Extract<SecaoTema, { tipo: "BAR
   );
 }
 
-function SecaoSelos({ config }: { config: Extract<SecaoTema, { tipo: "SELOS" }>["config"] }) {
+function SecaoSelos({ config }: { config: ConfigSelos }) {
   const itens = config.itens ?? [];
   if (itens.length === 0) return null;
   const tamanhoIcone = tamanhoIconeSeloEmPx(config.tamanhoIcone);
@@ -604,6 +604,7 @@ export function ThemeRenderer({
   categorias,
   destaques,
   viewport,
+  selosConfig,
 }: {
   secoes: SecaoTema[];
   template: Variante;
@@ -614,6 +615,9 @@ export function ThemeRenderer({
   // do banner independente da largura real da janela. No site público, fica
   // undefined e o banner volta a decidir sozinho via CSS responsivo (md:).
   viewport?: "DESKTOP" | "MOBILE";
+  // Conteúdo dos selos, compartilhado com a página de produto — a seção
+  // SELOS só controla visibilidade/posição (ver Loja.selosConfig).
+  selosConfig: ConfigSelos;
 }) {
   return (
     <div className="flex flex-1 flex-col gap-12 pb-12">
@@ -664,7 +668,7 @@ export function ThemeRenderer({
           case "SELOS":
             return (
               <RevealOnScroll key={secao.id}>
-                <SecaoSelos config={secao.config} />
+                <SecaoSelos config={selosConfig} />
               </RevealOnScroll>
             );
           default:
