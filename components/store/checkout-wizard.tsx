@@ -471,8 +471,6 @@ export function CheckoutWizard({ slug }: { slug: string }) {
               </div>
             </>
           )}
-
-          <CheckoutUpsell slug={slug} />
         </div>
       )}
 
@@ -512,6 +510,12 @@ export function CheckoutWizard({ slug }: { slug: string }) {
           </div>
         </div>
       )}
+
+      {/* Visível em todas as etapas antes da confirmação — o cliente sempre
+          tem uma última chance de adicionar produto, mesmo que não tenha
+          adicionado nada durante a etapa de Entrega. Some na Confirmação
+          (etapa final, só revisão antes de fechar o pedido). */}
+      {step < 3 && <CheckoutUpsell slug={slug} />}
 
       {step === 3 && (
         <div className="flex flex-col gap-4">
