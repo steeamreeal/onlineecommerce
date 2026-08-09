@@ -1,7 +1,12 @@
 import { z } from "zod";
 import type { StatusPedido } from "@prisma/client";
-import { router, storeProcedure } from "../trpc";
+import { router, roleProcedure } from "../trpc";
 import { ESTOQUE_BAIXO_LIMITE } from "@/lib/estoque";
+
+// Faturamento, ticket médio e ranking de clientes são dados sensíveis do
+// negócio — só Dono e Gerente veem; Vendedor/Estoquista/Separador ficam de
+// fora (não há hoje vínculo pedido↔vendedor para um recorte "só o que vendi").
+const financeiroProcedure = roleProcedure(["DONO", "GERENTE"]);
 
 // Status que representam dinheiro que de fato entrou — usado para o card de
 // "Vendas pagas", separado do Faturamento (que soma todo pedido não
@@ -27,7 +32,7 @@ export const dashboardRouter = router({
   // CANCELADO no faturamento geral) em uma única query. Aceita um período
   // opcional (dataInicio/dataFim, formato YYYY-MM-DD) para filtrar tudo pela
   // data de criação do pedido — sem período, considera a loja inteira.
-  kpis: storeProcedure.input(periodoSchema).query(async ({ ctx, input }) => {
+  kpis: financeiroProcedure.input(periodoSchema).query(async ({ ctx, input }) => {
     const createdAt = rangeCreatedAt(input);
 
     const [agregadoPedidosValidos, agregadoPedidosPagos, pedidosPendentes, produtosEstoqueBaixo] =
@@ -77,7 +82,7 @@ export const dashboardRouter = router({
     };
   }),
 
-  produtosMaisVendidos: storeProcedure
+  produtosMaisVendidos: financeiroProcedure
     .input(z.object({ limite: z.number().int().positive().default(5) }).optional())
     .query(async ({ ctx, input }) => {
       const limite = input?.limite ?? 5;
@@ -101,7 +106,7 @@ export const dashboardRouter = router({
       }));
     }),
 
-  clientesQueMaisCompram: storeProcedure
+  clientesQueMaisCompram: financeiroProcedure
     .input(z.object({ limite: z.number().int().positive().default(5) }).optional())
     .query(async ({ ctx, input }) => {
       const limite = input?.limite ?? 5;
@@ -128,7 +133,7 @@ export const dashboardRouter = router({
         .filter((c) => c.totalGasto > 0);
     }),
 
-  vendasPorDia: storeProcedure
+  vendasPorDia: financeiroProcedure
     .input(z.object({ dias: z.number().int().positive().default(14) }).optional())
     .query(async ({ ctx, input }) => {
       const dias = input?.dias ?? 14;

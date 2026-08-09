@@ -54,8 +54,8 @@ function criarPrismaMock(overrides: Record<string, unknown> = {}) {
   return { mock: mock as PrismaMockShape, client: mock as unknown as PrismaClient };
 }
 
-function criarCaller(client: PrismaClient) {
-  const ctx = { prisma: client, usuario: { id: "u1" }, lojaId: LOJA.id, supabaseUser: null } as never;
+function criarCaller(client: PrismaClient, papel: string = "DONO") {
+  const ctx = { prisma: client, usuario: { id: "u1" }, lojaId: LOJA.id, papel, supabaseUser: null } as never;
   return pedidosRouter.createCaller(ctx);
 }
 
@@ -171,6 +171,7 @@ describe("pedidosRouter.atualizarStatus", () => {
     const caller = criarCaller(client);
 
     const resultado = await caller.atualizarStatus({ id: "pedido-1", status: "AGUARDANDO_PAGAMENTO" });
+    if ("pendente" in resultado) throw new Error("não deveria ficar pendente");
 
     expect(resultado.status).toBe("AGUARDANDO_PAGAMENTO");
     expect(resendSendMock).toHaveBeenCalledTimes(1);
@@ -199,5 +200,66 @@ describe("pedidosRouter.atualizarStatus", () => {
     await expect(caller.atualizarStatus({ id: "pedido-1", status: "PAGO" })).rejects.toThrow(
       "Transição de status inválida",
     );
+  });
+});
+
+describe("pedidosRouter — fluxo de aprovação por papel", () => {
+  it("SEPARADOR: atualizarStatus não muda o pedido — vira solicitação pendente", async () => {
+    const pedidoExistente = { id: "pedido-1", status: "NOVO", cupomId: null, itens: [], cliente: CLIENTE };
+    const { mock, client } = criarPrismaMock({
+      pedido: {
+        create: vi.fn(),
+        findFirst: vi.fn().mockResolvedValue(pedidoExistente),
+        update: vi.fn(),
+      },
+      solicitacao: { create: vi.fn().mockResolvedValue({ id: "solicitacao-1" }) },
+    });
+    const caller = criarCaller(client, "SEPARADOR");
+
+    const resultado = await caller.atualizarStatus({ id: "pedido-1", status: "AGUARDANDO_PAGAMENTO" });
+
+    expect(mock.pedido.update).not.toHaveBeenCalled();
+    expect(mock.solicitacao.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ tipo: "PEDIDO_ATUALIZAR_STATUS" }) }),
+    );
+    expect(resultado).toEqual({ pendente: true, solicitacaoId: "solicitacao-1" });
+  });
+
+  it("VENDEDOR: criar pedido (venda manual) não baixa estoque — vira solicitação pendente", async () => {
+    const { mock, client } = criarPrismaMock({
+      solicitacao: { create: vi.fn().mockResolvedValue({ id: "solicitacao-2" }) },
+    });
+    const caller = criarCaller(client, "VENDEDOR");
+
+    const resultado = await caller.criar({
+      clienteId: CLIENTE.id,
+      formaPagamento: "PAGAMENTO_ENTREGA",
+      itens: [{ produtoId: PRODUTO.id, quantidade: 1 }],
+      valorFrete: 0,
+    });
+
+    expect(mock.pedido.create).not.toHaveBeenCalled();
+    expect(mock.solicitacao.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ tipo: "PEDIDO_CRIAR" }) }),
+    );
+    expect(resultado).toEqual({ pendente: true, solicitacaoId: "solicitacao-2" });
+  });
+
+  it("ESTOQUISTA: atualizarRastreio não muda o pedido — vira solicitação pendente", async () => {
+    const pedidoExistente = { id: "pedido-1", codigoRastreio: null };
+    const { mock, client } = criarPrismaMock({
+      pedido: {
+        create: vi.fn(),
+        findFirst: vi.fn().mockResolvedValue(pedidoExistente),
+        update: vi.fn(),
+      },
+      solicitacao: { create: vi.fn().mockResolvedValue({ id: "solicitacao-3" }) },
+    });
+    const caller = criarCaller(client, "ESTOQUISTA");
+
+    const resultado = await caller.atualizarRastreio({ id: "pedido-1", codigoRastreio: "BR123" });
+
+    expect(mock.pedido.update).not.toHaveBeenCalled();
+    expect(resultado).toEqual({ pendente: true, solicitacaoId: "solicitacao-3" });
   });
 });

@@ -93,6 +93,7 @@ model Loja {
   opcoesFrete  OpcaoFrete[]
   notificacoes Notificacao[]
   paginasInstitucionais PaginaInstitucional[]
+  solicitacoes Solicitacao[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -144,8 +145,12 @@ model Usuario {
   // ao painel admin do SaaS com este papel — independente de UsuarioLoja.
   papelAdmin PapelAdmin?
   lojas      UsuarioLoja[]
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
+
+  solicitacoesFeitas    Solicitacao[] @relation("SolicitacaoSolicitante")
+  solicitacoesRevisadas Solicitacao[] @relation("SolicitacaoRevisor")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model UsuarioLoja {
@@ -434,6 +439,60 @@ model Notificacao {
   createdAt DateTime        @default(now())
 
   @@index([lojaId, lida])
+}
+
+// ---------- Aprovação de mudanças (Vendedor/Estoquista/Separador) ----------
+
+enum StatusSolicitacao {
+  PENDENTE
+  APROVADA
+  REJEITADA
+}
+
+// Um valor por mutation sujeita a aprovação — ver server/trpc/aprovacao.ts,
+// que decide (por papel) se a ação roda direto ou vira uma Solicitacao.
+enum TipoSolicitacao {
+  CLIENTE_CRIAR
+  CLIENTE_ATUALIZAR
+  CLIENTE_REMOVER
+  FRETE_CRIAR
+  FRETE_ATUALIZAR
+  FRETE_ALTERNAR_ATIVO
+  FRETE_REMOVER
+  ESTOQUE_MOVIMENTO
+  ESTOQUE_IMPORTAR
+  PRODUTO_CRIAR
+  PRODUTO_ATUALIZAR
+  PEDIDO_CRIAR
+  PEDIDO_ATUALIZAR_STATUS
+  PEDIDO_ATUALIZAR_RASTREIO
+}
+
+// Toda mutation sensível feita por Vendedor/Estoquista/Separador vira um
+// registro pendente aqui em vez de executar na hora — só DONO/GERENTE podem
+// aprovar (server/trpc/routers/aprovacoes.ts). `payload` guarda o input
+// original (já validado pelo schema Zod da mutation) para reexecução no
+// momento da aprovação, quando as regras de negócio (estoque disponível,
+// status do pedido etc.) são checadas de novo — o estado pode ter mudado
+// entre pedir e aprovar.
+model Solicitacao {
+  id            String            @id @default(cuid())
+  lojaId        String
+  loja          Loja              @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  solicitanteId String
+  solicitante   Usuario           @relation("SolicitacaoSolicitante", fields: [solicitanteId], references: [id])
+  tipo          TipoSolicitacao
+  resumo        String
+  payload       Json
+  status        StatusSolicitacao @default(PENDENTE)
+  erro          String?
+  revisorId     String?
+  revisor       Usuario?          @relation("SolicitacaoRevisor", fields: [revisorId], references: [id])
+  revisadoEm    DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([lojaId, status])
 }
 
 // ---------- Webhooks ----------
