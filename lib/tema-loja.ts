@@ -10,7 +10,7 @@ export const ALTURA_LOGO_MIN_PX = 16;
 export const ALTURA_LOGO_MAX_PX = 160;
 
 export function alturaLogoEmPx(tamanho: number | undefined): number {
-  const t = tamanho ?? 40;
+  const t = tamanho ?? 65;
   return ALTURA_LOGO_MIN_PX + (t / 100) * (ALTURA_LOGO_MAX_PX - ALTURA_LOGO_MIN_PX);
 }
 
@@ -214,7 +214,7 @@ export const secaoCabecalhoSchema = secaoBaseSchema.extend({
     // Escala 0-100 mapeada linearmente para altura em px (ver
     // ALTURA_LOGO_MIN_PX/ALTURA_LOGO_MAX_PX) — só tem efeito quando
     // exibicaoLogo é "LOGO".
-    tamanhoLogo: z.number().min(0).max(100).default(40),
+    tamanhoLogo: z.number().min(0).max(100).default(65),
     // Escala 0-100 mapeada para o espaço vertical (px) entre a linha de
     // logo/busca e a linha de categorias no layout desktop (ver
     // ESPACAMENTO_CABECALHO_MIN_PX/MAX_PX) — sem efeito no mobile.
@@ -457,6 +457,26 @@ export const CONFIG_SELOS_VAZIA: ConfigSelos = { itens: [] };
 // lojaPublica.porSlug). Lê o JSON bruto sem validar contra o schema atual
 // (a seção antiga tinha itens/cores no próprio config), então tolera
 // qualquer formato antigo ou ausente.
+// Ao salvar uma logo em Configurações, ativa "Exibir: Logo" na seção
+// Cabeçalho do tema — sem isso o cabeçalho continua mostrando o nome da loja
+// em texto (exibicaoLogo é um campo separado de Loja.logoUrl) e o lojista
+// não vê nenhuma mudança no site após o upload. Tolera qualquer formato de
+// temaConfig (mesmo princípio de extrairSelosSemente) já que roda antes do
+// parse pelo schema atual.
+export function ativarExibicaoLogo(temaConfig: unknown): unknown {
+  if (!temaConfig || typeof temaConfig !== "object") return temaConfig;
+  const secoes = (temaConfig as { secoes?: unknown }).secoes;
+  if (!Array.isArray(secoes)) return temaConfig;
+  return {
+    ...temaConfig,
+    secoes: secoes.map((s) => {
+      if (!s || typeof s !== "object" || (s as { tipo?: unknown }).tipo !== "CABECALHO") return s;
+      const secao = s as { config?: unknown };
+      return { ...secao, config: { ...(typeof secao.config === "object" ? secao.config : {}), exibicaoLogo: "LOGO" } };
+    }),
+  };
+}
+
 export function extrairSelosSemente(temaConfig: unknown): ConfigSelos {
   if (!temaConfig || typeof temaConfig !== "object") return CONFIG_SELOS_VAZIA;
   const secoes = (temaConfig as { secoes?: unknown }).secoes;
@@ -760,7 +780,7 @@ export function criarTemaConfigPadrao(opcoes: {
           mostrarConta: true,
           posicaoLogo: "ESQUERDA",
           exibicaoLogo: "NOME",
-          tamanhoLogo: 40,
+          tamanhoLogo: 65,
           espacamentoLinhas: 8,
           tamanhoFonteCategorias: 30,
         },

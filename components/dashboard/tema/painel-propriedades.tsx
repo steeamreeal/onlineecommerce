@@ -939,13 +939,13 @@ function FormularioSecao({
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
                 <Label>Tamanho da logo</Label>
-                <span className="text-muted-foreground text-xs">{secao.config.tamanhoLogo ?? 40}</span>
+                <span className="text-muted-foreground text-xs">{secao.config.tamanhoLogo ?? 65}</span>
               </div>
               <input
                 type="range"
                 min={0}
                 max={100}
-                value={secao.config.tamanhoLogo ?? 40}
+                value={secao.config.tamanhoLogo ?? 65}
                 onChange={(e) =>
                   onChange({ ...secao, config: { ...secao.config, tamanhoLogo: Number(e.target.value) } })
                 }

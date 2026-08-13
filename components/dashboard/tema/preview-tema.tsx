@@ -349,7 +349,7 @@ export function PreviewTema({
               nome={nomeLoja}
               logoUrl={logoUrl}
               exibicaoLogo={cabecalho.config.exibicaoLogo ?? "NOME"}
-              tamanhoLogo={cabecalho.config.tamanhoLogo ?? 40}
+              tamanhoLogo={cabecalho.config.tamanhoLogo ?? 65}
               mostrarBusca={cabecalho.config.mostrarBusca ?? true}
               mostrarConta={cabecalho.config.mostrarConta ?? true}
               posicaoLogo={cabecalho.config.posicaoLogo ?? "ESQUERDA"}
