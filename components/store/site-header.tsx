@@ -156,49 +156,54 @@ export function SiteHeader({
       </div>
     );
 
-  const mobile = (
-    <div className="flex flex-col md:hidden">
-      <div className="grid grid-cols-3 items-center gap-3 px-4 py-3">
-        <div className="flex justify-start">
-          {!checkout && (
-            <Sheet open={menuAberto} onOpenChange={setMenuAberto}>
-              <SheetTrigger render={<Button variant="ghost" size="icon" aria-label="Abrir menu de categorias" />}>
-                <Menu />
-              </SheetTrigger>
-              <SheetContent side="left">
-                <SheetHeader>
-                  <SheetTitle>Categorias</SheetTitle>
-                </SheetHeader>
-                <nav className="flex flex-col gap-1 px-4">
-                  {(categorias ?? []).map((categoria) => (
-                    <Link
-                      key={categoria.id}
-                      href={`/loja/${slug}/produtos?categoria=${categoria.id}`}
-                      className="hover:bg-accent rounded-md px-2 py-2 text-sm"
-                      onClick={() => setMenuAberto(false)}
-                    >
-                      {categoria.nome}
-                    </Link>
-                  ))}
-                </nav>
-              </SheetContent>
-            </Sheet>
-          )}
-        </div>
-        <div className="flex justify-center">{logo}</div>
-        <div className="flex justify-end">{acoes}</div>
-      </div>
-      {busca && <div className="px-4 pb-3">{busca}</div>}
+  // Logo grande no mobile (até 160px) rola junto com a página — só a faixa
+  // de navegação (menu, busca, conta, carrinho) abaixo dela fica fixa no
+  // topo ao rolar, senão a logo sozinha ocuparia espaço de tela permanente.
+  const mobileTopo = (
+    <div className="flex justify-center px-4 py-3 md:hidden">{logo}</div>
+  );
+
+  const mobileNav = (
+    <div className="flex items-center gap-3 px-4 py-3 md:hidden">
+      {!checkout && (
+        <Sheet open={menuAberto} onOpenChange={setMenuAberto}>
+          <SheetTrigger render={<Button variant="ghost" size="icon" aria-label="Abrir menu de categorias" />}>
+            <Menu />
+          </SheetTrigger>
+          <SheetContent side="left">
+            <SheetHeader>
+              <SheetTitle>Categorias</SheetTitle>
+            </SheetHeader>
+            <nav className="flex flex-col gap-1 px-4">
+              {(categorias ?? []).map((categoria) => (
+                <Link
+                  key={categoria.id}
+                  href={`/loja/${slug}/produtos?categoria=${categoria.id}`}
+                  className="hover:bg-accent rounded-md px-2 py-2 text-sm"
+                  onClick={() => setMenuAberto(false)}
+                >
+                  {categoria.nome}
+                </Link>
+              ))}
+            </nav>
+          </SheetContent>
+        </Sheet>
+      )}
+      {busca && <div className="flex-1">{busca}</div>}
+      <div className="ml-auto flex justify-end">{acoes}</div>
     </div>
   );
 
   return (
-    <div
-      className={cn("sticky top-0 z-40 border-b", !corFundo && "bg-background")}
-      style={{ backgroundColor: corFundo, color: corTexto }}
-    >
-      {desktop}
-      {mobile}
+    <div className={cn(!corFundo && "bg-background")} style={{ backgroundColor: corFundo, color: corTexto }}>
+      <div className="border-b md:hidden">{mobileTopo}</div>
+      <div
+        className={cn("sticky top-0 z-40 border-b", !corFundo && "bg-background")}
+        style={{ backgroundColor: corFundo, color: corTexto }}
+      >
+        {desktop}
+        {mobileNav}
+      </div>
     </div>
   );
 }
