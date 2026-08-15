@@ -57,7 +57,10 @@ export function SiteHeader({
       <img
         src={config.logoUrl}
         alt={config.nome}
-        className="w-auto object-contain"
+        // No mobile o cabeçalho é uma faixa estreita (grid-cols-3 com ícones
+        // ao lado) — sem esse teto, uma logo configurada grande no desktop
+        // (até 220px) estoura a altura da faixa e empurra o resto do layout.
+        className="w-auto max-h-12 object-contain md:max-h-none"
         style={{ height: alturaLogoEmPx(tamanhoLogo) }}
       />
     ) : (
