@@ -84,6 +84,11 @@ export function LojaForm() {
     try {
       const url = await enviarLogoLoja(loja.id, arquivo);
       setLogoUrl(url);
+      // Salva a logo imediatamente — esperar o lojista clicar em "Salvar
+      // alterações" lá embaixo do formulário (ação separada) é uma armadilha
+      // de UX: quem só troca a logo pode nunca clicar, e a imagem enviada
+      // nunca aparece no site apesar do preview ter atualizado aqui.
+      await salvar.mutateAsync({ ...form.getValues(), logoUrl: url });
     } catch (error) {
       const mensagem =
         error instanceof Error && error.message
@@ -186,7 +191,10 @@ export function LojaForm() {
                       />
                       <button
                         type="button"
-                        onClick={() => setLogoUrl(null)}
+                        onClick={() => {
+                          setLogoUrl(null);
+                          salvar.mutate({ ...form.getValues(), logoUrl: null });
+                        }}
                         className="bg-destructive text-destructive-foreground absolute -top-2 -right-2 rounded-full p-1"
                       >
                         <X className="size-3" />
