@@ -60,7 +60,7 @@ export function SiteHeader({
         // No mobile o cabeçalho é uma faixa estreita (grid-cols-3 com ícones
         // ao lado) — sem esse teto, uma logo configurada grande no desktop
         // (até 220px) estoura a altura da faixa e empurra o resto do layout.
-        className="w-auto max-h-16 object-contain md:max-h-none"
+        className="w-auto max-h-24 object-contain md:max-h-none"
         style={{ height: alturaLogoEmPx(tamanhoLogo) }}
       />
     ) : (

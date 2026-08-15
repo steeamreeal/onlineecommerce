@@ -50,7 +50,7 @@ function PreviewCabecalho({
         className="w-auto object-contain"
         // Mesmo teto de mobile aplicado em SiteHeader (max-h-12 = 48px) —
         // o preview usa `viewport` (não CSS responsivo) pra decidir isso.
-        style={{ height: viewport === "MOBILE" ? Math.min(64, alturaLogoEmPx(tamanhoLogo)) : alturaLogoEmPx(tamanhoLogo) }}
+        style={{ height: viewport === "MOBILE" ? Math.min(96, alturaLogoEmPx(tamanhoLogo)) : alturaLogoEmPx(tamanhoLogo) }}
       />
     ) : (
       <span className="text-lg font-semibold">{nome}</span>
