@@ -194,9 +194,16 @@ export function SiteHeader({
     </div>
   );
 
+  // mobileTopo fica FORA do wrapper sticky, como irmão dele — se ficasse
+  // aninhado dentro de um wrapper comum, esse wrapper (com a altura de só
+  // o cabeçalho) viraria o "containing block" do sticky, e ele pararia de
+  // grudar assim que a rolagem passasse da altura do próprio cabeçalho
+  // (bug real, visto rodando a página: o sticky "soltava" após ~250px).
   return (
-    <div className={cn(!corFundo && "bg-background")} style={{ backgroundColor: corFundo, color: corTexto }}>
-      <div className="border-b md:hidden">{mobileTopo}</div>
+    <>
+      <div className={cn("border-b md:hidden", !corFundo && "bg-background")} style={{ backgroundColor: corFundo, color: corTexto }}>
+        {mobileTopo}
+      </div>
       <div
         className={cn("sticky top-0 z-40 border-b", !corFundo && "bg-background")}
         style={{ backgroundColor: corFundo, color: corTexto }}
@@ -204,6 +211,6 @@ export function SiteHeader({
         {desktop}
         {mobileNav}
       </div>
-    </div>
+    </>
   );
 }
