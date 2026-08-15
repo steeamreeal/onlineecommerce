@@ -21,7 +21,7 @@ export function SiteHeader({
   mostrarConta = true,
   posicaoLogo = "ESQUERDA",
   exibicaoLogo = "NOME",
-  tamanhoLogo = 40,
+  tamanhoLogo = 65,
   espacamentoLinhas = 8,
   tamanhoFonteCategorias = 30,
   corFundo,

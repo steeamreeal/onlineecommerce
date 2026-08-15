@@ -1,7 +1,14 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
+import { Prisma } from "@prisma/client";
 import { router, storeProcedure, roleProcedure, temaProcedure } from "../trpc";
-import { temaConfigSchema, temaProdutoConfigSchema, configSelosSchema, extrairSelosSemente } from "@/lib/tema-loja";
+import {
+  temaConfigSchema,
+  temaProdutoConfigSchema,
+  configSelosSchema,
+  extrairSelosSemente,
+  ativarExibicaoLogo,
+} from "@/lib/tema-loja";
 import {
   adicionarDominioNaVercel,
   removerDominioDaVercel,
@@ -68,6 +75,17 @@ export const lojaRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      // Ao definir uma logo, ativa "Exibir: Logo" no cabeçalho do tema —
+      // senão o upload não muda nada visível no site (ver ativarExibicaoLogo).
+      let temaConfigAtualizado: unknown | undefined;
+      if (input.logoUrl) {
+        const atual = await ctx.prisma.loja.findUniqueOrThrow({
+          where: { id: ctx.lojaId },
+          select: { temaConfig: true },
+        });
+        temaConfigAtualizado = ativarExibicaoLogo(atual.temaConfig);
+      }
+
       return ctx.prisma.loja.update({
         where: { id: ctx.lojaId },
         data: {
@@ -80,6 +98,9 @@ export const lojaRouter = router({
           horarioAtend: input.horarioAtend || null,
           politicas: input.politicas || null,
           telefoneSac: input.telefoneSac || null,
+          ...(temaConfigAtualizado !== undefined
+            ? { temaConfig: temaConfigAtualizado as Prisma.InputJsonValue }
+            : {}),
         },
         select: {
           corPrimaria: true,
