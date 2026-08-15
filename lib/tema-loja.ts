@@ -7,7 +7,7 @@ import { z } from "zod";
 
 // Faixa de altura real (px) que o slider 0-100 de tamanho da logo cobre.
 export const ALTURA_LOGO_MIN_PX = 16;
-export const ALTURA_LOGO_MAX_PX = 160;
+export const ALTURA_LOGO_MAX_PX = 220;
 
 export function alturaLogoEmPx(tamanho: number | undefined): number {
   const t = tamanho ?? 65;
