@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Boxes, Plus, Search } from "lucide-react";
+import { Boxes, Plus, Search, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -46,12 +47,30 @@ export function ProdutosLista() {
   const [categoriaId, setCategoriaId] = useState<string>(TODOS);
   const [status, setStatus] = useState<StatusProduto | typeof TODOS>(TODOS);
 
+  const utils = trpc.useUtils();
   const { data: categorias = [] } = trpc.categorias.listar.useQuery();
   const { data: produtos = [], isLoading } = trpc.produtos.listar.useQuery({
     busca: busca.trim() || undefined,
     categoriaId: categoriaId === TODOS ? undefined : categoriaId,
     status: status === TODOS ? undefined : status,
   });
+
+  const remover = trpc.produtos.remover.useMutation({
+    onSuccess: () => {
+      utils.produtos.listar.invalidate();
+      toast.success("Produto excluído.");
+    },
+    onError: (erro) => {
+      toast.error(erro.message || "Não foi possível excluir o produto.");
+    },
+  });
+
+  function handleExcluir(produtoId: string, nome: string) {
+    if (!window.confirm(`Excluir o produto "${nome}"? Ele deixará de aparecer na sua loja.`)) {
+      return;
+    }
+    remover.mutate({ id: produtoId });
+  }
 
   const categoriaSelectItems = [
     { value: TODOS, label: "Todas as categorias" },
@@ -214,6 +233,16 @@ export function ProdutosLista() {
                         render={<Link href={`/painel/produtos/${produto.id}/editar`} />}
                       >
                         Editar
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => handleExcluir(produto.id, produto.nome)}
+                        disabled={remover.isPending}
+                      >
+                        <Trash2 className="size-4" />
+                        Excluir
                       </Button>
                     </TableCell>
                   </TableRow>
