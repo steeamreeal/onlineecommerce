@@ -18,8 +18,17 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { trpc } from "@/lib/trpc/client";
 import { CATEGORIAS_SUGERIDAS } from "@/lib/categorias-sugeridas";
+
+const SEM_CATEGORIA = "__sem_categoria__";
 
 export function CategoriasLista() {
   const utils = trpc.useUtils();
@@ -28,6 +37,13 @@ export function CategoriasLista() {
   const [nomeNova, setNomeNova] = useState("");
   const [sugestoesAbertas, setSugestoesAbertas] = useState(false);
   const [selecionadas, setSelecionadas] = useState<Set<string>>(new Set());
+
+  const [categoriaParaExcluir, setCategoriaParaExcluir] = useState<{
+    id: string;
+    nome: string;
+  } | null>(null);
+  const [destinoParaTodos, setDestinoParaTodos] = useState<string>(SEM_CATEGORIA);
+  const [destinosPorProduto, setDestinosPorProduto] = useState<Record<string, string>>({});
 
   const nomesExistentes = new Set(categorias.map((c) => c.nome));
 
@@ -58,15 +74,52 @@ export function CategoriasLista() {
     },
   });
 
+  const { data: produtosDaCategoria = [], isLoading: carregandoProdutos } =
+    trpc.categorias.produtosDaCategoria.useQuery(
+      { id: categoriaParaExcluir?.id ?? "" },
+      { enabled: !!categoriaParaExcluir },
+    );
+
   const remover = trpc.categorias.remover.useMutation({
     onSuccess: () => {
       utils.categorias.listar.invalidate();
       toast.success("Categoria removida.");
+      setCategoriaParaExcluir(null);
+      setDestinosPorProduto({});
+      setDestinoParaTodos(SEM_CATEGORIA);
     },
     onError: (erro) => {
       toast.error(erro.message || "Não foi possível remover a categoria.");
     },
   });
+
+  const outrasCategorias = categorias.filter((c) => c.id !== categoriaParaExcluir?.id);
+
+  function abrirExclusao(categoria: { id: string; nome: string }) {
+    setCategoriaParaExcluir(categoria);
+    setDestinoParaTodos(SEM_CATEGORIA);
+    setDestinosPorProduto({});
+  }
+
+  function aplicarDestinoATodos(valor: string | null) {
+    if (!valor) return;
+    setDestinoParaTodos(valor);
+    const novo: Record<string, string> = {};
+    for (const produto of produtosDaCategoria) {
+      novo[produto.id] = valor;
+    }
+    setDestinosPorProduto(novo);
+  }
+
+  function confirmarExclusao() {
+    if (!categoriaParaExcluir) return;
+    const produtoDestinos: Record<string, string | null> = {};
+    for (const produto of produtosDaCategoria) {
+      const destino = destinosPorProduto[produto.id] ?? destinoParaTodos;
+      produtoDestinos[produto.id] = destino === SEM_CATEGORIA ? null : destino;
+    }
+    remover.mutate({ id: categoriaParaExcluir.id, produtoDestinos });
+  }
 
   function handleCriar() {
     const nome = nomeNova.trim();
@@ -132,8 +185,7 @@ export function CategoriasLista() {
               {categoria.nome}
               <button
                 type="button"
-                onClick={() => remover.mutate({ id: categoria.id })}
-                disabled={remover.isPending}
+                onClick={() => abrirExclusao(categoria)}
                 className="hover:bg-muted-foreground/20 rounded-full p-0.5"
                 aria-label={`Remover categoria ${categoria.nome}`}
               >
@@ -181,6 +233,88 @@ export function CategoriasLista() {
               disabled={criarVarias.isPending || selecionadas.size === 0}
             >
               {criarVarias.isPending ? "Adicionando..." : `Adicionar (${selecionadas.size})`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!categoriaParaExcluir}
+        onOpenChange={(aberto) => {
+          if (!aberto) setCategoriaParaExcluir(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Excluir categoria "{categoriaParaExcluir?.nome}"</DialogTitle>
+            <DialogDescription>
+              {carregandoProdutos
+                ? "Verificando produtos..."
+                : produtosDaCategoria.length === 0
+                  ? "Nenhum produto está nessa categoria. Ela pode ser excluída diretamente."
+                  : `${produtosDaCategoria.length} produto(s) estão nessa categoria. Escolha para qual categoria cada um vai antes de excluir.`}
+            </DialogDescription>
+          </DialogHeader>
+
+          {!carregandoProdutos && produtosDaCategoria.length > 0 && (
+            <div className="flex flex-col gap-3 py-2">
+              <div className="flex items-center justify-between gap-2 rounded-md border p-3">
+                <span className="text-sm font-medium">Mover todos para</span>
+                <Select value={destinoParaTodos} onValueChange={aplicarDestinoATodos}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={SEM_CATEGORIA}>Sem categoria</SelectItem>
+                    {outrasCategorias.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex max-h-72 flex-col gap-2 overflow-y-auto">
+                {produtosDaCategoria.map((produto) => (
+                  <div
+                    key={produto.id}
+                    className="flex items-center justify-between gap-2 rounded-md border px-3 py-2"
+                  >
+                    <span className="truncate text-sm">{produto.nome}</span>
+                    <Select
+                      value={destinosPorProduto[produto.id] ?? destinoParaTodos}
+                      onValueChange={(valor) => {
+                        if (!valor) return;
+                        setDestinosPorProduto((atual) => ({ ...atual, [produto.id]: valor }));
+                      }}
+                    >
+                      <SelectTrigger className="w-48">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={SEM_CATEGORIA}>Sem categoria</SelectItem>
+                        {outrasCategorias.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.nome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline">Cancelar</Button>} />
+            <Button
+              variant="destructive"
+              onClick={confirmarExclusao}
+              disabled={remover.isPending || carregandoProdutos}
+            >
+              {remover.isPending ? "Excluindo..." : "Excluir categoria"}
             </Button>
           </DialogFooter>
         </DialogContent>
