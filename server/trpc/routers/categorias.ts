@@ -51,22 +51,77 @@ export const categoriasRouter = router({
       return { criadas: novos.length };
     }),
 
-  remover: gestorProcedure
+  // Lista os produtos vinculados a uma categoria, para o lojista decidir
+  // para onde cada um vai antes de excluí-la (ver `remover`).
+  produtosDaCategoria: gestorProcedure
     .input(z.object({ id: z.string() }))
-    .mutation(async ({ ctx, input }) => {
+    .query(async ({ ctx, input }) => {
       const categoria = await ctx.prisma.categoria.findFirst({
         where: { id: input.id, lojaId: ctx.lojaId },
-        include: { _count: { select: { produtos: true } } },
       });
       if (!categoria) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Categoria não encontrada." });
       }
-      if (categoria._count.produtos > 0) {
-        throw new TRPCError({
-          code: "CONFLICT",
-          message: "Esta categoria está em uso por produtos. Remova ou mude a categoria desses produtos antes de excluí-la.",
-        });
+      return ctx.prisma.produto.findMany({
+        where: { categoriaId: input.id, lojaId: ctx.lojaId },
+        select: { id: true, nome: true },
+        orderBy: { nome: "asc" },
+      });
+    }),
+
+  remover: gestorProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        // Para cada produto atualmente na categoria, para qual categoria ele deve
+        // ir (ou null para ficar sem categoria). Obrigatório cobrir todos os
+        // produtos da categoria quando ela tiver produtos vinculados.
+        produtoDestinos: z.record(z.string(), z.string().nullable()).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const categoria = await ctx.prisma.categoria.findFirst({
+        where: { id: input.id, lojaId: ctx.lojaId },
+        include: { produtos: { select: { id: true } } },
+      });
+      if (!categoria) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Categoria não encontrada." });
       }
+
+      if (categoria.produtos.length > 0) {
+        const destinos = input.produtoDestinos ?? {};
+        const idsFaltando = categoria.produtos.filter((p) => !(p.id in destinos));
+        if (idsFaltando.length > 0) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "Esta categoria está em uso por produtos. Escolha para qual categoria cada produto vai antes de excluí-la.",
+          });
+        }
+
+        const categoriasDestinoIds = Array.from(
+          new Set(Object.values(destinos).filter((v): v is string => v !== null)),
+        );
+        if (categoriasDestinoIds.length > 0) {
+          const categoriasValidas = await ctx.prisma.categoria.count({
+            where: { id: { in: categoriasDestinoIds }, lojaId: ctx.lojaId },
+          });
+          if (categoriasValidas !== categoriasDestinoIds.length) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "Categoria de destino inválida." });
+          }
+        }
+
+        await ctx.prisma.$transaction([
+          ...categoria.produtos.map((produto) =>
+            ctx.prisma.produto.update({
+              where: { id: produto.id },
+              data: { categoriaId: destinos[produto.id] },
+            }),
+          ),
+          ctx.prisma.categoria.delete({ where: { id: input.id } }),
+        ]);
+        return { ok: true };
+      }
+
       await ctx.prisma.categoria.delete({ where: { id: input.id } });
       return { ok: true };
     }),
