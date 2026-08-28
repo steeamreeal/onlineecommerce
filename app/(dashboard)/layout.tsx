@@ -4,6 +4,7 @@ import { LogoutButton } from "@/components/auth/logout-button";
 import { NotificacoesSino } from "@/components/dashboard/notificacoes-sino";
 import { AcessoLojaGuard } from "@/components/dashboard/acesso-loja-guard";
 import { NomeLojaHeader } from "@/components/dashboard/nome-loja-header";
+import { TrocadorLoja } from "@/components/dashboard/trocador-loja";
 import { AccentColorProvider } from "@/components/accent-color-provider";
 import { AparenciaMenu } from "@/components/aparencia-menu";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -44,6 +45,7 @@ export default function DashboardLayout({
             <header className="flex items-center justify-between border-b px-6 py-4">
               <NomeLojaHeader />
               <div className="flex items-center gap-2">
+                <TrocadorLoja />
                 <AparenciaMenu />
                 <NotificacoesSino />
                 <LogoutButton />
