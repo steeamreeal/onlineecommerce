@@ -15,13 +15,24 @@ export function AcessoLojaGuard({ children }: { children: React.ReactNode }) {
   const bloqueado =
     error instanceof TRPCClientError && error.data?.code === "FORBIDDEN";
 
-  if (bloqueado) {
+  // BAD_REQUEST aqui só acontece quando o login não tem nenhuma UsuarioLoja
+  // (ex.: conta criada pelo /cadastro sem terminar o onboarding, ou acesso
+  // removido de todas as lojas) - sem isso, cada tela do painel ficava presa
+  // em loading eterno, tentando de novo sem nunca mostrar o motivo real.
+  const semLoja =
+    error instanceof TRPCClientError && error.data?.code === "BAD_REQUEST";
+
+  if (bloqueado || semLoja) {
     return (
       <div className="flex flex-1 items-center justify-center p-8">
         <Alert variant="destructive" className="max-w-md">
           <TriangleAlertIcon />
-          <AlertTitle>Acesso bloqueado</AlertTitle>
-          <AlertDescription>{error.message}</AlertDescription>
+          <AlertTitle>{bloqueado ? "Acesso bloqueado" : "Nenhuma loja vinculada"}</AlertTitle>
+          <AlertDescription>
+            {bloqueado
+              ? error.message
+              : "Sua conta ainda não está vinculada a nenhuma loja. Fale com quem administra a plataforma para receber um convite."}
+          </AlertDescription>
         </Alert>
       </div>
     );
