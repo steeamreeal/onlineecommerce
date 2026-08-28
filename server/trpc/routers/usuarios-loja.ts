@@ -1,7 +1,7 @@
 import { randomBytes } from "crypto";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, publicProcedure, authedProcedure, storeProcedure, roleProcedure } from "../trpc";
+import { router, publicProcedure, authedProcedure, protectedProcedure, storeProcedure, roleProcedure } from "../trpc";
 import { enviarConviteLoja } from "@/lib/email/notificacoes";
 
 const papelUsuarioSchema = z.enum(["DONO", "ADMINISTRADOR", "GERENTE", "VENDEDOR", "ESTOQUISTA", "SEPARADOR"]);
@@ -15,6 +15,25 @@ const equipeProcedure = roleProcedure(["ADMINISTRADOR", "DONO"]);
 const CONVITE_VALIDADE_HORAS = 72;
 
 export const usuariosLojaRouter = router({
+  // Lojas que o usuário logado tem acesso (mesmo e-mail pode ter sido
+  // convidado para mais de uma loja - ver UsuarioLoja). Usado pelo trocador
+  // de loja no cabeçalho do painel; não é storeProcedure porque precisa
+  // funcionar mesmo sem uma loja "ativa" ainda selecionada no cookie.
+  minhasLojas: protectedProcedure.query(async ({ ctx }) => {
+    const vinculos = await ctx.prisma.usuarioLoja.findMany({
+      where: { usuarioId: ctx.usuario.id },
+      include: { loja: { select: { id: true, nome: true, slug: true, statusPlano: true } } },
+      orderBy: { createdAt: "asc" },
+    });
+    return vinculos.map((v) => ({
+      lojaId: v.lojaId,
+      papel: v.papel,
+      nome: v.loja.nome,
+      slug: v.loja.slug,
+      statusPlano: v.loja.statusPlano,
+    }));
+  }),
+
   // Lista os vínculos reais (UsuarioLoja) e os convites ainda não aceitos,
   // para a tela de Configurações > Usuários mostrar os dois num só lugar.
   // `souDono`/`existeDono` guiam a UI: transferir o papel de DONO só é

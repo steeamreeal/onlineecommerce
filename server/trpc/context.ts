@@ -55,14 +55,33 @@ export async function createContext({ req, resHeaders }: FetchCreateContextFnOpt
   if (supabaseUser) {
     const usuarioDb = await prisma.usuario.findUnique({
       where: { supabaseId: supabaseUser.id },
-      include: { lojas: { take: 1, orderBy: { createdAt: "asc" } } },
+      include: { lojas: { orderBy: { createdAt: "asc" } } },
     });
 
     if (usuarioDb) {
       usuario = { id: usuarioDb.id, email: usuarioDb.email, papelAdmin: usuarioDb.papelAdmin };
-      lojaId = usuarioDb.lojas[0]?.lojaId ?? null;
-      papel = usuarioDb.lojas[0]?.papel ?? null;
-      podeEditarTema = usuarioDb.lojas[0]?.podeEditarTema ?? false;
+
+      // Um mesmo login pode ter acesso a mais de uma loja (ex.: lojista com
+      // loja de roupas e loja de calçados) - o cookie `loja_ativa` (definido
+      // em app/api/loja-ativa/route.ts pelo trocador de loja no painel)
+      // decide qual delas está "aberta" nesta sessão. Sempre revalidado
+      // contra os vínculos reais do usuário - nunca confiar cegamente no
+      // valor do cookie. Sem cookie ou cookie inválido, cai para a loja mais
+      // antiga (comportamento anterior, mantém compatibilidade).
+      const cookieHeader = req.headers.get("cookie") ?? "";
+      const lojaAtivaCookie = cookieHeader
+        .split(";")
+        .map((c) => c.trim())
+        .find((c) => c.startsWith("loja_ativa="))
+        ?.split("=")[1];
+
+      const vinculoAtivo =
+        (lojaAtivaCookie && usuarioDb.lojas.find((l) => l.lojaId === lojaAtivaCookie)) ||
+        usuarioDb.lojas[0];
+
+      lojaId = vinculoAtivo?.lojaId ?? null;
+      papel = vinculoAtivo?.papel ?? null;
+      podeEditarTema = vinculoAtivo?.podeEditarTema ?? false;
     }
   }
 
