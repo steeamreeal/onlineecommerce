@@ -2,6 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import type { PrismaClient } from "@prisma/client";
 import { router, publicProcedure } from "../trpc";
+import { itemElegivelParaCupom } from "@/lib/cupons";
 import { extrairSelosSemente } from "@/lib/tema-loja";
 
 // Toda procedure deste router é pública (site de vendas, sem sessão) e
@@ -203,8 +204,15 @@ export const lojaPublicaRouter = router({
 
       const restrito = cupom.produtos.length > 0 || cupom.categorias.length > 0;
       if (restrito) {
-        const idsProdutosRestritos = new Set(cupom.produtos.map((p) => p.id));
-        const aplicaAlgumProduto = input.produtoIds.some((id) => idsProdutosRestritos.has(id));
+        // Categoria vem do banco (nunca do client): só os ids de produto
+        // enviados são usados, escopados pela loja.
+        const produtosCarrinho = await ctx.prisma.produto.findMany({
+          where: { id: { in: input.produtoIds }, lojaId: loja.id },
+          select: { id: true, categoriaId: true },
+        });
+        const aplicaAlgumProduto = produtosCarrinho.some((produto) =>
+          itemElegivelParaCupom(cupom, { produtoId: produto.id, categoriaId: produto.categoriaId }),
+        );
         if (!aplicaAlgumProduto) {
           throw new TRPCError({
             code: "BAD_REQUEST",

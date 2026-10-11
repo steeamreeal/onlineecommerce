@@ -53,6 +53,7 @@ function criarPrismaMock(overrides: Record<string, unknown> = {}) {
     },
     enderecoCliente: { create: vi.fn() },
     variacaoProduto: {
+      findMany: vi.fn().mockResolvedValue([{ id: "variacao-1", produtoId: PRODUTO.id }]),
       updateMany: vi.fn().mockResolvedValue({ count: 1 }),
       update: vi.fn(),
       findUniqueOrThrow: vi.fn().mockResolvedValue(VARIACAO),
@@ -148,8 +149,10 @@ describe("checkoutRouter.criarPedido", () => {
           fim: new Date("2999-01-01"),
           limiteUso: null,
           usosAtuais: 0,
+          produtos: [],
+          categorias: [],
         }),
-        update: vi.fn(),
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
       },
     });
     const caller = criarCaller(client);
@@ -165,8 +168,112 @@ describe("checkoutRouter.criarPedido", () => {
         data: expect.objectContaining({ valorDesconto: 10, valorTotal: 90 }),
       }),
     );
-    expect(mock.cupom.update).toHaveBeenCalledWith({
+    expect(mock.cupom.updateMany).toHaveBeenCalledWith({
       where: { id: "cupom-1" },
+      data: { usosAtuais: { increment: 1 } },
+    });
+  });
+
+  it("rejeita variação que pertence a outro produto/loja (nunca baixa estoque alheio)", async () => {
+    const { mock, client } = criarPrismaMock();
+    const caller = criarCaller(client);
+
+    await expect(
+      caller.criarPedido({
+        ...inputBase,
+        formaPagamento: "PAGAMENTO_ENTREGA",
+        itens: [{ produtoId: PRODUTO.id, variacaoId: "variacao-de-outra-loja", quantidade: 1 }],
+      }),
+    ).rejects.toThrow("Variação inválida para um dos produtos.");
+
+    expect(mock.variacaoProduto.updateMany).not.toHaveBeenCalled();
+    expect(mock.pedido.create).not.toHaveBeenCalled();
+  });
+
+  it("exige a variação quando o produto tem mais de uma (não pula a baixa de estoque)", async () => {
+    const { mock, client } = criarPrismaMock({
+      variacaoProduto: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: "variacao-1", produtoId: PRODUTO.id },
+          { id: "variacao-2", produtoId: PRODUTO.id },
+        ]),
+        updateMany: vi.fn(),
+        update: vi.fn(),
+        findUniqueOrThrow: vi.fn(),
+      },
+    });
+    const caller = criarCaller(client);
+
+    await expect(
+      caller.criarPedido({
+        ...inputBase,
+        formaPagamento: "PAGAMENTO_ENTREGA",
+        itens: [{ produtoId: PRODUTO.id, quantidade: 1 }],
+      }),
+    ).rejects.toThrow("Selecione a variação de todos os produtos.");
+    expect(mock.pedido.create).not.toHaveBeenCalled();
+  });
+
+  it("só vende produto ATIVO/DESTAQUE (filtra INATIVO na busca)", async () => {
+    const { mock, client } = criarPrismaMock();
+    const caller = criarCaller(client);
+
+    await caller.criarPedido({ ...inputBase, formaPagamento: "PAGAMENTO_ENTREGA" });
+
+    expect(mock.produto.findMany).toHaveBeenCalledWith({
+      where: expect.objectContaining({ status: { in: ["ATIVO", "DESTAQUE"] } }),
+    });
+  });
+
+  it("rejeita cupom restrito a outro produto (restrição aplicada no servidor)", async () => {
+    const { mock, client } = criarPrismaMock({
+      cupom: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: "cupom-2",
+          tipo: "PERCENTUAL",
+          valor: 50,
+          inicio: new Date("2020-01-01"),
+          fim: new Date("2999-01-01"),
+          limiteUso: null,
+          usosAtuais: 0,
+          produtos: [{ id: "outro-produto" }],
+          categorias: [],
+        }),
+        updateMany: vi.fn(),
+      },
+    });
+    const caller = criarCaller(client);
+
+    await expect(
+      caller.criarPedido({ ...inputBase, formaPagamento: "PAGAMENTO_ENTREGA", cupomCodigo: "SO-OUTRO" }),
+    ).rejects.toThrow("Este cupom não é válido para os produtos do carrinho.");
+    expect(mock.pedido.create).not.toHaveBeenCalled();
+  });
+
+  it("rejeita quando o limite de uso do cupom estoura entre a checagem e a gravação", async () => {
+    const { mock, client } = criarPrismaMock({
+      cupom: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: "cupom-3",
+          tipo: "PERCENTUAL",
+          valor: 10,
+          inicio: new Date("2020-01-01"),
+          fim: new Date("2999-01-01"),
+          limiteUso: 1,
+          usosAtuais: 0,
+          produtos: [],
+          categorias: [],
+        }),
+        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+      },
+    });
+    const caller = criarCaller(client);
+
+    await expect(
+      caller.criarPedido({ ...inputBase, formaPagamento: "PAGAMENTO_ENTREGA", cupomCodigo: "ULTIMO" }),
+    ).rejects.toThrow("Este cupom atingiu o limite de uso.");
+    expect(mock.cupom.updateMany).toHaveBeenCalledWith({
+      where: { id: "cupom-3", usosAtuais: { lt: 1 } },
       data: { usosAtuais: { increment: 1 } },
     });
   });
@@ -205,6 +312,7 @@ describe("checkoutRouter.criarPedido", () => {
   it("não gera preferência de pagamento nem cria o pedido quando falta estoque", async () => {
     const { mock, client } = criarPrismaMock({
       variacaoProduto: {
+        findMany: vi.fn().mockResolvedValue([{ id: "variacao-1", produtoId: PRODUTO.id }]),
         updateMany: vi.fn().mockResolvedValue({ count: 0 }),
         update: vi.fn(),
         findUniqueOrThrow: vi.fn().mockResolvedValue(VARIACAO),

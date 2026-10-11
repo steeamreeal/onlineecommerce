@@ -35,7 +35,15 @@ function criarPrismaMock(overrides: Record<string, unknown> = {}) {
     },
     cupom: { findFirst: vi.fn().mockResolvedValue(null), update: vi.fn() },
     variacaoProduto: {
-      findUniqueOrThrow: vi.fn(),
+      findMany: vi.fn().mockResolvedValue([{ id: "variacao-1", produtoId: PRODUTO.id }]),
+      findUniqueOrThrow: vi.fn().mockResolvedValue({
+        id: "variacao-1",
+        produtoId: PRODUTO.id,
+        estoque: 50,
+        cor: null,
+        tamanho: null,
+        modelo: null,
+      }),
       updateMany: vi.fn().mockResolvedValue({ count: 1 }),
       update: vi.fn(),
     },
@@ -88,6 +96,7 @@ describe("pedidosRouter.criar", () => {
     const variacao = { id: "variacao-1", produtoId: PRODUTO.id, estoque: 6, cor: null, tamanho: null, modelo: null };
     const { mock, client } = criarPrismaMock({
       variacaoProduto: {
+        findMany: vi.fn().mockResolvedValue([{ id: variacao.id, produtoId: PRODUTO.id }]),
         findUniqueOrThrow: vi.fn().mockResolvedValue(variacao),
         updateMany: vi.fn().mockResolvedValue({ count: 1 }),
         update: vi.fn(),
@@ -111,6 +120,7 @@ describe("pedidosRouter.criar", () => {
     const variacao = { id: "variacao-1", produtoId: PRODUTO.id, estoque: 20, cor: null, tamanho: null, modelo: null };
     const { mock, client } = criarPrismaMock({
       variacaoProduto: {
+        findMany: vi.fn().mockResolvedValue([{ id: variacao.id, produtoId: PRODUTO.id }]),
         findUniqueOrThrow: vi.fn().mockResolvedValue(variacao),
         updateMany: vi.fn().mockResolvedValue({ count: 1 }),
         update: vi.fn(),
@@ -131,6 +141,7 @@ describe("pedidosRouter.criar", () => {
     const variacao = { id: "variacao-1", produtoId: PRODUTO.id, estoque: 4, cor: null, tamanho: null, modelo: null };
     const { mock, client } = criarPrismaMock({
       variacaoProduto: {
+        findMany: vi.fn().mockResolvedValue([{ id: variacao.id, produtoId: PRODUTO.id }]),
         findUniqueOrThrow: vi.fn().mockResolvedValue(variacao),
         updateMany: vi.fn().mockResolvedValue({ count: 1 }),
         update: vi.fn(),

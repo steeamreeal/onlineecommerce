@@ -163,6 +163,7 @@ export function EditorTemaProduto() {
   useEffect(() => {
     if (!loja || tema) return;
     const salvo = loja.temaProdutoConfig as TemaProdutoConfig | null;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- hidratação única a partir de storage/dados externos, só existe no client
     setTema(salvo ?? criarTemaProdutoConfigPadrao());
     setSelosConfig(loja.selosConfig as ConfigSelos);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- só deve rodar quando `loja` chega pela primeira vez, não a cada re-render

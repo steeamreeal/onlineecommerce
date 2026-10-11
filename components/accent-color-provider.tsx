@@ -89,6 +89,7 @@ export function AccentColorProvider({ children }: { children: React.ReactNode })
   useEffect(() => {
     const salva = localStorage.getItem(STORAGE_KEY) as CorDestaque | null;
     if (salva && salva in CORES_DESTAQUE) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- hidratação única a partir de storage/dados externos, só existe no client
       setCorState(salva);
       aplicarCor(salva);
     }

@@ -16,6 +16,18 @@ const CORES = {
   warning: "#e8a127",
 } as const;
 
+// Nomes de loja/cliente/produto são digitados por terceiros (o checkout é
+// público) e entram no HTML do e-mail — sem escape, dava para injetar
+// marcação/links arbitrários num e-mail enviado pelo domínio da plataforma.
+export function escaparHtml(valor: string | number) {
+  return String(valor)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 // Layout de e-mail em tabelas (não flexbox/grid) — é o único subset de
 // HTML/CSS que renderiza de forma consistente entre Gmail, Outlook e
 // clientes móveis. Todo estilo é inline por causa disso também.

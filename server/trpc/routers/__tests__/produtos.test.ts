@@ -27,7 +27,7 @@ function criarPrismaMock(produtoExistente: {
       findUnique: vi.fn().mockResolvedValue({ statusPlano: "ATIVO", plano: null }),
     },
     categoria: { findFirst: vi.fn() },
-    fotoProduto: { deleteMany: vi.fn(), updateMany: vi.fn(), createMany: vi.fn() },
+    fotoProduto: { deleteMany: vi.fn(), updateMany: vi.fn(), createMany: vi.fn(), findMany: vi.fn().mockResolvedValue([]) },
     variacaoProduto: { deleteMany: vi.fn(), updateMany: vi.fn().mockResolvedValue({ count: 1 }), createMany: vi.fn() },
     usuarioLoja: { findFirst: vi.fn().mockResolvedValue({ usuario: { email: "dono@loja.com" } }) },
     notificacao: { create: vi.fn() },
