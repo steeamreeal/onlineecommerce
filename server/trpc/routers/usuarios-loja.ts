@@ -109,13 +109,14 @@ export const usuariosLojaRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Usuário não encontrado nesta loja." });
       }
 
-      // ADMINISTRADOR tem acesso total à loja (ver PAPEL_USUARIO_DESCRICAO em
-      // lib/papel-usuario.ts) — só quem não é DONO nem ADMINISTRADOR fica de
-      // fora de mexer no papel de um DONO.
-      if (vinculo.papel === "DONO" && ctx.papel !== "DONO" && ctx.papel !== "ADMINISTRADOR") {
+      // O DONO é único e intocável: só ele mesmo pode mudar o próprio papel
+      // (PAPEL_USUARIO_DESCRICAO em lib/papel-usuario.ts). Um ADMINISTRADOR
+      // nunca rebaixa nem substitui o dono — senão contornaria as travas que
+      // o dono controla (aprovações, acesso ao editor do site).
+      if (vinculo.papel === "DONO" && ctx.papel !== "DONO") {
         throw new TRPCError({
           code: "FORBIDDEN",
-          message: "Só o dono ou um administrador da loja pode alterar o papel de um dono.",
+          message: "Só o dono da loja pode alterar o papel de um dono.",
         });
       }
 
@@ -123,9 +124,10 @@ export const usuariosLojaRouter = router({
         const donoAtual = await ctx.prisma.usuarioLoja.findFirst({
           where: { lojaId: ctx.lojaId, papel: "DONO" },
         });
-        // ADMINISTRADOR tem acesso total à loja, incluindo transferir o
-        // papel de DONO — mesmo com um dono já definido.
-        if (donoAtual && ctx.papel !== "DONO" && ctx.papel !== "ADMINISTRADOR") {
+        // Com dono definido, só ele transfere. Sem dono ainda (lojas criadas
+        // antes desse papel existir, ou dono removido), qualquer
+        // ADMINISTRADOR pode fazer a primeira atribuição.
+        if (donoAtual && ctx.papel !== "DONO") {
           throw new TRPCError({
             code: "FORBIDDEN",
             message: "Só o dono atual da loja pode transferir esse papel para outra pessoa.",
@@ -155,8 +157,11 @@ export const usuariosLojaRouter = router({
       if (!vinculo || vinculo.lojaId !== ctx.lojaId) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Usuário não encontrado nesta loja." });
       }
-      if (vinculo.papel === "DONO" && ctx.papel !== "DONO" && ctx.papel !== "ADMINISTRADOR") {
-        throw new TRPCError({ code: "FORBIDDEN", message: "O dono da loja não pode ser removido." });
+      if (vinculo.papel === "DONO") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "O dono da loja não pode ser removido. Transfira o papel de dono para outra pessoa antes.",
+        });
       }
       if (vinculo.usuarioId === ctx.usuario.id) {
         throw new TRPCError({

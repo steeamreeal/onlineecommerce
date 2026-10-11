@@ -111,11 +111,10 @@ export function UsuariosLista() {
           <TableBody>
             {data.usuarios.map((vinculo) => {
               const ehDono = vinculo.papel === "DONO";
-              // DONO e ADMINISTRADOR (acesso total à loja) sempre podem
-              // transferir o papel; sem nenhum dono ainda (loja criada antes
-              // desse papel existir), qualquer um chega aqui por !existeDono.
-              const podeTornarDono =
-                !ehDono && (data.souDono || data.souAdministrador || !data.existeDono);
+              // Só o dono transfere o papel de dono; sem nenhum dono ainda
+              // (loja criada antes desse papel existir), qualquer
+              // administrador pode fazer a primeira atribuição.
+              const podeTornarDono = !ehDono && (data.souDono || !data.existeDono);
 
               return (
                 <TableRow key={vinculo.id}>
@@ -159,7 +158,7 @@ export function UsuariosLista() {
                     {formatoData.format(new Date(vinculo.createdAt))}
                   </TableCell>
                   <TableCell>
-                    {(!ehDono || data.souAdministrador) && (
+                    {!ehDono && (
                       <div className="flex items-center justify-end gap-1">
                         {podeTornarDono && (
                           <Button
