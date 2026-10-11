@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import type { PrismaClient } from "@prisma/client";
+import { limparLimitador } from "@/lib/rate-limit";
 import { checkoutRouter } from "../checkout";
 
 const mpPreferenceCreate = vi.hoisted(() => vi.fn());
@@ -64,6 +65,7 @@ function criarPrismaMock(overrides: Record<string, unknown> = {}) {
     pedido: {
       create: vi.fn().mockResolvedValue(pedidoCriado),
       update: vi.fn(),
+      count: vi.fn().mockResolvedValue(0),
     },
     ...overrides,
   };
@@ -344,5 +346,33 @@ describe("checkoutRouter.criarPedido", () => {
 
     expect(mock.pedido.create).not.toHaveBeenCalled();
     expect(mpPreferenceCreate).not.toHaveBeenCalled();
+  });
+
+  it("recusa novo pedido quando o cliente já tem 5 em aberto na última hora", async () => {
+    const { mock, client } = criarPrismaMock({
+      pedido: { create: vi.fn(), update: vi.fn(), count: vi.fn().mockResolvedValue(5) },
+    });
+    const caller = criarCaller(client);
+
+    await expect(caller.criarPedido({ ...inputBase, formaPagamento: "PAGAMENTO_ENTREGA" })).rejects.toMatchObject({
+      code: "TOO_MANY_REQUESTS",
+    });
+    expect(mock.pedido.create).not.toHaveBeenCalled();
+  });
+
+  it("freia rajada de pedidos vinda do mesmo IP", async () => {
+    limparLimitador();
+    const { client } = criarPrismaMock();
+    const ctx = { prisma: client, usuario: null, lojaId: null, papel: null, supabaseUser: null, ip: "9.9.9.9" } as never;
+    const caller = checkoutRouter.createCaller(ctx);
+
+    let ultimo: unknown;
+    for (let i = 0; i < 11; i++) {
+      ultimo = await caller
+        .criarPedido({ ...inputBase, formaPagamento: "PAGAMENTO_ENTREGA" })
+        .catch((e: unknown) => e);
+    }
+    expect(ultimo).toMatchObject({ code: "TOO_MANY_REQUESTS" });
+    limparLimitador();
   });
 });

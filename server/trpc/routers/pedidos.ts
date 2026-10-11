@@ -111,9 +111,12 @@ export async function baixarEstoqueItens(
   }
 }
 
-async function devolverEstoqueItens(
+// Exportada para reuso pela expiração automática de pedidos não pagos
+// (lib/pedidos-expiracao.ts).
+export async function devolverEstoqueItens(
   tx: Prisma.TransactionClient,
   itens: { variacaoId: string | null; quantidade: number }[],
+  motivo: string = "Cancelamento de pedido",
 ) {
   for (const item of itens) {
     if (!item.variacaoId) continue;
@@ -126,7 +129,7 @@ async function devolverEstoqueItens(
         variacaoId: item.variacaoId,
         quantidade: item.quantidade,
         tipo: "ENTRADA",
-        motivo: "Cancelamento de pedido",
+        motivo,
       },
     });
   }

@@ -66,8 +66,16 @@ export async function createContext({ req, resHeaders }: FetchCreateContextFnOpt
     }
   }
 
+  // IP de origem (Vercel preenche x-forwarded-for) — usado só para limitar
+  // abuso de endpoints públicos (checkout), nunca para autorização.
+  const ip =
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    req.headers.get("x-real-ip") ||
+    null;
+
   return {
     prisma,
+    ip,
     usuario,
     lojaId,
     papel,
