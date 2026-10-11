@@ -25,35 +25,55 @@ export async function POST(req: Request) {
     return NextResponse.json({ recebido: true });
   }
 
-  switch (event.type) {
-    case "checkout.session.completed": {
-      const session = event.data.object as Stripe.Checkout.Session;
-      const lojaId = session.metadata?.lojaId;
-      if (lojaId && typeof session.subscription === "string") {
-        await prisma.loja.update({
-          where: { id: lojaId },
-          data: { statusPlano: "ATIVO", stripeSubscriptionId: session.subscription },
-        });
+  try {
+    switch (event.type) {
+      case "checkout.session.completed": {
+        const session = event.data.object as Stripe.Checkout.Session;
+        const lojaId = session.metadata?.lojaId;
+        if (lojaId && typeof session.subscription === "string") {
+          const lojaAtual = await prisma.loja.findUnique({
+            where: { id: lojaId },
+            select: { bloqueadoManualmente: true },
+          });
+          // Loja bloqueada à mão pelo admin continua bloqueada: só registra a
+          // assinatura, quem libera é o admin (liberarLoja).
+          await prisma.loja.update({
+            where: { id: lojaId },
+            data: {
+              stripeSubscriptionId: session.subscription,
+              ...(lojaAtual?.bloqueadoManualmente ? {} : { statusPlano: "ATIVO" as const }),
+            },
+          });
+        }
+        break;
       }
-      break;
-    }
-    case "customer.subscription.updated": {
-      const subscription = event.data.object as Stripe.Subscription;
-      const loja = await prisma.loja.findUnique({ where: { stripeSubscriptionId: subscription.id } });
-      if (loja) {
-        const statusPlano = subscription.status === "active" || subscription.status === "trialing" ? "ATIVO" : "BLOQUEADO";
-        await prisma.loja.update({ where: { id: loja.id }, data: { statusPlano } });
+      case "customer.subscription.updated": {
+        const subscription = event.data.object as Stripe.Subscription;
+        const loja = await prisma.loja.findUnique({ where: { stripeSubscriptionId: subscription.id } });
+        if (loja && !loja.bloqueadoManualmente) {
+          const statusPlano = subscription.status === "active" || subscription.status === "trialing" ? "ATIVO" : "BLOQUEADO";
+          await prisma.loja.update({ where: { id: loja.id }, data: { statusPlano } });
+        }
+        break;
       }
-      break;
-    }
-    case "customer.subscription.deleted": {
-      const subscription = event.data.object as Stripe.Subscription;
-      const loja = await prisma.loja.findUnique({ where: { stripeSubscriptionId: subscription.id } });
-      if (loja) {
-        await prisma.loja.update({ where: { id: loja.id }, data: { statusPlano: "CANCELADO" } });
+      case "customer.subscription.deleted": {
+        const subscription = event.data.object as Stripe.Subscription;
+        const loja = await prisma.loja.findUnique({ where: { stripeSubscriptionId: subscription.id } });
+        if (loja) {
+          await prisma.loja.update({ where: { id: loja.id }, data: { statusPlano: "CANCELADO" } });
+        }
+        break;
       }
-      break;
     }
+  } catch (erro) {
+    // O evento foi marcado como processado ANTES do trabalho; se o trabalho
+    // falhou, libera a marca para o reenvio da Stripe (resposta 500) não ser
+    // descartado como duplicata.
+    await prisma.webhookEvent
+      .delete({ where: { origem_eventoId: { origem: "STRIPE", eventoId: event.id } } })
+      .catch(() => undefined);
+    console.error("Webhook Stripe falhou ao processar o evento:", event.id, erro);
+    return NextResponse.json({ error: "Falha ao processar o evento." }, { status: 500 });
   }
 
   return NextResponse.json({ recebido: true });

@@ -147,10 +147,12 @@ export const checkoutRouter = router({
               email: input.cliente.email,
             },
           });
-        } else if (cliente.email !== input.cliente.email) {
+        } else if (!cliente.email) {
           // Cadastro antigo (ex.: de antes do e-mail virar obrigatório) pode
-          // não ter e-mail salvo — sem atualizar aqui, as notificações de
-          // status do pedido nunca teriam para onde ir.
+          // não ter e-mail salvo — sem preencher aqui, as notificações de
+          // status do pedido nunca teriam para onde ir. Nunca SOBRESCREVE um
+          // e-mail já salvo: o telefone não é prova de identidade, e trocar
+          // o e-mail desviaria as notificações do cliente verdadeiro.
           cliente = await tx.cliente.update({
             where: { id: cliente.id },
             data: { email: input.cliente.email },

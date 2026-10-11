@@ -18,16 +18,17 @@ vi.mock("@/lib/mercadopago", () => ({
 }));
 
 const webhookEventCreate = vi.hoisted(() => vi.fn());
+const webhookEventDelete = vi.hoisted(() => vi.fn());
 const pedidoUpdateMany = vi.hoisted(() => vi.fn());
-const pedidoFindUnique = vi.hoisted(() => vi.fn());
+const pedidoFindFirst = vi.hoisted(() => vi.fn());
 const lojaFindUnique = vi.hoisted(() => vi.fn());
 const tx = vi.hoisted(() => ({
-  pedido: { updateMany: pedidoUpdateMany, findUnique: pedidoFindUnique },
+  pedido: { updateMany: pedidoUpdateMany, findFirst: pedidoFindFirst },
 }));
 vi.mock("@/server/db/client", () => ({
   prisma: {
-    webhookEvent: { create: webhookEventCreate },
-    pedido: { updateMany: pedidoUpdateMany, findUnique: pedidoFindUnique },
+    webhookEvent: { create: webhookEventCreate, delete: webhookEventDelete },
+    pedido: { updateMany: pedidoUpdateMany, findFirst: pedidoFindFirst },
     loja: { findUnique: lojaFindUnique },
     $transaction: (fn: (tx: unknown) => unknown) => fn(tx),
   },
@@ -64,9 +65,12 @@ describe("POST /api/webhooks/mercadopago", () => {
     mpPaymentGet.mockReset();
     getMpPaymentMock.mockClear();
     webhookEventCreate.mockReset().mockResolvedValue({});
+    webhookEventDelete.mockReset().mockResolvedValue({});
     pedidoUpdateMany.mockReset().mockResolvedValue({ count: 1 });
-    pedidoFindUnique.mockReset().mockResolvedValue({
+    pedidoFindFirst.mockReset().mockResolvedValue({
       id: "pedido-1",
+      status: "AGUARDANDO_PAGAMENTO",
+      valorTotal: 100,
       cliente: { nome: "Cliente Teste", email: "cliente@example.com" },
     });
     notificarStatusAtualizado.mockReset();
@@ -131,7 +135,7 @@ describe("POST /api/webhooks/mercadopago", () => {
 
   it("marca o pedido como PAGO quando o pagamento é aprovado, usando o token da loja certa", async () => {
     validate.mockReturnValue(undefined);
-    mpPaymentGet.mockResolvedValue({ id: "pagamento-1", status: "approved", external_reference: "pedido-1" });
+    mpPaymentGet.mockResolvedValue({ id: "pagamento-1", status: "approved", transaction_amount: 100, external_reference: "pedido-1" });
     const { POST } = await importRoute();
     const res = await POST(criarRequest({ type: "payment", data: { id: "pagamento-1" } }));
 
@@ -157,7 +161,7 @@ describe("POST /api/webhooks/mercadopago", () => {
 
   it("não notifica quando o pedido já não estava mais aguardando pagamento (evento duplicado/fora de ordem)", async () => {
     validate.mockReturnValue(undefined);
-    mpPaymentGet.mockResolvedValue({ id: "pagamento-1", status: "approved", external_reference: "pedido-1" });
+    mpPaymentGet.mockResolvedValue({ id: "pagamento-1", status: "approved", transaction_amount: 100, external_reference: "pedido-1" });
     pedidoUpdateMany.mockResolvedValue({ count: 0 });
     const { POST } = await importRoute();
     const res = await POST(criarRequest({ type: "payment", data: { id: "pagamento-1" } }));
@@ -183,5 +187,33 @@ describe("POST /api/webhooks/mercadopago", () => {
 
     expect(res.status).toBe(200);
     expect(mpPaymentGet).not.toHaveBeenCalled();
+  });
+
+  it("não marca como PAGO quando o valor pago é menor que o total do pedido", async () => {
+    validate.mockReturnValue(undefined);
+    mpPaymentGet.mockResolvedValue({
+      id: "pagamento-1",
+      status: "approved",
+      transaction_amount: 1,
+      external_reference: "pedido-1",
+    });
+    const { POST } = await importRoute();
+    const res = await POST(criarRequest({ type: "payment", data: { id: "pagamento-1" } }));
+
+    expect(res.status).toBe(200);
+    expect(pedidoUpdateMany).not.toHaveBeenCalled();
+    expect(notificarStatusAtualizado).not.toHaveBeenCalled();
+  });
+
+  it("falha ao processar: devolve 500 e libera o evento para o reenvio do Mercado Pago", async () => {
+    validate.mockReturnValue(undefined);
+    mpPaymentGet.mockRejectedValue(new Error("API do Mercado Pago fora do ar"));
+    const { POST } = await importRoute();
+    const res = await POST(criarRequest({ type: "payment", data: { id: "pagamento-1" } }));
+
+    expect(res.status).toBe(500);
+    expect(webhookEventDelete).toHaveBeenCalledWith({
+      where: { origem_eventoId: { origem: "MERCADO_PAGO", eventoId: "pagamento-1:payment" } },
+    });
   });
 });

@@ -1,6 +1,7 @@
 import { randomBytes } from "crypto";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
+import { MENSAGEM_SLUG_RESERVADO, slugReservado } from "@/lib/slugs-reservados";
 import { router, adminProcedure, superAdminProcedure } from "../trpc";
 import { enviarConviteLoja } from "@/lib/email/notificacoes";
 
@@ -105,7 +106,8 @@ export const adminRouter = router({
         slug: z
           .string()
           .min(2)
-          .regex(/^[a-z0-9-]+$/, "Use apenas letras minúsculas, números e hífen"),
+          .regex(/^[a-z0-9-]+$/, "Use apenas letras minúsculas, números e hífen")
+          .refine((slug) => !slugReservado(slug), MENSAGEM_SLUG_RESERVADO),
         responsavel: z.string().min(2),
         emailContato: z.string().email(),
         planoId: z.string().optional(),
@@ -138,7 +140,8 @@ export const adminRouter = router({
         slug: z
           .string()
           .min(2)
-          .regex(/^[a-z0-9-]+$/, "Use apenas letras minúsculas, números e hífen"),
+          .regex(/^[a-z0-9-]+$/, "Use apenas letras minúsculas, números e hífen")
+          .refine((slug) => !slugReservado(slug), MENSAGEM_SLUG_RESERVADO),
         responsavel: z.string().min(2),
         emailContato: z.string().email(),
         planoId: z.string().optional(),
@@ -248,7 +251,7 @@ export const adminRouter = router({
     .mutation(({ ctx, input }) => {
       return ctx.prisma.loja.update({
         where: { id: input.id },
-        data: { statusPlano: "BLOQUEADO" },
+        data: { statusPlano: "BLOQUEADO", bloqueadoManualmente: true },
       });
     }),
 
@@ -257,7 +260,7 @@ export const adminRouter = router({
     .mutation(({ ctx, input }) => {
       return ctx.prisma.loja.update({
         where: { id: input.id },
-        data: { statusPlano: "ATIVO" },
+        data: { statusPlano: "ATIVO", bloqueadoManualmente: false },
       });
     }),
 
@@ -332,6 +335,14 @@ export const adminRouter = router({
   alterarPapelUsuarioPlataforma: superAdminProcedure
     .input(z.object({ id: z.string(), papel: papelAdminSchema }))
     .mutation(({ ctx, input }) => {
+      // Evita o super admin se rebaixar sem querer e deixar a plataforma
+      // sem ninguém com acesso total.
+      if (input.id === ctx.usuario.id && input.papel !== "SUPER_ADMIN") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Você não pode alterar o seu próprio papel. Peça a outro super admin.",
+        });
+      }
       return ctx.prisma.usuario.update({
         where: { id: input.id },
         data: { papelAdmin: input.papel },
@@ -341,6 +352,12 @@ export const adminRouter = router({
   revogarAcessoPlataforma: superAdminProcedure
     .input(z.object({ id: z.string() }))
     .mutation(({ ctx, input }) => {
+      if (input.id === ctx.usuario.id) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Você não pode revogar o seu próprio acesso. Peça a outro super admin.",
+        });
+      }
       return ctx.prisma.usuario.update({
         where: { id: input.id },
         data: { papelAdmin: null },

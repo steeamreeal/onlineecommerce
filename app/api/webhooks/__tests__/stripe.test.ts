@@ -6,11 +6,12 @@ vi.mock("@/lib/stripe", () => ({
 }));
 
 const webhookEventCreate = vi.hoisted(() => vi.fn());
+const webhookEventDelete = vi.hoisted(() => vi.fn());
 const lojaUpdate = vi.hoisted(() => vi.fn());
 const lojaFindUnique = vi.hoisted(() => vi.fn());
 vi.mock("@/server/db/client", () => ({
   prisma: {
-    webhookEvent: { create: webhookEventCreate },
+    webhookEvent: { create: webhookEventCreate, delete: webhookEventDelete },
     loja: { update: lojaUpdate, findUnique: lojaFindUnique },
   },
 }));
@@ -33,6 +34,7 @@ describe("POST /api/webhooks/stripe", () => {
   beforeEach(() => {
     constructEvent.mockReset();
     webhookEventCreate.mockReset().mockResolvedValue({});
+    webhookEventDelete.mockReset().mockResolvedValue({});
     lojaUpdate.mockReset();
     lojaFindUnique.mockReset();
   });
@@ -70,6 +72,53 @@ describe("POST /api/webhooks/stripe", () => {
     expect(lojaUpdate).toHaveBeenCalledWith({
       where: { id: "loja-1" },
       data: { statusPlano: "ATIVO", stripeSubscriptionId: "sub_123" },
+    });
+  });
+
+  it("não reativa loja bloqueada à mão pelo admin ao receber checkout.session.completed", async () => {
+    constructEvent.mockReturnValue({
+      id: "evt_manual",
+      type: "checkout.session.completed",
+      data: { object: { metadata: { lojaId: "loja-1" }, subscription: "sub_123" } },
+    });
+    lojaFindUnique.mockResolvedValue({ bloqueadoManualmente: true });
+    const { POST } = await importRoute();
+    await POST(criarRequest("{}"));
+
+    expect(lojaUpdate).toHaveBeenCalledWith({
+      where: { id: "loja-1" },
+      data: { stripeSubscriptionId: "sub_123" },
+    });
+  });
+
+  it("assinatura ativa não desfaz o bloqueio manual da loja", async () => {
+    constructEvent.mockReturnValue({
+      id: "evt_manual_2",
+      type: "customer.subscription.updated",
+      data: { object: { id: "sub_123", status: "active" } },
+    });
+    lojaFindUnique.mockResolvedValue({ id: "loja-1", bloqueadoManualmente: true });
+    const { POST } = await importRoute();
+    const res = await POST(criarRequest("{}"));
+
+    expect(res.status).toBe(200);
+    expect(lojaUpdate).not.toHaveBeenCalled();
+  });
+
+  it("falha ao processar: devolve 500 e libera o evento para o reenvio da Stripe", async () => {
+    constructEvent.mockReturnValue({
+      id: "evt_falha",
+      type: "customer.subscription.deleted",
+      data: { object: { id: "sub_123" } },
+    });
+    lojaFindUnique.mockResolvedValue({ id: "loja-1" });
+    lojaUpdate.mockRejectedValue(new Error("banco indisponível"));
+    const { POST } = await importRoute();
+    const res = await POST(criarRequest("{}"));
+
+    expect(res.status).toBe(500);
+    expect(webhookEventDelete).toHaveBeenCalledWith({
+      where: { origem_eventoId: { origem: "STRIPE", eventoId: "evt_falha" } },
     });
   });
 

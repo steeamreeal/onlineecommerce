@@ -31,6 +31,8 @@ function criarPrismaMock(overrides: Record<string, unknown> = {}) {
       update: vi.fn().mockImplementation(({ where, data }: { where: { id: string }; data: Record<string, unknown> }) =>
         Promise.resolve({ ...criarSolicitacaoPendente(), id: where.id, ...data }),
       ),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+      findUniqueOrThrow: vi.fn().mockResolvedValue({ ...criarSolicitacaoPendente(), status: "APROVADA" }),
     },
     cliente: {
       create: vi.fn().mockResolvedValue({ id: "cliente-novo", nome: "Fulano" }),
@@ -73,15 +75,30 @@ describe("aprovacoesRouter.aprovar", () => {
     expect(clienteCreate).toHaveBeenCalledTimes(1);
     expect(clienteCreate.mock.calls[0][0].data).toMatchObject({ lojaId: LOJA_ID, nome: "Fulano" });
 
-    const solicitacaoUpdate = (client as unknown as { solicitacao: { update: ReturnType<typeof vi.fn> } })
-      .solicitacao.update;
-    expect(solicitacaoUpdate).toHaveBeenCalledWith(
+    // A solicitação é reivindicada de forma atômica (PENDENTE → APROVADA).
+    const solicitacaoUpdateMany = (client as unknown as { solicitacao: { updateMany: ReturnType<typeof vi.fn> } })
+      .solicitacao.updateMany;
+    expect(solicitacaoUpdateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: "solicitacao-1" },
+        where: { id: "solicitacao-1", lojaId: LOJA_ID, status: "PENDENTE" },
         data: expect.objectContaining({ status: "APROVADA", revisorId: "revisor-1" }),
       }),
     );
     expect((resultado as { status: string }).status).toBe("APROVADA");
+  });
+
+  it("aprovação concorrente: quem perde a corrida não executa a mutation de novo", async () => {
+    const client = criarPrismaMock({
+      solicitacao: {
+        findFirst: vi.fn().mockResolvedValue(criarSolicitacaoPendente()),
+        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+        update: vi.fn(),
+      },
+    });
+    const caller = criarCaller(client, "DONO");
+
+    await expect(caller.aprovar({ id: "solicitacao-1" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect((client as unknown as { cliente: { create: ReturnType<typeof vi.fn> } }).cliente.create).not.toHaveBeenCalled();
   });
 
   it("GERENTE também pode aprovar", async () => {
@@ -182,7 +199,8 @@ describe("aprovacoesRouter.aprovar — ACESSO_EDITAR_TEMA", () => {
             solicitanteId: "administrador-1",
           }),
         ),
-        update: vi.fn().mockResolvedValue({ status: "APROVADA" }),
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+        findUniqueOrThrow: vi.fn().mockResolvedValue({ status: "APROVADA" }),
       },
       usuarioLoja: { updateMany },
     });

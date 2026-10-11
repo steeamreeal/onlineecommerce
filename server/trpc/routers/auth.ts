@@ -15,7 +15,7 @@ export const authRouter = router({
   sincronizarUsuario: authedProcedure
     .input(z.object({ nome: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
-      const { id: supabaseId, email } = ctx.supabaseUser;
+      const { id: supabaseId, email, emailConfirmado } = ctx.supabaseUser;
       if (!email) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Sessão sem e-mail associado." });
       }
@@ -35,7 +35,11 @@ export const authRouter = router({
       // Bootstrap: primeiro login de um e-mail listado em ADMIN_EMAILS já
       // nasce com acesso de super admin ao painel da plataforma. Depois
       // disso, quem gerencia acesso é o próprio painel admin (ver .env.example).
-      const papelAdmin = ADMIN_EMAILS_BOOTSTRAP.includes(email.toLowerCase())
+      // Só com e-mail CONFIRMADO: sem isso, quem cadastrasse o e-mail de um
+      // admin antes dele (com a confirmação do Supabase desligada) virava
+      // super admin sem provar que é dono do endereço.
+      const papelAdmin =
+        emailConfirmado && ADMIN_EMAILS_BOOTSTRAP.includes(email.toLowerCase())
         ? ("SUPER_ADMIN" as const)
         : null;
 
