@@ -47,6 +47,12 @@ export const storeProcedure = protectedProcedure.use(async ({ ctx, next }) => {
       message: "O acesso a esta loja está temporariamente bloqueado. Fale com o suporte para regularizar.",
     });
   }
+  if (loja?.statusPlano === "CANCELADO") {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "A assinatura desta loja foi cancelada. Fale com o suporte para reativar.",
+    });
+  }
 
   return next({ ctx: { ...ctx, lojaId: ctx.lojaId } });
 });

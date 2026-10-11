@@ -392,12 +392,25 @@ export async function executarPedidoAtualizarRastreio(
   });
 }
 
+// CPF/CNPJ do cliente só vai para quem gerencia a loja. Estoquista, Vendedor
+// e Separador precisam de nome, telefone e endereço para separar/enviar, mas
+// não do documento (clientes.listar já é restrito a Dono/Gerente).
+const PAPEIS_COM_DOCUMENTO = ["DONO", "ADMINISTRADOR", "GERENTE"];
+
+function ocultarDocumentoCliente<T extends { cliente: { documento: string | null } }>(
+  pedido: T,
+  papel: string | null,
+): T {
+  if (papel && PAPEIS_COM_DOCUMENTO.includes(papel)) return pedido;
+  return { ...pedido, cliente: { ...pedido.cliente, documento: null } };
+}
+
 export const pedidosRouter = router({
   listar: storeProcedure
     .input(z.object({ status: statusPedidoSchema.optional(), busca: z.string().optional() }).optional())
-    .query(({ ctx, input }) => {
+    .query(async ({ ctx, input }) => {
       const termo = input?.busca?.trim();
-      return ctx.prisma.pedido.findMany({
+      const pedidos = await ctx.prisma.pedido.findMany({
         where: {
           lojaId: ctx.lojaId,
           status: input?.status,
@@ -413,6 +426,7 @@ export const pedidosRouter = router({
         include: { cliente: true, itens: true, cupom: true },
         orderBy: { createdAt: "desc" },
       });
+      return pedidos.map((pedido) => ocultarDocumentoCliente(pedido, ctx.papel));
     }),
 
   buscarPorId: storeProcedure
@@ -429,7 +443,7 @@ export const pedidosRouter = router({
       if (!pedido) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Pedido não encontrado." });
       }
-      return pedido;
+      return ocultarDocumentoCliente(pedido, ctx.papel);
     }),
 
   criar: storeProcedure

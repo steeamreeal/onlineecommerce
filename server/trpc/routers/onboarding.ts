@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
+import { MENSAGEM_SLUG_RESERVADO, slugReservado } from "@/lib/slugs-reservados";
 import { router, protectedProcedure } from "../trpc";
 
 export const onboardingRouter = router({
@@ -10,7 +11,8 @@ export const onboardingRouter = router({
         slug: z
           .string()
           .min(2)
-          .regex(/^[a-z0-9-]+$/, "Use apenas letras minúsculas, números e hífen"),
+          .regex(/^[a-z0-9-]+$/, "Use apenas letras minúsculas, números e hífen")
+          .refine((slug) => !slugReservado(slug), MENSAGEM_SLUG_RESERVADO),
         corPrimaria: z.string().optional(),
       }),
     )

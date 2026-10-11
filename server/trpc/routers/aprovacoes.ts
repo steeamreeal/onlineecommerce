@@ -125,6 +125,18 @@ export const aprovacoesRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "Esta solicitação já foi revisada." });
       }
 
+      // Reivindica a solicitação de forma atômica ANTES de executar: duas
+      // aprovações simultâneas (dois cliques, ou Dono e Gerente juntos) não
+      // executam a mutation duas vezes — só quem mudar PENDENTE→APROVADA
+      // segue adiante.
+      const reivindicada = await ctx.prisma.solicitacao.updateMany({
+        where: { id: solicitacao.id, lojaId: ctx.lojaId, status: "PENDENTE" },
+        data: { status: "APROVADA", revisorId: ctx.usuario.id, revisadoEm: new Date() },
+      });
+      if (reivindicada.count === 0) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Esta solicitação já foi revisada." });
+      }
+
       // Concede acesso em vez de reexecutar uma mutation — não passa pelo
       // dispatch genérico (payload não é "input de mutation", é só um pedido).
       if (solicitacao.tipo === "ACESSO_EDITAR_TEMA") {
@@ -132,16 +144,13 @@ export const aprovacoesRouter = router({
           where: { usuarioId: solicitacao.solicitanteId, lojaId: ctx.lojaId },
           data: { podeEditarTema: true },
         });
-        return ctx.prisma.solicitacao.update({
-          where: { id: solicitacao.id },
-          data: { status: "APROVADA", revisorId: ctx.usuario.id, revisadoEm: new Date() },
-        });
+        return ctx.prisma.solicitacao.findUniqueOrThrow({ where: { id: solicitacao.id } });
       }
 
       const executor = EXECUTORES[solicitacao.tipo];
-      const payload = executor.schema.parse(solicitacao.payload);
 
       try {
+        const payload = executor.schema.parse(solicitacao.payload);
         await executor.executar({ prisma: ctx.prisma, lojaId: ctx.lojaId }, payload);
       } catch (erro) {
         // O estado pode ter mudado entre o pedido e a aprovação (ex: estoque
@@ -160,10 +169,7 @@ export const aprovacoesRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: mensagem });
       }
 
-      return ctx.prisma.solicitacao.update({
-        where: { id: solicitacao.id },
-        data: { status: "APROVADA", revisorId: ctx.usuario.id, revisadoEm: new Date() },
-      });
+      return ctx.prisma.solicitacao.findUniqueOrThrow({ where: { id: solicitacao.id } });
     }),
 
   // Administrador/Gerente pedem acesso pra editar o tema/aparência do site

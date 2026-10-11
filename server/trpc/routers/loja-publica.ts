@@ -162,9 +162,17 @@ export const lojaPublicaRouter = router({
       const loja = await resolverLojaPorSlug(ctx.prisma, input.slug);
       const pedido = await ctx.prisma.pedido.findFirst({
         where: { id: input.id, lojaId: loja.id },
+        // Sem login, quem tem o link vê o pedido — por isso só o que a tela
+        // de acompanhamento exibe: nada de telefone, e-mail ou CPF do
+        // cliente, nem dados internos do produto.
         include: {
-          itens: { include: { produto: true, variacao: true } },
-          cliente: { include: { enderecos: true } },
+          itens: {
+            include: {
+              produto: { select: { id: true, nome: true } },
+              variacao: { select: { id: true, cor: true, tamanho: true, modelo: true } },
+            },
+          },
+          cliente: { select: { enderecos: true } },
         },
       });
       if (!pedido) {

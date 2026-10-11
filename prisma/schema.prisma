@@ -71,6 +71,10 @@ model Loja {
   planoId           String?
   plano             Plano?       @relation(fields: [planoId], references: [id])
   statusPlano       PlanoStatus  @default(TESTE)
+  // true quando o dono da plataforma bloqueou a loja à mão (admin.bloquearLoja).
+  // Enquanto true, eventos do Stripe não reativam a loja — sem isso, uma
+  // renovação de assinatura desfazia o bloqueio manual.
+  bloqueadoManualmente Boolean   @default(false)
 
   stripeCustomerId     String? @unique
   stripeSubscriptionId String? @unique

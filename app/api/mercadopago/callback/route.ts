@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getMpOAuth } from "@/lib/mercadopago";
 import { verificarState } from "@/lib/mercadopago-state";
 import { prisma } from "@/server/db/client";
+import { createClient } from "@/lib/supabase/server";
 import { baseUrl } from "@/lib/base-url";
 
 // Callback do Mercado Pago Connect: o lojista autorizou a plataforma no
@@ -23,6 +24,27 @@ export async function GET(req: Request) {
 
   const lojaId = verificarState(state);
   if (!lojaId) {
+    return NextResponse.redirect(`${painel}?mp=erro`);
+  }
+
+  // O state sozinho não prova QUEM está concluindo a conexão: exige a sessão
+  // de quem administra a loja do state (Dono/Administrador), para um state
+  // vazado não servir a outra pessoa.
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const vinculo = user
+    ? await prisma.usuarioLoja.findFirst({
+        where: {
+          lojaId,
+          papel: { in: ["DONO", "ADMINISTRADOR"] },
+          usuario: { supabaseId: user.id },
+        },
+        select: { id: true },
+      })
+    : null;
+  if (!vinculo) {
     return NextResponse.redirect(`${painel}?mp=erro`);
   }
 

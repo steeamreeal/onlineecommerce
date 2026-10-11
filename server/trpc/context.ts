@@ -75,7 +75,11 @@ export async function createContext({ req, resHeaders }: FetchCreateContextFnOpt
     // Sessão crua do Supabase, disponível mesmo antes do Usuario existir no
     // Prisma (ex.: logo após o signUp, antes de sincronizarUsuario rodar).
     supabaseUser: supabaseUser
-      ? { id: supabaseUser.id, email: supabaseUser.email ?? null }
+      ? {
+          id: supabaseUser.id,
+          email: supabaseUser.email ?? null,
+          emailConfirmado: Boolean(supabaseUser.email_confirmed_at),
+        }
       : null,
   };
 }

@@ -72,33 +72,56 @@ export async function POST(req: Request) {
     return NextResponse.json({ recebido: true });
   }
 
-  const pagamento = await getMpPayment(loja.mpAccessToken).get({ id: paymentId });
-  const pedidoId = pagamento.external_reference;
+  try {
+    const pagamento = await getMpPayment(loja.mpAccessToken).get({ id: paymentId });
+    const pedidoId = pagamento.external_reference;
 
-  if (pagamento.status === "approved" && pedidoId) {
-    await prisma.$transaction(async (tx) => {
-      const { count } = await tx.pedido.updateMany({
-        where: { id: pedidoId, lojaId: loja.id, status: "AGUARDANDO_PAGAMENTO" },
-        data: { status: "PAGO", mpPaymentId: String(pagamento.id), pagoEm: new Date() },
+    if (pagamento.status === "approved" && pedidoId) {
+      await prisma.$transaction(async (tx) => {
+        const pedido = await tx.pedido.findFirst({
+          where: { id: pedidoId, lojaId: loja.id },
+          include: { cliente: true },
+        });
+        if (!pedido || pedido.status !== "AGUARDANDO_PAGAMENTO") return;
+
+        // O valor aprovado precisa cobrir o total do pedido — sem isso, um
+        // pagamento menor (ex.: preferência adulterada) marcaria o pedido
+        // como PAGO. Tolerância de 1 centavo por arredondamento.
+        const valorPago = Number(pagamento.transaction_amount ?? 0);
+        if (valorPago + 0.01 < Number(pedido.valorTotal)) {
+          console.error("Webhook Mercado Pago: valor pago menor que o total do pedido", {
+            pedidoId,
+            valorPago,
+            valorTotal: Number(pedido.valorTotal),
+          });
+          return;
+        }
+
+        const { count } = await tx.pedido.updateMany({
+          where: { id: pedidoId, lojaId: loja.id, status: "AGUARDANDO_PAGAMENTO" },
+          data: { status: "PAGO", mpPaymentId: String(pagamento.id), pagoEm: new Date() },
+        });
+        if (count === 0) return;
+
+        await notificarStatusAtualizado(tx, {
+          lojaId: loja.id,
+          lojaNome: loja.nome,
+          clienteNome: pedido.cliente.nome,
+          clienteEmail: pedido.cliente.email,
+          pedidoId: pedido.id,
+          status: "PAGO",
+        });
       });
-
-      if (count === 0) return;
-
-      const pedido = await tx.pedido.findUnique({
-        where: { id: pedidoId },
-        include: { cliente: true },
-      });
-      if (!pedido) return;
-
-      await notificarStatusAtualizado(tx, {
-        lojaId: loja.id,
-        lojaNome: loja.nome,
-        clienteNome: pedido.cliente.nome,
-        clienteEmail: pedido.cliente.email,
-        pedidoId: pedido.id,
-        status: "PAGO",
-      });
-    });
+    }
+  } catch (erro) {
+    // O evento foi marcado como processado antes do trabalho; se falhou,
+    // libera a marca para o reenvio do Mercado Pago (resposta 500) não ser
+    // descartado como duplicata e o pedido ficar sem confirmação.
+    await prisma.webhookEvent
+      .delete({ where: { origem_eventoId: { origem: "MERCADO_PAGO", eventoId } } })
+      .catch(() => undefined);
+    console.error("Webhook Mercado Pago falhou ao processar o pagamento:", paymentId, erro);
+    return NextResponse.json({ error: "Falha ao processar o pagamento." }, { status: 500 });
   }
 
   return NextResponse.json({ recebido: true });
