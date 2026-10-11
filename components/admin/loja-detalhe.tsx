@@ -182,7 +182,7 @@ export function LojaDetalhe({ lojaId }: { lojaId: string }) {
             })}
           </div>
           <p className="text-muted-foreground mt-3 text-xs">
-            Use "Definir como dono" só em resgate de emergência — o normal é o próprio dono da loja
+            Use &quot;Definir como dono&quot; só em resgate de emergência — o normal é o próprio dono da loja
             transferir esse papel pelo painel dele, em Configurações → Usuários.
           </p>
         </div>

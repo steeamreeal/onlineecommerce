@@ -29,6 +29,7 @@ export function AparenciaMenu() {
   const [montado, setMontado] = useState(false);
 
   // Evita mismatch de hidratação: o tema real só é conhecido no client.
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- hidratação única a partir de storage/dados externos, só existe no client
   useEffect(() => setMontado(true), []);
 
   return (

@@ -158,7 +158,7 @@ describe("lojaRouter.atualizarIdentidade", () => {
   it("atualiza os campos de identidade/contato escopados pela lojaId do contexto", async () => {
     const update = vi.fn().mockResolvedValue({});
     const client = criarPrismaMock({
-      loja: { findUnique: vi.fn().mockResolvedValue({ statusPlano: "ATIVO" }), findFirst: vi.fn(), update },
+      loja: { findUnique: vi.fn().mockResolvedValue({ statusPlano: "ATIVO" }), findFirst: vi.fn(), findUniqueOrThrow: vi.fn().mockResolvedValue({ temaConfig: null }), update },
     });
     const caller = criarCaller(client);
 
@@ -175,6 +175,8 @@ describe("lojaRouter.atualizarIdentidade", () => {
         endereco: "Rua das Flores, 120",
         horarioAtend: "Seg. a sex., 9h às 18h",
         politicas: "Trocas em até 7 dias.",
+        telefoneSac: null,
+        temaConfig: null,
       },
       select: {
         corPrimaria: true,
@@ -185,6 +187,7 @@ describe("lojaRouter.atualizarIdentidade", () => {
         endereco: true,
         horarioAtend: true,
         politicas: true,
+        telefoneSac: true,
       },
     });
   });
@@ -192,7 +195,7 @@ describe("lojaRouter.atualizarIdentidade", () => {
   it("aceita logoUrl nulo para remover a logo", async () => {
     const update = vi.fn().mockResolvedValue({});
     const client = criarPrismaMock({
-      loja: { findUnique: vi.fn().mockResolvedValue({ statusPlano: "ATIVO" }), findFirst: vi.fn(), update },
+      loja: { findUnique: vi.fn().mockResolvedValue({ statusPlano: "ATIVO" }), findFirst: vi.fn(), findUniqueOrThrow: vi.fn().mockResolvedValue({ temaConfig: null }), update },
     });
     const caller = criarCaller(client);
 
@@ -204,7 +207,7 @@ describe("lojaRouter.atualizarIdentidade", () => {
   it("nunca atualiza a loja de outro tenant: where.id é sempre a lojaId do contexto", async () => {
     const update = vi.fn().mockResolvedValue({});
     const client = criarPrismaMock({
-      loja: { findUnique: vi.fn().mockResolvedValue({ statusPlano: "ATIVO" }), findFirst: vi.fn(), update },
+      loja: { findUnique: vi.fn().mockResolvedValue({ statusPlano: "ATIVO" }), findFirst: vi.fn(), findUniqueOrThrow: vi.fn().mockResolvedValue({ temaConfig: null }), update },
     });
     const caller = criarCaller(client);
 
@@ -234,7 +237,7 @@ describe("lojaRouter.atualizarIdentidade", () => {
   it("ADMINISTRADOR sem podeEditarTema ainda pode editar identidade/contato — só a aparência do site (temaProcedure) exige acesso concedido", async () => {
     const update = vi.fn().mockResolvedValue({});
     const client = criarPrismaMock({
-      loja: { findUnique: vi.fn().mockResolvedValue({ statusPlano: "ATIVO" }), findFirst: vi.fn(), update },
+      loja: { findUnique: vi.fn().mockResolvedValue({ statusPlano: "ATIVO" }), findFirst: vi.fn(), findUniqueOrThrow: vi.fn().mockResolvedValue({ temaConfig: null }), update },
     });
     const caller = criarCaller(client, "ADMINISTRADOR", false);
 
