@@ -1,7 +1,7 @@
 import { STATUS_PEDIDO_LABEL } from "@/lib/pedidos";
 import { PAPEL_USUARIO_LABEL } from "@/lib/papel-usuario";
 import type { PapelUsuario, StatusPedido } from "@prisma/client";
-import { botaoEmail, CORES, layoutEmail } from "@/lib/email/layout";
+import { botaoEmail, CORES, escaparHtml, layoutEmail } from "@/lib/email/layout";
 
 const formatoMoeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -13,13 +13,13 @@ export function templatePedidoConfirmado(params: {
 }) {
   const numero = params.pedidoId.slice(-6).toUpperCase();
   return {
-    assunto: `Pedido #${numero} confirmado — ${params.lojaNome}`,
+    assunto: `Pedido #${numero} confirmado — ${escaparHtml(params.lojaNome)}`,
     html: layoutEmail({
       tituloSecao: "Pedido confirmado",
       conteudo: `
-        <p style="margin:0 0 12px;">Olá, ${params.clienteNome}!</p>
+        <p style="margin:0 0 12px;">Olá, ${escaparHtml(params.clienteNome)}!</p>
         <p style="margin:0 0 12px;">
-          Recebemos seu pedido <strong>#${numero}</strong> na loja <strong>${params.lojaNome}</strong>.
+          Recebemos seu pedido <strong>#${numero}</strong> na loja <strong>${escaparHtml(params.lojaNome)}</strong>.
         </p>
         <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:16px 0;background-color:${CORES.background};border-radius:8px;">
           <tr>
@@ -46,13 +46,13 @@ export function templateStatusAtualizado(params: {
   const numero = params.pedidoId.slice(-6).toUpperCase();
   const statusLabel = STATUS_PEDIDO_LABEL[params.status];
   return {
-    assunto: `Pedido #${numero}: ${statusLabel} — ${params.lojaNome}`,
+    assunto: `Pedido #${numero}: ${statusLabel} — ${escaparHtml(params.lojaNome)}`,
     html: layoutEmail({
       tituloSecao: "Atualização de pedido",
       conteudo: `
-        <p style="margin:0 0 12px;">Olá, ${params.clienteNome}!</p>
+        <p style="margin:0 0 12px;">Olá, ${escaparHtml(params.clienteNome)}!</p>
         <p style="margin:0 0 16px;">
-          Seu pedido <strong>#${numero}</strong> na loja <strong>${params.lojaNome}</strong> teve o status atualizado para:
+          Seu pedido <strong>#${numero}</strong> na loja <strong>${escaparHtml(params.lojaNome)}</strong> teve o status atualizado para:
         </p>
         <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 8px;">
           <tr>
@@ -74,13 +74,13 @@ export function templateEstoqueBaixo(params: {
   urlEstoque?: string;
 }) {
   return {
-    assunto: `Estoque baixo: ${params.produtoNome} — ${params.lojaNome}`,
+    assunto: `Estoque baixo: ${escaparHtml(params.produtoNome)} — ${escaparHtml(params.lojaNome)}`,
     html: layoutEmail({
       tituloSecao: "Aviso de estoque",
       corAcento: CORES.warning,
       conteudo: `
         <p style="margin:0 0 12px;">
-          O produto <strong>${params.produtoNome}</strong> (${params.variacaoLabel}) está com estoque baixo na loja <strong>${params.lojaNome}</strong>.
+          O produto <strong>${escaparHtml(params.produtoNome)}</strong> (${escaparHtml(params.variacaoLabel)}) está com estoque baixo na loja <strong>${escaparHtml(params.lojaNome)}</strong>.
         </p>
         <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:16px 0;background-color:${CORES.background};border-radius:8px;">
           <tr>
@@ -103,12 +103,12 @@ export function templateConviteLoja(params: {
 }) {
   const papelLabel = PAPEL_USUARIO_LABEL[params.papel];
   return {
-    assunto: `Você foi convidado para a equipe de ${params.lojaNome}`,
+    assunto: `Você foi convidado para a equipe de ${escaparHtml(params.lojaNome)}`,
     html: layoutEmail({
       tituloSecao: "Convite para a equipe",
       conteudo: `
         <p style="margin:0 0 12px;">
-          Você foi convidado para fazer parte da equipe da loja <strong>${params.lojaNome}</strong>, com o papel de <strong>${papelLabel}</strong>.
+          Você foi convidado para fazer parte da equipe da loja <strong>${escaparHtml(params.lojaNome)}</strong>, com o papel de <strong>${papelLabel}</strong>.
         </p>
         <p style="margin:0 0 4px;color:${CORES.mutedForeground};">
           Clique no botão abaixo para aceitar o convite e criar seu acesso.
@@ -123,7 +123,7 @@ export function templateConviteLoja(params: {
     // como Promoções, que penaliza e-mails só-HTML — mesmo conteúdo, sem
     // marcação.
     text: [
-      `Você foi convidado para fazer parte da equipe da loja ${params.lojaNome}, com o papel de ${papelLabel}.`,
+      `Você foi convidado para fazer parte da equipe da loja ${escaparHtml(params.lojaNome)}, com o papel de ${papelLabel}.`,
       "",
       `Acesse o link para aceitar o convite e criar seu acesso: ${params.urlConvite}`,
       "",

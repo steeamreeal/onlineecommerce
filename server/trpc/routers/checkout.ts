@@ -2,7 +2,14 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, publicProcedure } from "../trpc";
 import { resolverLojaPorSlug } from "./loja-publica";
-import { baixarEstoqueItens, calcularValorItens, formaPagamentoSchema, itemPedidoInputSchema } from "./pedidos";
+import {
+  baixarEstoqueItens,
+  calcularValorItens,
+  consumirCupom,
+  formaPagamentoSchema,
+  itemPedidoInputSchema,
+} from "./pedidos";
+import { calcularDescontoCupom } from "@/lib/cupons";
 import { getMpPreference } from "@/lib/mercadopago";
 import { notificarPedidoConfirmado } from "@/lib/email/notificacoes";
 import { baseUrl } from "@/lib/base-url";
@@ -66,7 +73,9 @@ export const checkoutRouter = router({
         valorFrete = Number(frete.valor ?? 0);
       }
 
-      const itensComPreco = await calcularValorItens(ctx.prisma, loja.id, input.itens);
+      const itensComPreco = await calcularValorItens(ctx.prisma, loja.id, input.itens, {
+        apenasAtivos: true,
+      });
       const valorProdutos = itensComPreco.reduce((s, i) => s + i.precoUnit * i.quantidade, 0);
 
       if (input.modoEntrega === "ENTREGA" && input.freteId) {
@@ -78,12 +87,13 @@ export const checkoutRouter = router({
         }
       }
 
-      let cupomId: string | undefined;
+      let cupomUsado: { id: string; limiteUso: number | null } | undefined;
       let valorDesconto = 0;
 
       if (input.cupomCodigo) {
         const cupom = await ctx.prisma.cupom.findFirst({
           where: { lojaId: loja.id, codigo: input.cupomCodigo.toUpperCase() },
+          include: { produtos: { select: { id: true } }, categorias: { select: { id: true } } },
         });
         const agora = new Date();
         if (
@@ -94,16 +104,20 @@ export const checkoutRouter = router({
         ) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Cupom inválido ou expirado." });
         }
-        cupomId = cupom.id;
-        if (cupom.tipo === "PERCENTUAL") {
-          valorDesconto = (valorProdutos * Number(cupom.valor ?? 0)) / 100;
-        } else if (cupom.tipo === "VALOR_FIXO") {
-          valorDesconto = Math.min(Number(cupom.valor ?? 0), valorProdutos);
-        } else if (cupom.tipo === "FRETE_GRATIS") {
-          valorDesconto = valorFrete;
-          valorFrete = 0;
+        // Restrição por produto/categoria é aplicada aqui, no servidor — a
+        // checagem do site (validarCupom) é só conveniência de UX.
+        const calculo = calcularDescontoCupom(cupom, itensComPreco, valorFrete);
+        if (!calculo) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Este cupom não é válido para os produtos do carrinho.",
+          });
         }
+        cupomUsado = { id: cupom.id, limiteUso: cupom.limiteUso };
+        valorDesconto = calculo.valorDesconto;
+        valorFrete = calculo.valorFrete;
       }
+      const cupomId = cupomUsado?.id;
 
       const valorTotal = Math.max(0, valorProdutos + valorFrete - valorDesconto);
       const usaGateway = (FORMAS_COM_GATEWAY as readonly string[]).includes(input.formaPagamento);
@@ -153,10 +167,10 @@ export const checkoutRouter = router({
           });
         }
 
-        await baixarEstoqueItens(tx, input.itens, loja);
+        await baixarEstoqueItens(tx, itensComPreco, loja);
 
-        if (cupomId) {
-          await tx.cupom.update({ where: { id: cupomId }, data: { usosAtuais: { increment: 1 } } });
+        if (cupomUsado) {
+          await consumirCupom(tx, cupomUsado);
         }
 
         const novoPedido = await tx.pedido.create({

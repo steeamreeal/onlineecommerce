@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server";
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { router, storeProcedure } from "../trpc";
 import { ESTOQUE_BAIXO_LIMITE, variacaoLabel } from "@/lib/estoque";
+import { calcularDescontoCupom } from "@/lib/cupons";
 import {
   buscarEmailAdministradorLoja,
   notificarEstoqueBaixo,
@@ -51,7 +52,9 @@ export const formaPagamentoSchema = z.enum([
 export const itemPedidoInputSchema = z.object({
   produtoId: z.string(),
   variacaoId: z.string().optional(),
-  quantidade: z.number().int().positive(),
+  // Teto por item: sem ele, um único pedido anônimo poderia zerar o estoque
+  // de qualquer produto com uma quantidade absurda.
+  quantidade: z.number().int().positive().max(999),
 });
 
 // Decrementa o estoque das variações do pedido de forma atômica, com a
@@ -67,8 +70,11 @@ export async function baixarEstoqueItens(
   for (const item of itens) {
     if (!item.variacaoId) continue;
     const antes = await tx.variacaoProduto.findUniqueOrThrow({ where: { id: item.variacaoId } });
+    // `produto.lojaId` no where: a variação precisa pertencer a esta loja,
+    // senão um id de variação de outra loja (expostos pela vitrine pública)
+    // seria baixado por um pedido de qualquer tenant.
     const resultado = await tx.variacaoProduto.updateMany({
-      where: { id: item.variacaoId, estoque: { gte: item.quantidade } },
+      where: { id: item.variacaoId, estoque: { gte: item.quantidade }, produto: { lojaId: loja.id } },
       data: { estoque: { decrement: item.quantidade } },
     });
     if (resultado.count === 0) {
@@ -126,15 +132,27 @@ async function devolverEstoqueItens(
   }
 }
 
+// Valida os itens contra a loja e devolve cada um com preço e variação já
+// resolvidos no servidor — nada do que o client manda além de ids/quantidade
+// é confiado. Regras:
+// - produto precisa ser da loja (e, no site público, estar ATIVO/DESTAQUE);
+// - `variacaoId` precisa pertencer a ESSE produto (nunca a outro produto ou
+//   a outra loja); se omitido, só é aceito quando o produto tem uma única
+//   variação (caso contrário a baixa de estoque seria pulada).
 // Exportada para reuso pelo checkout público (checkout.ts).
 export async function calcularValorItens(
   prisma: PrismaClient,
   lojaId: string,
   itens: z.infer<typeof itemPedidoInputSchema>[],
+  opcoes: { apenasAtivos?: boolean } = {},
 ) {
   const produtoIds = [...new Set(itens.map((i) => i.produtoId))];
   const produtos = await prisma.produto.findMany({
-    where: { id: { in: produtoIds }, lojaId },
+    where: {
+      id: { in: produtoIds },
+      lojaId,
+      ...(opcoes.apenasAtivos ? { status: { in: ["ATIVO", "DESTAQUE"] } } : {}),
+    },
   });
   const produtosPorId = new Map(produtos.map((p) => [p.id, p]));
 
@@ -142,11 +160,58 @@ export async function calcularValorItens(
     throw new TRPCError({ code: "BAD_REQUEST", message: "Um ou mais produtos são inválidos." });
   }
 
+  const variacoes = await prisma.variacaoProduto.findMany({
+    where: { produtoId: { in: produtoIds } },
+    select: { id: true, produtoId: true },
+  });
+  const variacoesPorProduto = new Map<string, string[]>();
+  for (const v of variacoes) {
+    variacoesPorProduto.set(v.produtoId, [...(variacoesPorProduto.get(v.produtoId) ?? []), v.id]);
+  }
+
   return itens.map((item) => {
     const produto = produtosPorId.get(item.produtoId)!;
+    const doProduto = variacoesPorProduto.get(item.produtoId) ?? [];
+
+    let variacaoId = item.variacaoId;
+    if (variacaoId) {
+      if (!doProduto.includes(variacaoId)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Variação inválida para um dos produtos." });
+      }
+    } else if (doProduto.length === 1) {
+      variacaoId = doProduto[0];
+    } else if (doProduto.length > 1) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "Selecione a variação de todos os produtos." });
+    }
+
     const precoUnit = produto.precoPromo ?? produto.precoNormal;
-    return { ...item, precoUnit: Number(precoUnit) };
+    return {
+      produtoId: item.produtoId,
+      variacaoId,
+      quantidade: item.quantidade,
+      categoriaId: produto.categoriaId,
+      precoUnit: Number(precoUnit),
+    };
   });
+}
+
+// Incrementa o uso do cupom respeitando `limiteUso` de forma atômica (o
+// where condicionado impede que duas compras simultâneas passem do limite).
+// Exportada para reuso pelo checkout público (checkout.ts).
+export async function consumirCupom(
+  tx: Prisma.TransactionClient,
+  cupom: { id: string; limiteUso: number | null },
+) {
+  const { count } = await tx.cupom.updateMany({
+    where: {
+      id: cupom.id,
+      ...(cupom.limiteUso != null ? { usosAtuais: { lt: cupom.limiteUso } } : {}),
+    },
+    data: { usosAtuais: { increment: 1 } },
+  });
+  if (count === 0) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Este cupom atingiu o limite de uso." });
+  }
 }
 
 export const pedidoCriarSchema = z.object({
@@ -179,13 +244,14 @@ export async function executarPedidoCriar(
   const itensComPreco = await calcularValorItens(ctx.prisma, ctx.lojaId, input.itens);
   const valorProdutos = itensComPreco.reduce((s, i) => s + i.precoUnit * i.quantidade, 0);
 
-  let cupomId: string | undefined;
+  let cupomUsado: { id: string; limiteUso: number | null } | undefined;
   let valorDesconto = 0;
   let valorFrete = input.valorFrete;
 
   if (input.cupomCodigo) {
     const cupom = await ctx.prisma.cupom.findFirst({
       where: { lojaId: ctx.lojaId, codigo: input.cupomCodigo.toUpperCase() },
+      include: { produtos: { select: { id: true } }, categorias: { select: { id: true } } },
     });
     const agora = new Date();
     if (
@@ -196,24 +262,26 @@ export async function executarPedidoCriar(
     ) {
       throw new TRPCError({ code: "BAD_REQUEST", message: "Cupom inválido ou expirado." });
     }
-    cupomId = cupom.id;
-    if (cupom.tipo === "PERCENTUAL") {
-      valorDesconto = (valorProdutos * Number(cupom.valor ?? 0)) / 100;
-    } else if (cupom.tipo === "VALOR_FIXO") {
-      valorDesconto = Math.min(Number(cupom.valor ?? 0), valorProdutos);
-    } else if (cupom.tipo === "FRETE_GRATIS") {
-      valorDesconto = valorFrete;
-      valorFrete = 0;
+    const calculo = calcularDescontoCupom(cupom, itensComPreco, valorFrete);
+    if (!calculo) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Este cupom não é válido para os produtos do pedido.",
+      });
     }
+    cupomUsado = { id: cupom.id, limiteUso: cupom.limiteUso };
+    valorDesconto = calculo.valorDesconto;
+    valorFrete = calculo.valorFrete;
   }
+  const cupomId = cupomUsado?.id;
 
-  const valorTotal = valorProdutos + valorFrete - valorDesconto;
+  const valorTotal = Math.max(0, valorProdutos + valorFrete - valorDesconto);
 
   return ctx.prisma.$transaction(async (tx) => {
-    await baixarEstoqueItens(tx, input.itens, loja);
+    await baixarEstoqueItens(tx, itensComPreco, loja);
 
-    if (cupomId) {
-      await tx.cupom.update({ where: { id: cupomId }, data: { usosAtuais: { increment: 1 } } });
+    if (cupomUsado) {
+      await consumirCupom(tx, cupomUsado);
     }
 
     const pedido = await tx.pedido.create({

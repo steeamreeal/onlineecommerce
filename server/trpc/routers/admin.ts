@@ -9,6 +9,11 @@ const papelAdminSchema = z.enum(["SUPER_ADMIN", "SUPORTE", "FINANCEIRO"]);
 
 const CONVITE_VALIDADE_HORAS = 72;
 
+// Credenciais da conta Mercado Pago do lojista — nunca saem do servidor,
+// nem para a equipe da plataforma (SUPORTE/FINANCEIRO também usam estas
+// queries). A tela só precisa saber SE conectou (`mpConectadoEm`).
+const OMITIR_CREDENCIAIS_LOJA = { mpAccessToken: true, mpRefreshToken: true } as const;
+
 export const adminRouter = router({
   listarLojas: adminProcedure
     .input(
@@ -21,6 +26,7 @@ export const adminRouter = router({
     )
     .query(async ({ ctx, input }) => {
       const lojas = await ctx.prisma.loja.findMany({
+        omit: OMITIR_CREDENCIAIS_LOJA,
         where: {
           statusPlano: input?.status,
           nome: input?.busca ? { contains: input.busca, mode: "insensitive" } : undefined,
@@ -52,6 +58,7 @@ export const adminRouter = router({
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
       const loja = await ctx.prisma.loja.findUnique({
+        omit: OMITIR_CREDENCIAIS_LOJA,
         where: { id: input.id },
         include: {
           plano: true,

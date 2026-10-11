@@ -1,6 +1,8 @@
 import { z } from "zod";
+import type { PrismaClient } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { router, storeProcedure, roleProcedure } from "../trpc";
+import { itemElegivelParaCupom } from "@/lib/cupons";
 
 // Criar/editar/remover cupons afeta descontos em toda a loja — restrito a
 // quem administra ou gerencia, não a Vendedor/Estoquista/Separador.
@@ -45,6 +47,33 @@ const cupomInputRefinement = (
     });
   }
 };
+
+// Os ids de produto/categoria vêm do client — sem esta checagem, `connect`
+// ligaria o cupom a produtos de OUTRA loja (e buscarPorId devolveria os
+// dados deles).
+async function validarEscopoCupom(
+  prisma: PrismaClient,
+  lojaId: string,
+  produtoIds: string[],
+  categoriaIds: string[],
+) {
+  const produtosUnicos = [...new Set(produtoIds)];
+  const categoriasUnicas = [...new Set(categoriaIds)];
+  const [produtos, categorias] = await Promise.all([
+    produtosUnicos.length > 0
+      ? prisma.produto.count({ where: { id: { in: produtosUnicos }, lojaId } })
+      : Promise.resolve(0),
+    categoriasUnicas.length > 0
+      ? prisma.categoria.count({ where: { id: { in: categoriasUnicas }, lojaId } })
+      : Promise.resolve(0),
+  ]);
+  if (produtos !== produtosUnicos.length || categorias !== categoriasUnicas.length) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Um ou mais produtos/categorias selecionados são inválidos.",
+    });
+  }
+}
 
 export const cuponsRouter = router({
   listar: storeProcedure.query(({ ctx }) => {
@@ -94,8 +123,15 @@ export const cuponsRouter = router({
 
       const restrito = cupom.produtos.length > 0 || cupom.categorias.length > 0;
       if (restrito) {
-        const idsProdutosRestritos = new Set(cupom.produtos.map((p) => p.id));
-        const aplicaAlgumProduto = input.produtoIds.some((id) => idsProdutosRestritos.has(id));
+        // Categoria vem do banco (nunca do client): só os ids de produto
+        // enviados são usados, escopados pela loja.
+        const produtosCarrinho = await ctx.prisma.produto.findMany({
+          where: { id: { in: input.produtoIds }, lojaId: ctx.lojaId },
+          select: { id: true, categoriaId: true },
+        });
+        const aplicaAlgumProduto = produtosCarrinho.some((produto) =>
+          itemElegivelParaCupom(cupom, { produtoId: produto.id, categoriaId: produto.categoriaId }),
+        );
         if (!aplicaAlgumProduto) {
           throw new TRPCError({
             code: "BAD_REQUEST",
@@ -110,6 +146,7 @@ export const cuponsRouter = router({
   criar: gestorProcedure
     .input(z.object(cupomInputBase).superRefine(cupomInputRefinement))
     .mutation(async ({ ctx, input }) => {
+      await validarEscopoCupom(ctx.prisma, ctx.lojaId, input.produtoIds, input.categoriaIds);
       const codigo = input.codigo.toUpperCase();
       const existente = await ctx.prisma.cupom.findFirst({
         where: { lojaId: ctx.lojaId, codigo },
@@ -142,6 +179,8 @@ export const cuponsRouter = router({
       if (!cupomExistente) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Cupom não encontrado." });
       }
+
+      await validarEscopoCupom(ctx.prisma, ctx.lojaId, input.produtoIds, input.categoriaIds);
 
       const codigo = input.codigo.toUpperCase();
       const outroComMesmoCodigo = await ctx.prisma.cupom.findFirst({
