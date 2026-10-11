@@ -78,6 +78,7 @@ export function CartProvider({
   // Hidrata a partir do localStorage após o mount (evita mismatch de SSR) e
   // sempre que o slug mudar (navegação entre lojas usa o mesmo Provider).
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- hidratação única a partir de storage/dados externos, só existe no client
     setItens(lerCarrinhoSalvo(slug));
     setHidratado(true);
   }, [slug]);

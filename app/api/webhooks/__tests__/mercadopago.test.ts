@@ -139,7 +139,7 @@ describe("POST /api/webhooks/mercadopago", () => {
     expect(lojaFindUnique).toHaveBeenCalledWith({ where: { mpUserId: "mp-user-1" } });
     expect(getMpPaymentMock).toHaveBeenCalledWith("token-da-loja-1");
     expect(webhookEventCreate).toHaveBeenCalledWith({
-      data: { origem: "MERCADO_PAGO", eventoId: "pagamento-1" },
+      data: { origem: "MERCADO_PAGO", eventoId: "pagamento-1:payment" },
     });
     expect(pedidoUpdateMany).toHaveBeenCalledWith({
       where: { id: "pedido-1", lojaId: "loja-1", status: "AGUARDANDO_PAGAMENTO" },

@@ -201,6 +201,7 @@ export function EditorTema() {
   useEffect(() => {
     if (!loja || tema) return;
     const salvo = loja.temaConfig as TemaConfig | null;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- hidratação única a partir de storage/dados externos, só existe no client
     setTema(
       salvo ??
         criarTemaConfigPadrao({
