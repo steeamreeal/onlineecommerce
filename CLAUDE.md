@@ -121,6 +121,8 @@ Cobrança híbrida, decidida no M14:
 
 ## Abuso no checkout público e expiração de pedidos
 
-- `checkout.criarPedido` (público) tem duas travas: limite por IP em memória (`lib/rate-limit.ts`, melhor esforço — por instância serverless) e limite durável no banco (máx. 5 pedidos `NOVO`/`AGUARDANDO_PAGAMENTO` na última hora para o mesmo telefone/e-mail na loja). Para abuso distribuído de verdade, trocar o limitador em memória por um distribuído (Upstash/Vercel KV).
+- `checkout.criarPedido` (público) tem duas travas: limite por IP em memória (`lib/rate-limit.ts`, melhor esforço — por instância serverless) e limite durável no banco (máx. 5 pedidos `NOVO`/`AGUARDANDO_PAGAMENTO` na última hora para o mesmo telefone/e-mail na loja). Com `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN` configuradas o limite por IP vira distribuído (Upstash Redis via REST, cai para memória se o Redis falhar); sem elas segue em memória.
 - Pedidos `AGUARDANDO_PAGAMENTO` vencidos (boleto 72h, demais formas 24h) são cancelados por `lib/pedidos-expiracao.ts`, que devolve estoque e estorna o cupom. Disparado pelo Vercel Cron (`vercel.json`, diário) em `app/api/cron/expirar-pedidos`, protegido por `CRON_SECRET` (variável de ambiente, nunca commitada; sem ela a rota recusa tudo). Plano Hobby da Vercel só permite cron diário.
 - Pagamento aprovado em pedido já `CANCELADO` (expirou antes de pagar) **não** reabre o pedido: gera uma notificação para o lojista reembolsar/refazer.
+- **CSP**: `next.config.ts` envia `Content-Security-Policy-Report-Only`; violações caem nos logs da Vercel via `app/api/csp-report`. Quando estiverem limpas em produção, trocar o header para `Content-Security-Policy`.
+- **Aprovações**: Dono, Administrador e Gerente agem direto; só Vendedor, Estoquista e Separador geram solicitação (`server/trpc/aprovacao.ts`).

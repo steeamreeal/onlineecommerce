@@ -1,10 +1,16 @@
 import type { PapelUsuario, PrismaClient, TipoSolicitacao } from "@prisma/client";
 
-// Dono e Gerente agem direto. Vendedor, Estoquista e Separador têm as
-// mutations sensíveis (produtos, clientes, frete, estoque, pedidos)
+// Dono, Administrador e Gerente agem direto. Vendedor, Estoquista e Separador
+// têm as mutations sensíveis (produtos, clientes, frete, estoque, pedidos)
 // transformadas em Solicitacao pendente até um Dono/Gerente aprovar — ver
 // server/trpc/routers/aprovacoes.ts.
-const PAPEIS_ACAO_DIRETA: PapelUsuario[] = ["DONO", "GERENTE"];
+//
+// Administrador entra aqui porque tem acesso total à loja (usuários,
+// domínio, pagamentos — PAPEL_USUARIO_DESCRICAO) e, em lojas criadas por
+// auto-cadastro, é o único papel existente: sem isso as próprias
+// solicitações dele ficariam sem ninguém para aprovar. As travas que o Dono
+// controla (editor do site) continuam valendo para o Administrador.
+const PAPEIS_ACAO_DIRETA: PapelUsuario[] = ["DONO", "ADMINISTRADOR", "GERENTE"];
 
 export function precisaAprovacao(papel: PapelUsuario | null) {
   return !papel || !PAPEIS_ACAO_DIRETA.includes(papel);

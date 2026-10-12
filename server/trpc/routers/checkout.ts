@@ -13,7 +13,7 @@ import { calcularDescontoCupom } from "@/lib/cupons";
 import { getMpPreference } from "@/lib/mercadopago";
 import { notificarPedidoConfirmado } from "@/lib/email/notificacoes";
 import { baseUrl } from "@/lib/base-url";
-import { excedeuLimite } from "@/lib/rate-limit";
+import { limiteExcedido } from "@/lib/rate-limit";
 
 // Formas de pagamento que passam pelo gateway Mercado Pago. PAGAMENTO_ENTREGA
 // não gera preferência — confirmação é manual pelo lojista no painel.
@@ -59,9 +59,9 @@ export const checkoutRouter = router({
       }
 
       // Checkout é público e cada pedido reserva estoque: freia rajadas por
-      // IP (melhor esforço, em memória) e, de forma durável, limita quantos
+      // IP (Upstash se configurado; senão em memória, melhor esforço) e, de forma durável, limita quantos
       // pedidos em aberto o mesmo cliente pode ter na loja.
-      if (ctx.ip && excedeuLimite(`checkout:${ctx.ip}`, { max: 10, janelaMs: 10 * 60 * 1000 })) {
+      if (ctx.ip && (await limiteExcedido(`checkout:${ctx.ip}`, { max: 10, janelaMs: 10 * 60 * 1000 }))) {
         throw new TRPCError({
           code: "TOO_MANY_REQUESTS",
           message: "Muitas tentativas em pouco tempo. Aguarde alguns minutos e tente novamente.",
