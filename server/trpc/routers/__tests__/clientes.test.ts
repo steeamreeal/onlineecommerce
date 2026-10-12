@@ -122,14 +122,14 @@ describe("clientesRouter.remover — fluxo de aprovação", () => {
   });
 });
 
-describe("clientesRouter — leitura restrita a Dono/Gerente, exportar/importar só Dono", () => {
-  it.each<PapelUsuario>(["DONO", "GERENTE"])("papel %s consegue listar clientes", async (papel) => {
+describe("clientesRouter — leitura restrita a Dono/Administrador/Gerente, exportar/importar só Dono", () => {
+  it.each<PapelUsuario>(["DONO", "ADMINISTRADOR", "GERENTE"])("papel %s consegue listar clientes", async (papel) => {
     const client = criarPrismaMock({ cliente: { findMany: vi.fn().mockResolvedValue([]) } });
     const caller = criarCaller(client, papel);
     await expect(caller.listar()).resolves.toEqual([]);
   });
 
-  it.each<PapelUsuario>(["ADMINISTRADOR", "VENDEDOR", "ESTOQUISTA", "SEPARADOR"])(
+  it.each<PapelUsuario>(["VENDEDOR", "ESTOQUISTA", "SEPARADOR"])(
     "papel %s recebe FORBIDDEN ao listar clientes",
     async (papel) => {
       const client = criarPrismaMock();
@@ -138,11 +138,14 @@ describe("clientesRouter — leitura restrita a Dono/Gerente, exportar/importar 
     },
   );
 
-  it("GERENTE recebe FORBIDDEN ao tentar exportar (só Dono)", async () => {
-    const client = criarPrismaMock();
-    const caller = criarCaller(client, "GERENTE");
-    await expect(caller.exportar()).rejects.toMatchObject({ code: "FORBIDDEN" });
-  });
+  it.each<PapelUsuario>(["ADMINISTRADOR", "GERENTE"])(
+    "%s recebe FORBIDDEN ao tentar exportar (só Dono)",
+    async (papel) => {
+      const client = criarPrismaMock();
+      const caller = criarCaller(client, papel);
+      await expect(caller.exportar()).rejects.toMatchObject({ code: "FORBIDDEN" });
+    },
+  );
 
   it("DONO consegue exportar", async () => {
     const client = criarPrismaMock({ cliente: { findMany: vi.fn().mockResolvedValue([]) } });
@@ -150,11 +153,14 @@ describe("clientesRouter — leitura restrita a Dono/Gerente, exportar/importar 
     await expect(caller.exportar()).resolves.toEqual([]);
   });
 
-  it("GERENTE recebe FORBIDDEN ao tentar importarVarios (só Dono)", async () => {
-    const client = criarPrismaMock();
-    const caller = criarCaller(client, "GERENTE");
-    await expect(
-      caller.importarVarios({ clientes: [{ nome: "Fulano" }] }),
-    ).rejects.toMatchObject({ code: "FORBIDDEN" });
-  });
+  it.each<PapelUsuario>(["ADMINISTRADOR", "GERENTE"])(
+    "%s recebe FORBIDDEN ao tentar importarVarios (só Dono)",
+    async (papel) => {
+      const client = criarPrismaMock();
+      const caller = criarCaller(client, papel);
+      await expect(
+        caller.importarVarios({ clientes: [{ nome: "Fulano" }] }),
+      ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    },
+  );
 });

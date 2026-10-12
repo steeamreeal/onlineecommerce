@@ -4,10 +4,10 @@ import type { Prisma } from "@prisma/client";
 import { router, storeProcedure, roleProcedure } from "../trpc";
 import { executarComAprovacao } from "../aprovacao";
 
-// Lista/detalhe de clientes (com total gasto) é dado sensível — só Dono e
-// Gerente. Exportar/importar em massa é ainda mais sensível (leva dado da
-// base inteira pra fora / altera em massa) — restrito só ao Dono.
-const clientesProcedure = roleProcedure(["DONO", "GERENTE"]);
+// Lista/detalhe de clientes (com total gasto) é dado sensível — só Dono,
+// Administrador e Gerente. Exportar/importar em massa é ainda mais sensível
+// (leva dado da base inteira pra fora / altera em massa) — restrito só ao Dono.
+const clientesProcedure = roleProcedure(["DONO", "ADMINISTRADOR", "GERENTE"]);
 const donoProcedure = roleProcedure(["DONO"]);
 
 const enderecoSchema = z.object({
