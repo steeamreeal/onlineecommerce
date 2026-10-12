@@ -50,8 +50,11 @@ const aprovadorProcedure = roleProcedure(["DONO", "GERENTE"]);
 // da mutation original antes de reexecutar, e a execução real checa de novo
 // as regras de negócio (estoque, status do pedido etc.), já que o estado
 // pode ter mudado entre pedir e aprovar.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- tabela heterogênea: cada entrada tem seu próprio tipo de input (garantido em runtime pelo `schema` correspondente), não dá pra tipar em comum sem apagar a variância dos handlers reais.
-type ExecutorGenerico = (ctx: { prisma: PrismaClient; lojaId: string }, input: any) => Promise<unknown>;
+type ExecutorGenerico = (
+  ctx: { prisma: PrismaClient; lojaId: string; usuarioId?: string },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- tabela heterogênea: cada entrada tem seu próprio tipo de input (garantido em runtime pelo `schema` correspondente), não dá pra tipar em comum sem apagar a variância dos handlers reais.
+  input: any,
+) => Promise<unknown>;
 
 const EXECUTORES: Record<
   TipoSolicitacao,
@@ -151,7 +154,12 @@ export const aprovacoesRouter = router({
 
       try {
         const payload = executor.schema.parse(solicitacao.payload);
-        await executor.executar({ prisma: ctx.prisma, lojaId: ctx.lojaId }, payload);
+        // usuarioId = o SOLICITANTE: um pedido registrado por um Vendedor e
+        // aprovado pelo Dono continua sendo do Vendedor.
+        await executor.executar(
+          { prisma: ctx.prisma, lojaId: ctx.lojaId, usuarioId: solicitacao.solicitanteId },
+          payload,
+        );
       } catch (erro) {
         // O estado pode ter mudado entre o pedido e a aprovação (ex: estoque
         // ficou insuficiente) — a solicitação é marcada como rejeitada

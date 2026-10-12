@@ -1,5 +1,5 @@
-import { DashboardKpis } from "@/components/dashboard/dashboard-kpis";
+import { PainelInicio } from "@/components/dashboard/painel-inicio";
 
 export default function PainelPage() {
-  return <DashboardKpis />;
+  return <PainelInicio />;
 }
