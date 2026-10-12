@@ -152,6 +152,7 @@ model Usuario {
 
   solicitacoesFeitas    Solicitacao[] @relation("SolicitacaoSolicitante")
   solicitacoesRevisadas Solicitacao[] @relation("SolicitacaoRevisor")
+  pedidosCriados        Pedido[]      @relation("PedidoCriadoPor")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -409,6 +410,12 @@ model Pedido {
   codigoRastreio String?
   itens          ItemPedido[]
 
+  // Quem registrou o pedido pelo painel (venda manual). Nulo = pedido feito
+  // pelo próprio cliente no site (ou anterior a este campo). O Vendedor só
+  // enxerga os pedidos em que é o criador.
+  criadoPorId String?
+  criadoPor   Usuario? @relation("PedidoCriadoPor", fields: [criadoPorId], references: [id], onDelete: SetNull)
+
   mpPaymentId   String?   @unique
   linkPagamento String?
   pagoEm        DateTime?
@@ -417,6 +424,7 @@ model Pedido {
   updatedAt DateTime @updatedAt
 
   @@index([lojaId, status])
+  @@index([lojaId, criadoPorId])
 }
 
 model ItemPedido {

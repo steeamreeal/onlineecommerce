@@ -233,7 +233,9 @@ export const pedidoAtualizarRastreioSchema = z.object({ id: z.string(), codigoRa
 type PedidoAtualizarRastreioInput = z.infer<typeof pedidoAtualizarRastreioSchema>;
 
 export async function executarPedidoCriar(
-  ctx: { prisma: PrismaClient; lojaId: string },
+  // usuarioId = quem registrou a venda (vira Pedido.criadoPorId). Na
+  // aprovação (aprovacoes.ts) é o SOLICITANTE, não quem aprovou.
+  ctx: { prisma: PrismaClient; lojaId: string; usuarioId?: string },
   input: PedidoCriarInput,
 ) {
   const cliente = await ctx.prisma.cliente.findFirst({
@@ -296,6 +298,7 @@ export async function executarPedidoCriar(
         valorDesconto,
         valorTotal,
         cupomId,
+        criadoPorId: ctx.usuarioId,
         itens: {
           create: itensComPreco.map((item) => ({
             produtoId: item.produtoId,
@@ -408,6 +411,26 @@ function ocultarDocumentoCliente<T extends { cliente: { documento: string | null
   return { ...pedido, cliente: { ...pedido.cliente, documento: null } };
 }
 
+// Vendedor só enxerga/mexe nos pedidos que ele mesmo registrou (venda manual).
+// Pedidos do site (sem autor) e de outros vendedores ficam fora dele.
+function escopoVendedor(papel: string | null, usuarioId: string) {
+  return papel === "VENDEDOR" ? { criadoPorId: usuarioId } : {};
+}
+
+async function garantirPedidoVisivel(
+  ctx: { prisma: PrismaClient; lojaId: string; papel: string | null; usuario: { id: string } },
+  pedidoId: string,
+) {
+  if (ctx.papel !== "VENDEDOR") return;
+  const meu = await ctx.prisma.pedido.findFirst({
+    where: { id: pedidoId, lojaId: ctx.lojaId, ...escopoVendedor(ctx.papel, ctx.usuario.id) },
+    select: { id: true },
+  });
+  if (!meu) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Pedido não encontrado." });
+  }
+}
+
 export const pedidosRouter = router({
   listar: storeProcedure
     .input(z.object({ status: statusPedidoSchema.optional(), busca: z.string().optional() }).optional())
@@ -416,6 +439,7 @@ export const pedidosRouter = router({
       const pedidos = await ctx.prisma.pedido.findMany({
         where: {
           lojaId: ctx.lojaId,
+          ...escopoVendedor(ctx.papel, ctx.usuario.id),
           status: input?.status,
           ...(termo
             ? {
@@ -436,7 +460,7 @@ export const pedidosRouter = router({
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
       const pedido = await ctx.prisma.pedido.findFirst({
-        where: { id: input.id, lojaId: ctx.lojaId },
+        where: { id: input.id, lojaId: ctx.lojaId, ...escopoVendedor(ctx.papel, ctx.usuario.id) },
         include: {
           cliente: { include: { enderecos: true } },
           itens: { include: { produto: true, variacao: true } },
@@ -453,7 +477,7 @@ export const pedidosRouter = router({
     .input(pedidoCriarSchema)
     .mutation(({ ctx, input }) =>
       executarComAprovacao(ctx, "PEDIDO_CRIAR", "Novo pedido (venda manual)", input, () =>
-        executarPedidoCriar(ctx, input),
+        executarPedidoCriar({ ...ctx, usuarioId: ctx.usuario.id }, input),
       ),
     ),
 
@@ -462,25 +486,42 @@ export const pedidosRouter = router({
   // proximoStatus() do mock. Cancelar devolve o estoque baixado na criação.
   atualizarStatus: storeProcedure
     .input(pedidoAtualizarStatusSchema)
-    .mutation(({ ctx, input }) =>
-      executarComAprovacao(
+    .mutation(async ({ ctx, input }) => {
+      await garantirPedidoVisivel(ctx, input.id);
+      return executarComAprovacao(
         ctx,
         "PEDIDO_ATUALIZAR_STATUS",
         `Atualizar status do pedido para ${input.status}`,
         input,
         () => executarPedidoAtualizarStatus(ctx, input),
-      ),
-    ),
+      );
+    }),
 
   atualizarRastreio: storeProcedure
     .input(pedidoAtualizarRastreioSchema)
-    .mutation(({ ctx, input }) =>
-      executarComAprovacao(
+    .mutation(async ({ ctx, input }) => {
+      await garantirPedidoVisivel(ctx, input.id);
+      return executarComAprovacao(
         ctx,
         "PEDIDO_ATUALIZAR_RASTREIO",
         "Atualizar código de rastreio do pedido",
         input,
         () => executarPedidoAtualizarRastreio(ctx, input),
-      ),
-    ),
+      );
+    }),
+
+  // "Minhas vendas": resumo dos pedidos que o próprio usuário registrou.
+  // Para o Vendedor é o único número de venda que ele enxerga (o dashboard
+  // financeiro da loja é só de Dono/Administrador/Gerente).
+  resumoMinhasVendas: storeProcedure.query(async ({ ctx }) => {
+    const agregado = await ctx.prisma.pedido.aggregate({
+      where: { lojaId: ctx.lojaId, criadoPorId: ctx.usuario.id, status: { not: "CANCELADO" } },
+      _sum: { valorTotal: true },
+      _count: true,
+    });
+    return {
+      quantidade: agregado._count,
+      valorTotal: Number(agregado._sum.valorTotal ?? 0),
+    };
+  }),
 });
