@@ -4,9 +4,10 @@ import { router, roleProcedure } from "../trpc";
 import { ESTOQUE_BAIXO_LIMITE } from "@/lib/estoque";
 
 // Faturamento, ticket médio e ranking de clientes são dados sensíveis do
-// negócio — só Dono e Gerente veem; Vendedor/Estoquista/Separador ficam de
-// fora (não há hoje vínculo pedido↔vendedor para um recorte "só o que vendi").
-const financeiroProcedure = roleProcedure(["DONO", "GERENTE"]);
+// negócio — só Dono, Administrador e Gerente veem; Vendedor/Estoquista/
+// Separador ficam de fora (não há hoje vínculo pedido↔vendedor para um
+// recorte "só o que vendi").
+const financeiroProcedure = roleProcedure(["DONO", "ADMINISTRADOR", "GERENTE"]);
 
 // Status que representam dinheiro que de fato entrou — usado para o card de
 // "Vendas pagas", separado do Faturamento (que soma todo pedido não
