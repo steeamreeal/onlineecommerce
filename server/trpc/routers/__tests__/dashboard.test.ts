@@ -24,12 +24,12 @@ function criarCaller(client: PrismaClient, papel: PapelUsuario | null) {
 }
 
 describe("dashboardRouter — restrito a Dono/Gerente", () => {
-  it.each<PapelUsuario>(["DONO", "GERENTE"])("papel %s consegue ver o kpis", async (papel) => {
+  it.each<PapelUsuario>(["DONO", "ADMINISTRADOR", "GERENTE"])("papel %s consegue ver o kpis", async (papel) => {
     const caller = criarCaller(criarPrismaMock(), papel);
     await expect(caller.kpis()).resolves.toBeDefined();
   });
 
-  it.each<PapelUsuario>(["ADMINISTRADOR", "VENDEDOR", "ESTOQUISTA", "SEPARADOR"])(
+  it.each<PapelUsuario>(["VENDEDOR", "ESTOQUISTA", "SEPARADOR"])(
     "papel %s recebe FORBIDDEN em todos os endpoints do dashboard",
     async (papel) => {
       const caller = criarCaller(criarPrismaMock(), papel);
