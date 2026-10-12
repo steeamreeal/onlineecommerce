@@ -322,3 +322,31 @@ describe("lojaRouter.atualizarBanners", () => {
     await expect(caller.atualizarBanners({ banners: [banner] })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 });
+
+describe("lojaRouter.atualizarDominioProprio: formato do domínio", () => {
+  it.each(["localhost", "foo bar.com", "a/b.com", "-ruim.com", "loja..com", "javascript:alert(1)"])(
+    "rejeita %s",
+    async (invalido) => {
+      const client = criarPrismaMock();
+      const caller = criarCaller(client);
+      await expect(caller.atualizarDominioProprio({ dominioProprio: invalido })).rejects.toThrow(
+        "Informe um domínio válido",
+      );
+    },
+  );
+
+  it("aceita domínio válido (com https:// e barra final normalizados)", async () => {
+    const update = vi.fn().mockResolvedValue({ dominioProprio: "www.minhaloja.com.br" });
+    const client = criarPrismaMock({
+      loja: {
+        findUnique: vi.fn().mockResolvedValue({ statusPlano: "ATIVO" }),
+        findFirst: vi.fn().mockResolvedValue(null),
+        findUniqueOrThrow: vi.fn().mockResolvedValue({ dominioProprio: null }),
+        update,
+      },
+    });
+    const caller = criarCaller(client);
+    await caller.atualizarDominioProprio({ dominioProprio: "https://WWW.MinhaLoja.com.br/" });
+    expect(update.mock.calls[0][0].data).toEqual({ dominioProprio: "www.minhaloja.com.br" });
+  });
+});
