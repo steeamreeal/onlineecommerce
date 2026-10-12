@@ -40,3 +40,17 @@ export function cookieLojaAtiva(lojaId: string, producao: boolean) {
   if (producao) partes.push("Secure");
   return partes.join("; ");
 }
+
+// Quem é só MEMBRO de equipe (convidado como Administrador, Gerente, Vendedor,
+// Estoquista ou Separador) não abre loja própria pela conta que recebeu o
+// convite — só vê a loja para a qual foi convidado. Pode abrir loja quem ainda
+// não tem nenhum vínculo (conta nova) ou quem já é DONO de alguma, até o teto.
+export function podeCriarLoja(papeis: string[]): boolean {
+  if (papeis.length === 0) return true;
+  const comoDono = papeis.filter((p) => p === "DONO").length;
+  return comoDono > 0 && comoDono < MAX_LOJAS_POR_USUARIO;
+}
+
+export function ehSomenteMembroDeEquipe(papeis: string[]): boolean {
+  return papeis.length > 0 && !papeis.includes("DONO");
+}

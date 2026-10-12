@@ -2,7 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { MENSAGEM_SLUG_RESERVADO, slugReservado } from "@/lib/slugs-reservados";
 import { router, protectedProcedure } from "../trpc";
-import { cookieLojaAtiva, MAX_LOJAS_POR_USUARIO } from "@/lib/loja-ativa";
+import { cookieLojaAtiva, ehSomenteMembroDeEquipe, MAX_LOJAS_POR_USUARIO } from "@/lib/loja-ativa";
 
 export const onboardingRouter = router({
   criarLoja: protectedProcedure
@@ -18,11 +18,24 @@ export const onboardingRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const vinculos = await ctx.prisma.usuarioLoja.findMany({
+        where: { usuarioId: ctx.usuario.id },
+        select: { papel: true },
+      });
+      const papeis = vinculos.map((v) => v.papel);
+
+      // Membro de equipe (convidado) não abre loja própria por esta conta.
+      if (ehSomenteMembroDeEquipe(papeis)) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message:
+            "Esta conta faz parte da equipe de uma loja e não pode abrir uma loja própria. Para ter a sua, use outro e-mail.",
+        });
+      }
+
       // Uma conta pode ter várias lojas, até um teto — sem ele, um único
       // cadastro criaria tenants sem limite.
-      const lojasQueEuCriei = await ctx.prisma.usuarioLoja.count({
-        where: { usuarioId: ctx.usuario.id, papel: "DONO" },
-      });
+      const lojasQueEuCriei = papeis.filter((p) => p === "DONO").length;
       if (lojasQueEuCriei >= MAX_LOJAS_POR_USUARIO) {
         throw new TRPCError({
           code: "BAD_REQUEST",
