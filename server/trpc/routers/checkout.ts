@@ -13,6 +13,7 @@ import { calcularDescontoCupom } from "@/lib/cupons";
 import { getMpPreference } from "@/lib/mercadopago";
 import { notificarPedidoConfirmado } from "@/lib/email/notificacoes";
 import { baseUrl } from "@/lib/base-url";
+import { excedeuLimite } from "@/lib/rate-limit";
 
 // Formas de pagamento que passam pelo gateway Mercado Pago. PAGAMENTO_ENTREGA
 // não gera preferência — confirmação é manual pelo lojista no painel.
@@ -57,7 +58,33 @@ export const checkoutRouter = router({
         });
       }
 
+      // Checkout é público e cada pedido reserva estoque: freia rajadas por
+      // IP (melhor esforço, em memória) e, de forma durável, limita quantos
+      // pedidos em aberto o mesmo cliente pode ter na loja.
+      if (ctx.ip && excedeuLimite(`checkout:${ctx.ip}`, { max: 10, janelaMs: 10 * 60 * 1000 })) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: "Muitas tentativas em pouco tempo. Aguarde alguns minutos e tente novamente.",
+        });
+      }
+
       const loja = await resolverLojaPorSlug(ctx.prisma, input.slug);
+
+      const pedidosEmAberto = await ctx.prisma.pedido.count({
+        where: {
+          lojaId: loja.id,
+          status: { in: ["NOVO", "AGUARDANDO_PAGAMENTO"] },
+          createdAt: { gt: new Date(Date.now() - 60 * 60 * 1000) },
+          cliente: { OR: [{ telefone: input.cliente.telefone }, { email: input.cliente.email }] },
+        },
+      });
+      if (pedidosEmAberto >= 5) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message:
+            "Você já tem vários pedidos em aberto nesta loja. Conclua o pagamento deles ou aguarde antes de fazer outro.",
+        });
+      }
 
       let valorFrete = 0;
       if (input.modoEntrega === "ENTREGA") {

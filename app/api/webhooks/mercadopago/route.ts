@@ -82,7 +82,25 @@ export async function POST(req: Request) {
           where: { id: pedidoId, lojaId: loja.id },
           include: { cliente: true },
         });
-        if (!pedido || pedido.status !== "AGUARDANDO_PAGAMENTO") return;
+        if (!pedido) return;
+
+        // Pagamento aprovado depois do pedido ter expirado/cancelado: o
+        // estoque já foi devolvido, então não reabrimos o pedido sozinhos.
+        // Avisa o lojista para tratar à mão (reembolso ou refazer o pedido).
+        if (pedido.status === "CANCELADO") {
+          console.error("Webhook Mercado Pago: pagamento aprovado em pedido CANCELADO", { pedidoId });
+          await tx.notificacao.create({
+            data: {
+              lojaId: loja.id,
+              tipo: "STATUS_ATUALIZADO",
+              titulo: "Pagamento recebido em pedido cancelado",
+              mensagem: `O pedido #${pedido.id.slice(-6).toUpperCase()} já estava cancelado, mas o pagamento foi aprovado. Reembolse o cliente ou refaça o pedido.`,
+              pedidoId: pedido.id,
+            },
+          });
+          return;
+        }
+        if (pedido.status !== "AGUARDANDO_PAGAMENTO") return;
 
         // O valor aprovado precisa cobrir o total do pedido — sem isso, um
         // pagamento menor (ex.: preferência adulterada) marcaria o pedido

@@ -118,3 +118,9 @@ Cobrança híbrida, decidida no M14:
   1. Criar o bucket (`fotos-produtos`, `banners-loja` ou `logos-loja`) com acesso público de leitura.
   2. Policy de `INSERT`/`UPDATE`/`DELETE` restrita a usuários autenticados (`auth.role() = 'authenticated'`); a pasta do arquivo já é prefixada por `lojaId` para organização, mas o isolamento real de escrita por tenant fica a cargo da regra de negócio na aplicação (o tRPC só aceita salvar a foto/banner se pertencer à loja do usuário).
   3. Limite de tamanho de arquivo sugerido: 5MB por imagem, 20MB por vídeo (mesmo limite já usado em banners).
+
+## Abuso no checkout público e expiração de pedidos
+
+- `checkout.criarPedido` (público) tem duas travas: limite por IP em memória (`lib/rate-limit.ts`, melhor esforço — por instância serverless) e limite durável no banco (máx. 5 pedidos `NOVO`/`AGUARDANDO_PAGAMENTO` na última hora para o mesmo telefone/e-mail na loja). Para abuso distribuído de verdade, trocar o limitador em memória por um distribuído (Upstash/Vercel KV).
+- Pedidos `AGUARDANDO_PAGAMENTO` vencidos (boleto 72h, demais formas 24h) são cancelados por `lib/pedidos-expiracao.ts`, que devolve estoque e estorna o cupom. Disparado pelo Vercel Cron (`vercel.json`, diário) em `app/api/cron/expirar-pedidos`, protegido por `CRON_SECRET` (variável de ambiente, nunca commitada; sem ela a rota recusa tudo). Plano Hobby da Vercel só permite cron diário.
+- Pagamento aprovado em pedido já `CANCELADO` (expirou antes de pagar) **não** reabre o pedido: gera uma notificação para o lojista reembolsar/refazer.
