@@ -1,12 +1,13 @@
 "use client";
 
+import { BoasVindasOperacional } from "@/components/dashboard/boas-vindas-operacional";
 import { DashboardKpis } from "@/components/dashboard/dashboard-kpis";
 import { MinhasVendas } from "@/components/dashboard/minhas-vendas";
 import { Skeleton } from "@/components/ui/skeleton";
 import { trpc } from "@/lib/trpc/client";
 
-// Vendedor não tem acesso ao dashboard financeiro da loja: em vez de uma tela
-// de zeros (a API recusa), mostra só as vendas que ele registrou.
+// Vendedor, Estoquista e Separador não têm acesso ao dashboard financeiro da
+// loja: em vez de uma tela de zeros (a API recusa), cada um vê o que é seu.
 export function PainelInicio() {
   const { data, isLoading } = trpc.minhasLojas.listar.useQuery();
 
@@ -20,5 +21,7 @@ export function PainelInicio() {
   }
 
   const papel = data?.lojas.find((loja) => loja.id === data.ativaId)?.papel;
-  return papel === "VENDEDOR" ? <MinhasVendas /> : <DashboardKpis />;
+  if (papel === "VENDEDOR") return <MinhasVendas />;
+  if (papel === "ESTOQUISTA" || papel === "SEPARADOR") return <BoasVindasOperacional papel={papel} />;
+  return <DashboardKpis />;
 }

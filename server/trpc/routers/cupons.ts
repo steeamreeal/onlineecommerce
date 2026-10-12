@@ -1,12 +1,16 @@
 import { z } from "zod";
 import type { PrismaClient } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
-import { router, storeProcedure, roleProcedure } from "../trpc";
+import { router, roleProcedure } from "../trpc";
 import { itemElegivelParaCupom } from "@/lib/cupons";
 
 // Criar/editar/remover cupons afeta descontos em toda a loja — restrito a
 // quem administra ou gerencia, não a Vendedor/Estoquista/Separador.
 const gestorProcedure = roleProcedure(["ADMINISTRADOR", "DONO", "GERENTE"]);
+
+// Consultar/validar cupom: quem gerencia e o Vendedor (aplica cupom na venda
+// manual). Estoquista e Separador não precisam dos códigos de desconto.
+const consultaCupomProcedure = roleProcedure(["ADMINISTRADOR", "DONO", "GERENTE", "VENDEDOR"]);
 
 const tipoCupomSchema = z.enum(["PERCENTUAL", "VALOR_FIXO", "FRETE_GRATIS"]);
 
@@ -76,14 +80,14 @@ async function validarEscopoCupom(
 }
 
 export const cuponsRouter = router({
-  listar: storeProcedure.query(({ ctx }) => {
+  listar: consultaCupomProcedure.query(({ ctx }) => {
     return ctx.prisma.cupom.findMany({
       where: { lojaId: ctx.lojaId },
       orderBy: { inicio: "desc" },
     });
   }),
 
-  buscarPorId: storeProcedure
+  buscarPorId: consultaCupomProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
       const cupom = await ctx.prisma.cupom.findFirst({
@@ -99,7 +103,7 @@ export const cuponsRouter = router({
   // Usada pelo checkout (M11) para validar um código antes de aplicar o
   // desconto ao pedido: confere vigência, limite de uso e escopo por
   // produto/categoria — a mesma regra de negócio de PRD 3.10.
-  validar: storeProcedure
+  validar: consultaCupomProcedure
     .input(z.object({ codigo: z.string(), produtoIds: z.array(z.string()).default([]) }))
     .query(async ({ ctx, input }) => {
       const cupom = await ctx.prisma.cupom.findFirst({

@@ -256,7 +256,7 @@ describe("pedidosRouter — fluxo de aprovação por papel", () => {
     expect(resultado).toEqual({ pendente: true, solicitacaoId: "solicitacao-2" });
   });
 
-  it("ESTOQUISTA: atualizarRastreio não muda o pedido — vira solicitação pendente", async () => {
+  it("SEPARADOR: atualizarRastreio não muda o pedido — vira solicitação pendente", async () => {
     const pedidoExistente = { id: "pedido-1", codigoRastreio: null };
     const { mock, client } = criarPrismaMock({
       pedido: {
@@ -266,7 +266,7 @@ describe("pedidosRouter — fluxo de aprovação por papel", () => {
       },
       solicitacao: { create: vi.fn().mockResolvedValue({ id: "solicitacao-3" }) },
     });
-    const caller = criarCaller(client, "ESTOQUISTA");
+    const caller = criarCaller(client, "SEPARADOR");
 
     const resultado = await caller.atualizarRastreio({ id: "pedido-1", codigoRastreio: "BR123" });
 

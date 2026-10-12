@@ -20,7 +20,7 @@ describe("pedidos: Vendedor só vê os pedidos que ele registrou", () => {
     expect(findMany.mock.calls[0][0].where).toMatchObject({ lojaId: LOJA, criadoPorId: "u-vendedor" });
   });
 
-  it.each<PapelUsuario>(["DONO", "ADMINISTRADOR", "GERENTE", "ESTOQUISTA", "SEPARADOR"])(
+  it.each<PapelUsuario>(["DONO", "ADMINISTRADOR", "GERENTE", "SEPARADOR"])(
     "listar NÃO filtra por autor para %s",
     async (papel) => {
       const findMany = vi.fn().mockResolvedValue([]);

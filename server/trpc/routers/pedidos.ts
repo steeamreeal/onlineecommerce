@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { router, storeProcedure } from "../trpc";
+import { router, storeProcedure, roleProcedure } from "../trpc";
 import { ESTOQUE_BAIXO_LIMITE, variacaoLabel } from "@/lib/estoque";
 import { calcularDescontoCupom } from "@/lib/cupons";
 import {
@@ -431,8 +431,13 @@ async function garantirPedidoVisivel(
   }
 }
 
+// Estoquista cuida de produtos e estoque, não de pedidos de clientes (nome,
+// telefone, endereço). Dono, Administrador e Gerente gerenciam; Vendedor vê só
+// os dele (escopoVendedor); Separador separa e envia.
+const pedidosProcedure = roleProcedure(["DONO", "ADMINISTRADOR", "GERENTE", "VENDEDOR", "SEPARADOR"]);
+
 export const pedidosRouter = router({
-  listar: storeProcedure
+  listar: pedidosProcedure
     .input(z.object({ status: statusPedidoSchema.optional(), busca: z.string().optional() }).optional())
     .query(async ({ ctx, input }) => {
       const termo = input?.busca?.trim();
@@ -456,7 +461,7 @@ export const pedidosRouter = router({
       return pedidos.map((pedido) => ocultarDocumentoCliente(pedido, ctx.papel));
     }),
 
-  buscarPorId: storeProcedure
+  buscarPorId: pedidosProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
       const pedido = await ctx.prisma.pedido.findFirst({
@@ -473,7 +478,7 @@ export const pedidosRouter = router({
       return ocultarDocumentoCliente(pedido, ctx.papel);
     }),
 
-  criar: storeProcedure
+  criar: pedidosProcedure
     .input(pedidoCriarSchema)
     .mutation(({ ctx, input }) =>
       executarComAprovacao(ctx, "PEDIDO_CRIAR", "Novo pedido (venda manual)", input, () =>
@@ -484,7 +489,7 @@ export const pedidosRouter = router({
   // Avança o pedido para o próximo status da esteira (kanban) ou para
   // CANCELADO — nunca aceita pular etapas nem voltar, replicando a regra de
   // proximoStatus() do mock. Cancelar devolve o estoque baixado na criação.
-  atualizarStatus: storeProcedure
+  atualizarStatus: pedidosProcedure
     .input(pedidoAtualizarStatusSchema)
     .mutation(async ({ ctx, input }) => {
       await garantirPedidoVisivel(ctx, input.id);
@@ -497,7 +502,7 @@ export const pedidosRouter = router({
       );
     }),
 
-  atualizarRastreio: storeProcedure
+  atualizarRastreio: pedidosProcedure
     .input(pedidoAtualizarRastreioSchema)
     .mutation(async ({ ctx, input }) => {
       await garantirPedidoVisivel(ctx, input.id);
