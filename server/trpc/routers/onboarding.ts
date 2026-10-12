@@ -2,6 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { MENSAGEM_SLUG_RESERVADO, slugReservado } from "@/lib/slugs-reservados";
 import { router, protectedProcedure } from "../trpc";
+import { cookieLojaAtiva, MAX_LOJAS_POR_USUARIO } from "@/lib/loja-ativa";
 
 export const onboardingRouter = router({
   criarLoja: protectedProcedure
@@ -17,11 +18,16 @@ export const onboardingRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const usuarioJaTemLoja = await ctx.prisma.usuarioLoja.findFirst({
-        where: { usuarioId: ctx.usuario.id },
+      // Uma conta pode ter várias lojas, até um teto — sem ele, um único
+      // cadastro criaria tenants sem limite.
+      const lojasQueEuCriei = await ctx.prisma.usuarioLoja.count({
+        where: { usuarioId: ctx.usuario.id, papel: "DONO" },
       });
-      if (usuarioJaTemLoja) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Este usuário já possui uma loja." });
+      if (lojasQueEuCriei >= MAX_LOJAS_POR_USUARIO) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Você já tem ${MAX_LOJAS_POR_USUARIO} lojas nesta conta. Fale com o suporte para abrir mais.`,
+        });
       }
 
       const slugEmUso = await ctx.prisma.loja.findUnique({ where: { slug: input.slug } });
@@ -29,7 +35,7 @@ export const onboardingRouter = router({
         throw new TRPCError({ code: "CONFLICT", message: "Este endereço de loja já está em uso." });
       }
 
-      return ctx.prisma.$transaction(async (tx) => {
+      const novaLoja = await ctx.prisma.$transaction(async (tx) => {
         const loja = await tx.loja.create({
           data: {
             nome: input.nome,
@@ -43,11 +49,19 @@ export const onboardingRouter = router({
           data: {
             usuarioId: ctx.usuario.id,
             lojaId: loja.id,
-            papel: "ADMINISTRADOR",
+            // Quem abre a própria loja é o dono dela.
+            papel: "DONO",
           },
         });
 
         return loja;
       });
+
+      // A loja recém-criada vira a ativa no painel.
+      ctx.resHeaders.append(
+        "Set-Cookie",
+        cookieLojaAtiva(novaLoja.id, process.env.NODE_ENV === "production"),
+      );
+      return novaLoja;
     }),
 });
