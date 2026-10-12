@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "../trpc";
-import { cookieLojaAtiva } from "@/lib/loja-ativa";
+import { cookieLojaAtiva, podeCriarLoja } from "@/lib/loja-ativa";
 
 export const minhasLojasRouter = router({
   // Lojas em que o usuário logado tem vínculo, para o seletor do painel.
@@ -15,6 +15,9 @@ export const minhasLojasRouter = router({
 
     return {
       ativaId: ctx.lojaId,
+      // A UI só mostra "Criar nova loja" para quem pode (o servidor
+      // reconfere em onboarding.criarLoja — isto é só conveniência).
+      podeCriarLoja: podeCriarLoja(vinculos.map((v) => v.papel)),
       lojas: vinculos.map((v) => ({
         id: v.loja.id,
         nome: v.loja.nome,

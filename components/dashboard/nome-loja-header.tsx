@@ -65,11 +65,15 @@ export function NomeLojaHeader() {
             </DropdownMenuItem>
           ))}
         </DropdownMenuGroup>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem render={<Link href="/onboarding" />}>
-          <PlusIcon className="size-4" />
-          Criar nova loja
-        </DropdownMenuItem>
+        {minhas?.podeCriarLoja && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem render={<Link href="/onboarding" />}>
+              <PlusIcon className="size-4" />
+              Criar nova loja
+            </DropdownMenuItem>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
