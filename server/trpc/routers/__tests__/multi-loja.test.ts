@@ -56,7 +56,7 @@ describe("onboarding.criarLoja com várias lojas", () => {
   }
 
   it("permite abrir outra loja, vira DONO dela e a torna ativa", async () => {
-    const { caller, append, usuarioLojaCreate } = setup(1);
+    const { caller, append, usuarioLojaCreate } = setup(1); // já tem 1, abre a 2ª
     await caller.criarLoja({ nome: "Minha segunda loja", slug: "segunda-loja" });
 
     expect(usuarioLojaCreate).toHaveBeenCalledWith({
@@ -66,8 +66,8 @@ describe("onboarding.criarLoja com várias lojas", () => {
   });
 
   it("recusa quando a conta já está no teto de lojas", async () => {
-    const { caller, usuarioLojaCreate } = setup(5);
-    await expect(caller.criarLoja({ nome: "Mais uma", slug: "mais-uma" })).rejects.toThrow("já tem 5 lojas");
+    const { caller, usuarioLojaCreate } = setup(2);
+    await expect(caller.criarLoja({ nome: "Mais uma", slug: "mais-uma" })).rejects.toThrow("já tem 2 lojas");
     expect(usuarioLojaCreate).not.toHaveBeenCalled();
   });
 });

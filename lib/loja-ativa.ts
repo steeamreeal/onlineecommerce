@@ -4,9 +4,10 @@
 // (escolherVinculo), então um valor adulterado nunca dá acesso a outra loja.
 export const COOKIE_LOJA_ATIVA = "loja_ativa";
 
-// Teto de lojas por conta: evita criação em massa de lojas (cada uma é um
-// tenant com domínio, slug e dados) a partir de um único cadastro.
-export const MAX_LOJAS_POR_USUARIO = 5;
+// Teto de lojas por conta: a segunda loja já vem incluída; para ter mais, o
+// lojista contrata (fale com o suporte). Também evita criação em massa de
+// tenants (domínio, slug e dados) a partir de um único cadastro.
+export const MAX_LOJAS_POR_USUARIO = 2;
 
 export function lerLojaAtivaDoCookie(cookieHeader: string | null | undefined): string | null {
   if (!cookieHeader) return null;
