@@ -18,6 +18,7 @@ import { adminRouter } from "./routers/admin";
 import { usuariosLojaRouter } from "./routers/usuarios-loja";
 import { paginasInstitucionaisRouter } from "./routers/paginas-institucionais";
 import { aprovacoesRouter } from "./routers/aprovacoes";
+import { minhasLojasRouter } from "./routers/minhas-lojas";
 
 export const appRouter = router({
   produtos: produtosRouter,
@@ -39,6 +40,7 @@ export const appRouter = router({
   usuariosLoja: usuariosLojaRouter,
   paginasInstitucionais: paginasInstitucionaisRouter,
   aprovacoes: aprovacoesRouter,
+  minhasLojas: minhasLojasRouter,
 });
 
 export type AppRouter = typeof appRouter;

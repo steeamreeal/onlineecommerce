@@ -2,6 +2,7 @@ import type { FetchCreateContextFnOptions } from "@trpc/server/adapters/fetch";
 import { createServerClient } from "@supabase/ssr";
 import { prisma } from "@/server/db/client";
 import type { PapelUsuario } from "@prisma/client";
+import { escolherVinculo, lerLojaAtivaDoCookie } from "@/lib/loja-ativa";
 
 type UsuarioContexto = {
   id: string;
@@ -55,14 +56,20 @@ export async function createContext({ req, resHeaders }: FetchCreateContextFnOpt
   if (supabaseUser) {
     const usuarioDb = await prisma.usuario.findUnique({
       where: { supabaseId: supabaseUser.id },
-      include: { lojas: { take: 1, orderBy: { createdAt: "asc" } } },
+      include: { lojas: { orderBy: { createdAt: "asc" }, take: 50 } },
     });
 
     if (usuarioDb) {
       usuario = { id: usuarioDb.id, email: usuarioDb.email, papelAdmin: usuarioDb.papelAdmin };
-      lojaId = usuarioDb.lojas[0]?.lojaId ?? null;
-      papel = usuarioDb.lojas[0]?.papel ?? null;
-      podeEditarTema = usuarioDb.lojas[0]?.podeEditarTema ?? false;
+      // Loja ativa = a do cookie, MAS só se o usuário tiver vínculo com ela;
+      // senão cai na primeira dele. O cookie nunca concede acesso por si só.
+      const ativa = escolherVinculo(
+        usuarioDb.lojas,
+        lerLojaAtivaDoCookie(req.headers.get("cookie")),
+      );
+      lojaId = ativa?.lojaId ?? null;
+      papel = ativa?.papel ?? null;
+      podeEditarTema = ativa?.podeEditarTema ?? false;
     }
   }
 
@@ -76,6 +83,7 @@ export async function createContext({ req, resHeaders }: FetchCreateContextFnOpt
   return {
     prisma,
     ip,
+    resHeaders,
     usuario,
     lojaId,
     papel,
