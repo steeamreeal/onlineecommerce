@@ -1,7 +1,7 @@
 import { randomBytes } from "crypto";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, publicProcedure, authedProcedure, storeProcedure, roleProcedure } from "../trpc";
+import { router, publicProcedure, authedProcedure, roleProcedure } from "../trpc";
 import { enviarConviteLoja } from "@/lib/email/notificacoes";
 
 const papelUsuarioSchema = z.enum(["DONO", "ADMINISTRADOR", "GERENTE", "VENDEDOR", "ESTOQUISTA", "SEPARADOR"]);
@@ -12,6 +12,10 @@ const papelUsuarioSchema = z.enum(["DONO", "ADMINISTRADOR", "GERENTE", "VENDEDOR
 // que ADMINISTRADOR tem e mais as proteções abaixo).
 const equipeProcedure = roleProcedure(["ADMINISTRADOR", "DONO"]);
 
+// Ver quem é da equipe (nome/e-mail dos colegas) é restrito a quem gerencia;
+// Vendedor, Estoquista e Separador não precisam dessa lista.
+const verEquipeProcedure = roleProcedure(["ADMINISTRADOR", "DONO", "GERENTE"]);
+
 const CONVITE_VALIDADE_HORAS = 72;
 
 export const usuariosLojaRouter = router({
@@ -21,7 +25,7 @@ export const usuariosLojaRouter = router({
   // permitido para quem já é DONO — exceto quando a loja ainda não tem
   // nenhum (lojas criadas antes desse papel existir), caso em que qualquer
   // ADMINISTRADOR pode fazer a primeira atribuição.
-  listar: storeProcedure.query(async ({ ctx }) => {
+  listar: verEquipeProcedure.query(async ({ ctx }) => {
     const [usuarios, convites] = await Promise.all([
       ctx.prisma.usuarioLoja.findMany({
         where: { lojaId: ctx.lojaId },

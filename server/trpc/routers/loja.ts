@@ -53,6 +53,9 @@ export const lojaRouter = router({
     });
     return {
       ...loja,
+      // Id do cliente na Stripe só para quem gerencia a assinatura.
+      stripeCustomerId:
+        ctx.papel === "DONO" || ctx.papel === "ADMINISTRADOR" ? loja.stripeCustomerId : null,
       selosConfig: loja.selosConfig ?? extrairSelosSemente(loja.temaConfig),
     };
   }),

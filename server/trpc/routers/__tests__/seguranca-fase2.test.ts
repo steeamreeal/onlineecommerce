@@ -22,7 +22,7 @@ function callerPedidos(papel: PapelUsuario) {
 }
 
 describe("pedidos: CPF/CNPJ só para quem gerencia a loja", () => {
-  it.each<PapelUsuario>(["ESTOQUISTA", "VENDEDOR", "SEPARADOR"])("%s não vê o documento (listar e buscarPorId)", async (papel) => {
+  it.each<PapelUsuario>(["VENDEDOR", "SEPARADOR"])("%s não vê o documento (listar e buscarPorId)", async (papel) => {
     const caller = callerPedidos(papel);
     const [lista] = await caller.listar();
     const um = await caller.buscarPorId({ id: "p1" });

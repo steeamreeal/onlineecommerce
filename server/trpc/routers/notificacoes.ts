@@ -3,10 +3,13 @@ import type { PrismaClient } from "@prisma/client";
 import { router, storeProcedure } from "../trpc";
 
 // Notificação de pedido carrega número e valor — para o Vendedor, só as dos
-// pedidos que ele registrou (mais os avisos de estoque, que não têm pedido).
+// pedidos que ele registrou (mais os avisos de estoque, que não têm pedido);
+// para o Estoquista, só os avisos de estoque.
 async function filtroNotificacoes(
   ctx: { prisma: PrismaClient; lojaId: string; papel: string | null; usuario: { id: string } },
 ) {
+  // Estoquista não lida com pedidos: só os avisos de estoque.
+  if (ctx.papel === "ESTOQUISTA") return { lojaId: ctx.lojaId, tipo: "ESTOQUE_BAIXO" as const };
   if (ctx.papel !== "VENDEDOR") return { lojaId: ctx.lojaId };
 
   const meus = await ctx.prisma.pedido.findMany({
