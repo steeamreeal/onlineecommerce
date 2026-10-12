@@ -132,6 +132,15 @@ export const lojaRouter = router({
     .mutation(async ({ ctx, input }) => {
       const dominio = input.dominioProprio?.replace(/^https?:\/\//, "").replace(/\/$/, "") || null;
 
+      // Só hostname válido (letras, números, hífen e pontos, com TLD): o valor
+      // vira chave de resolução de tenant por host e é enviado à API da Vercel.
+      if (dominio && !/^(?=.{4,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(dominio)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Informe um domínio válido, por exemplo: www.minhaloja.com.br.",
+        });
+      }
+
       if (dominio) {
         const emUso = await ctx.prisma.loja.findFirst({
           where: { dominioProprio: dominio, id: { not: ctx.lojaId } },
